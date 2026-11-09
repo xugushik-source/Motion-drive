@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { contactOnly, siteUrl } from "../../../lib/deployment";
 import Site from "../../../components/Site";
 import { records } from "../../../lib/db";
 import { locales } from "../../../lib/schemas";
@@ -36,7 +37,7 @@ export async function generateMetadata({
     )
   ).default;
   const path = slug?.join("/") || "";
-  const base = process.env.APP_URL || "http://localhost:3000";
+  const base = siteUrl;
   const title = `${(messages as any)[path] || "Motion Drive"} — Motion Drive`;
   return {
     title,
@@ -108,7 +109,7 @@ export default async function Page({
             "@context": "https://schema.org",
             "@type": ["EducationalOrganization", "LocalBusiness"],
             name: "Motion Drive",
-            url: `${process.env.APP_URL || "http://localhost:3000"}/${locale}`,
+            url: `${siteUrl}/${locale}`,
             areaServed: [
               { "@type": "City", name: "Akhalkalaki" },
               { "@type": "City", name: "Ninotsminda" },
@@ -116,7 +117,7 @@ export default async function Page({
           }).replace(/</g, "\\u003c"),
         }}
       />
-      <Site locale={locale} page={path} initialContent={content} />
+      <Site locale={locale} page={path} initialContent={content} contactOnly={contactOnly} />
     </>
   );
 }

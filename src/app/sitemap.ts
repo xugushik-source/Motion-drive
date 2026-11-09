@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { siteUrl } from "../lib/deployment";
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.APP_URL || "http://localhost:3000";
+  const base = siteUrl;
   return ["ka", "hy", "ru", "en"].flatMap((l) =>
     [
       "",

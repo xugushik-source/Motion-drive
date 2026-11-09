@@ -1,8 +1,10 @@
+import { contactOnly } from "./deployment";
+import { publicRecords } from "./public-content";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-const path = resolve(process.env.DATABASE_PATH || "./data/motion-drive.sqlite");
-mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+const path = contactOnly ? ":memory:" : resolve(process.env.DATABASE_PATH || "./data/motion-drive.sqlite");
+if (!contactOnly) mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
 export const db = new DatabaseSync(path);
 db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'student',locale TEXT NOT NULL DEFAULT 'ru');
@@ -35,6 +37,7 @@ export const all = (sql: string, ...args: any[]) =>
 export const one = (sql: string, ...args: any[]) =>
   db.prepare(sql).get(...args) as Row | undefined;
 export function records(kind: string) {
+  if (contactOnly) return publicRecords[kind] || [];
   return all(
     "SELECT * FROM records WHERE kind=? ORDER BY updated DESC",
     kind,

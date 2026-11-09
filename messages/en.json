@@ -40,7 +40,7 @@
   "theoryDesc": "Understand the road, not just the answers. Signs, priorities and safer decisions.",
   "practiceDesc": "From getting to know the car to navigating the city. Step by step, at your pace.",
   "individualDesc": "Lessons around your goals. Format and availability are confirmed by the school.",
-  "confirm": "Program and terms to be confirmed",
+  "confirm": "Group and individual lessons. Contact the school for details.",
   "pricePending": "Tuition on request",
   "currency": "Tuition in Georgian lari · GEL",
   "routeTag": "YOUR ROAD TO FREEDOM",
@@ -60,7 +60,7 @@
   "instructorsPending": "Instructor profiles will appear once confirmed by the school.",
   "reviewsPending": "Real student stories will appear here with their permission.",
   "ctaTitle": "Your next chapter.\nBehind the wheel.",
-  "ctaText": "Leave a request. We will find your learning route together.",
+  "ctaText": "Call your preferred branch. Let’s choose your learning path together.",
   "footerText": "It starts with you.",
   "privacy": "Privacy",
   "terms": "Terms of use",
@@ -194,5 +194,6 @@
   "languages": "Teaching languages",
   "vehicle": "Vehicle",
   "bookingsPaused": "Enrollment requests are temporarily paused. Please contact the school.",
-  "reply": "Administrator reply"
+  "reply": "Administrator reply",
+  "contactBooking": "Call your preferred branch or contact the school on Instagram to arrange tuition and lesson times. Online accounts are not available yet."
 }

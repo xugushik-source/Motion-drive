@@ -71,10 +71,12 @@ export default function Site({
   locale,
   page,
   initialContent,
+  contactOnly = false,
 }: {
   locale: string;
   page: string;
   initialContent: Record<string, Item[]>;
+  contactOnly?: boolean;
 }) {
   const translate = useTranslations();
   const content = initialContent;
@@ -221,7 +223,7 @@ export default function Site({
             <p>{b?.hours}</p>
             <a
               className="text-link"
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(city + ", Georgia")}`}
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((b?.address || "") + ", " + city + ", Georgia")}`}
               target="_blank"
               rel="noreferrer"
             >
@@ -348,12 +350,7 @@ export default function Site({
   const header = (
     <header className={"header " + (page ? "header-light" : "")}>
       <Link href={href()} className="brand" aria-label="Motion Drive">
-        <span className="brand-symbol">
-          M<span />
-        </span>
-        <span>
-          MOTION<span>DRIVE</span>
-        </span>
+        <span className="logo-crop"><img src="/images/logo-original.jpg" alt="MotionDrive Driving School" /></span>
       </Link>
       <nav className="desktop-nav">
         {nav.map((k) => (
@@ -690,10 +687,11 @@ export default function Site({
                   <p>{t("legalText")}</p>
                 </div>
               )}
-              {page === "booking" && (
+              {contactOnly && ["booking", "account", "admin", "instructor"].includes(page) && (<><Notice>{t("contactBooking")}</Notice>{contacts()}<a className="text-link" href="https://www.instagram.com/avtoshkola_akhalkalaki/" target="_blank" rel="noreferrer">Instagram <ArrowUpRight size={18} /></a></>)}
+              {!contactOnly && page === "booking" && (
                 <Booking locale={locale} t={t} user={user} content={content} />
               )}
-              {page === "account" &&
+              {!contactOnly && page === "account" &&
                 (user === undefined ? (
                   <Notice>{t("loading")}</Notice>
                 ) : user ? (
@@ -707,7 +705,7 @@ export default function Site({
                 ) : (
                   <Auth locale={locale} t={t} onUser={setUser} />
                 ))}
-              {["admin", "instructor"].includes(page) &&
+              {!contactOnly && ["admin", "instructor"].includes(page) &&
                 (user === undefined ? (
                   <Notice>{t("loading")}</Notice>
                 ) : user && (user.role === "admin" || user.role === page) ? (
@@ -724,7 +722,7 @@ export default function Site({
                     <Auth locale={locale} t={t} onUser={setUser} />
                   </>
                 ))}
-              {page === "exam" && <Exam locale={locale} t={t} user={user} />}
+              {page === "exam" && (contactOnly ? <Notice>{t("noQuestions")}</Notice> : <Exam locale={locale} t={t} user={user} />)}
             </section>
             {!["admin", "instructor", "account", "exam", "booking"].includes(
               page,
@@ -742,7 +740,7 @@ export default function Site({
               </span>
             </Link>
             <p>{t("footerText")}</p>
-            <small>{t("draft")}</small>
+            <small>{contactOnly ? `${t("city1")} · ${t("city2")}` : t("draft")}</small>
           </div>
           <div className="footer-nav">
             {[
@@ -788,7 +786,7 @@ export default function Site({
           <span>KA / HY / RU / EN</span>
         </div>
       </footer>
-      <button
+      {!contactOnly && <button
         className="chat-toggle"
         onClick={() => setChat(!chat)}
         aria-label={t(chat ? "close" : "chatTitle")}
@@ -796,8 +794,9 @@ export default function Site({
         {chat ? <X /> : <MessageCircle />}
         <span>{t("chatTitle")}</span>
         <span className="online-dot" />
-      </button>
-      {chat && <Chat locale={locale} t={t} close={() => setChat(false)} />}
+      </button>}
+      {contactOnly && <a className="chat-toggle" href={href("contacts")} aria-label={t("contacts")}><MessageCircle /><span>{t("contacts")}</span></a>}
+      {!contactOnly && chat && <Chat locale={locale} t={t} close={() => setChat(false)} />}
       {activeMedia && (
         <div
           className="lightbox"

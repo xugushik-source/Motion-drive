@@ -1,3 +1,4 @@
+import { contactOnly } from "../../../lib/deployment";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
@@ -84,6 +85,12 @@ export async function GET(
   ctx: { params: Promise<{ path: string[] }> },
 ) {
   try {
+    if (contactOnly) {
+      const path = (await ctx.params).path;
+      if (path[0] === "me") return json({ user: null });
+      if (path[0] === "public") return json(Object.fromEntries(publicKinds.map((k) => [k, approved(k)])));
+      return json({ error: "bookingsPaused" }, 503);
+    }
     const p = (await ctx.params).path;
     const user = await currentUser();
     if (p[0] === "public")
@@ -213,6 +220,7 @@ export async function POST(
   ctx: { params: Promise<{ path: string[] }> },
 ) {
   try {
+    if (contactOnly) return json({ error: "bookingsPaused" }, 503);
     const p = (await ctx.params).path;
     const origin = req.headers.get("origin");
     if (

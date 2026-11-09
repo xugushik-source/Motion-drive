@@ -2476,3 +2476,10 @@ h3 {
 .section-head h2 {
   max-width: 100%;
 }
+
+/* Preserve the supplied logo; crop screenshot padding only in the layout. */
+.logo-crop { position:relative; display:block; width:160px; height:82px; overflow:hidden; background:#000; border-radius:4px; }
+.logo-crop img { position:absolute; width:130%; max-width:none; height:auto; left:-15%; top:-68%; }
+.header .brand { gap:0; }
+@media(max-width:600px) { .logo-crop { width:128px; height:66px; } .logo-crop img { top:-68%; } }
+.chat-toggle { text-decoration:none; }

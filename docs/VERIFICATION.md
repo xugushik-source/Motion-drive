@@ -38,3 +38,15 @@
 - Переводы и юридические тексты не прошли проверку носителями/владельцем.
 - Учебная база пустая. Тестовая fixture не была грузинским экзаменационным материалом и удалена после теста.
 - Текущая версия не является аудитом безопасности для публичного запуска. Известные эксплуатационные ограничения перечислены в ARCHITECTURE.md.
+
+## GitHub / Vercel release — 2026-11-09
+
+Production-mode local verification (`VERCEL=1`, Node 24):
+- `npm run typecheck`, `npm test`, `npm run build`: passed.
+- Chromium: ru/ka/hy/en render with correct document language and school phone links.
+- Responsive checks: 320, 390 and 768 px, no horizontal overflow; mobile menu opens/closes.
+- Booking page: both branch phones present, no data-collection form.
+- `/api/me`: `{user:null}`. Registration POST: 503, personal data not accepted.
+- Browser JavaScript errors: none.
+- Screenshots: `deploy-desktop.png`, `deploy-mobile.png` in this directory.
+- Public site remains noindex; online accounts/booking/chat need durable storage before activation.
