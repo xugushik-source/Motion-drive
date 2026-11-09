@@ -1,0 +1,552 @@
+{
+  "requested": "https://nextjs.org/docs/app/getting-started/installation",
+  "url": "https://nextjs.org/docs/app/getting-started/installation",
+  "title": "Installation",
+  "text": "Docs\nLearn\nShowcase\nBlog\nTemplates\nDeploy\nSearch…\n⌘K\nAsk AI\nUsing App Router\nFeatures available in /app\nLatest\nv16.4.5\nGetting Started\nInstallation\nProject Structure\nLayouts and Pages\nLinking and Navigating\nServer and Client Components\nFetching Data\nMutating Data\nCaching\nRevalidating\nError Handling\nCSS\nImage Optimization\nFont Optimization\nMetadata and OG images\nRoute Handlers\nProxy\nDeploying\nUpgrading\nGuides\nAPI Reference\nGlossary\nArchitecture\nAccessibility\nFast Refresh\nNext.js Compiler\nSupported Browsers\nCommunity\nContribution Guide\nRspack\nApp Router\nGetting Started\nInstallation\nCopy page\n\nCreate a new Next.js app and run it locally.\n\nQuick start\nCreate a new Next.js app named my-app\ncd my-app and start the dev server.\nVisit http://localhost:3000.\npnpm\nnpm\nyarn\nbun\npnpm create next-app@latest my-app --yes\ncd my-app\npnpm dev\n--yes skips prompts using saved preferences or defaults. The default setup enables TypeScript, Tailwind CSS, ESLint, App Router, and Turbopack, with import alias @/*, and includes AGENTS.md to guide coding agents to write up-to-date Next.js code.\nSystem requirements\n\nBefore you begin, make sure your development environment meets the following requirements:\n\nMinimum Node.js version: 20.9\nOperating systems: macOS, Windows (including WSL), and Linux.\nSupported browsers\n\nNext.js supports modern browsers with zero configuration.\n\nChrome 111+\nEdge 111+\nFirefox 111+\nSafari 16.4+\n\nLearn more about browser support, including how to configure polyfills and target specific browsers.\n\nCreate with the CLI\n\nThe quickest way to create a new Next.js app is using create-next-app, which sets up everything automatically for you. To create a project, run:\n\npnpm\nnpm\nyarn\nbun\npnpm create next-app\n\nOn installation, you'll see the following prompts:\n\nTerminal\nWhat is your project named? my-app\nWould you like to use the recommended Next.js defaults?\n    Yes, use recommended defaults - TypeScript, ESLint, No React Compiler, Tailwind CSS, No src/ directory, App Router, Cache Components, AGENTS.md\n    No, reuse previous settings\n    No, customize settings - Choose your own preferences\n\nIf you choose to customize settings, you'll see the following prompts:\n\nTerminal\nWould you like to use TypeScript? No / Yes\nWhich linter would you like to use? ESLint / Biome / None\nWould you like to use React Compiler? No / Yes\nWould you like to use Tailwind CSS? No / Yes\nWould you like your code inside a `src/` directory? No / Yes\nWould you like to use App Router? (recommended) No / Yes\nWould you like to use Cache Components? No / Yes\nWould you like to customize the import alias (`@/*` by default)? No / Yes\nWhat import alias would you like configured? @/*\nWould you like to include AGENTS.md to guide coding agents to write up-to-date Next.js code? No / Yes\n\nAfter the prompts, create-next-app will create a folder with your project name and install the required dependencies.\n\nManual installation\n\nTo manually create a new Next.js app, install the required packages:\n\npnpm\nnpm\nyarn\nbun\npnpm i next@latest react@latest react-dom@latest\n\nGood to know\n\nThe App Router uses React canary releases built-in, which include all the stable React 19 changes, as well as newer features being validated in frameworks, but you should still declare react and react-dom in package.json for tooling and ecosystem compatibility.\nThe Pages Router uses the React version from your package.json.\n\nThen, add the following scripts to your package.json file:\n\npackage.json\n{\n  \"scripts\": {\n    \"dev\": \"next dev\",\n    \"build\": \"next build\",\n    \"start\": \"next start\",\n    \"lint\": \"eslint\",\n    \"lint:fix\": \"eslint --fix\"\n  }\n}\n\nThese scripts refer to the different stages of developing an application:\n\nnext dev: Starts the development server using Turbopack (default bundler).\nnext build: Builds the application for production.\nnext start: Starts the production server.\neslint: Runs ESLint.\n\nTurbopack is now the default bundler. To use Webpack run next dev --webpack or next build --webpack. See the Turbopack docs for configuration details.\n\nCreate the app directory\n\nNext.js uses file-system routing, which means the routes in your application are determined by how you structure your files.\n\nCreate an app folder. Then, inside app, create a layout.tsx file. This file is the root layout. It's required and must contain the <html> and <body> tags.\n\nTypeScript\nTypeScript\nJavaScript\napp/layout.tsx\nexport default function RootLayout({\n  children,\n}: {\n  children: React.ReactNode\n}) {\n  return (\n    <html lang=\"en\">\n      <body>{children}</body>\n    </html>\n  )\n}\n\nCreate a home page app/page.tsx with some initial content:\n\nTypeScript\nTypeScript\nJavaScript\napp/page.tsx\nexport default function Page() {\n  return <h1>Hello, Next.js!</h1>\n}\n\nBoth layout.tsx and page.tsx will be rendered when the user visits the root of your application (/).\n\nGood to know\n\nIf you forget to create the root layout, Next.js will automatically create this file when running the development server with next dev.\nYou can optionally use a src folder in the root of your project to separate your application's code from configuration files.\nCreate the public folder (optional)\n\nCreate a public folder at the root of your project to store static assets such as images, fonts, etc. Files inside public can then be referenced by your code starting from the base URL (/).\n\nYou can then reference these assets using the root path (/). For example, public/profile.png can be referenced as /profile.png:\n\nTypeScript\nTypeScript\nJavaScript\napp/page.tsx\nimport Image from 'next/image'\nexport default function Page() {\n  return <Image src=\"/profile.png\" alt=\"Profile\" width={100} height={100} />\n}\nRun the development server\nRun npm run dev to start the development server.\nVisit http://localhost:3000 to view your application.\nEdit the app/page.tsx file and save it to see the updated result in your browser.\nSet up TypeScript\n\nMinimum TypeScript version: v5.1.0\n\nNext.js comes with built-in TypeScript support. To add TypeScript to your project, rename a file to .ts / .tsx and run next dev. Next.js will automatically install the necessary dependencies and add a tsconfig.json file with the recommended config options.\n\nIDE Plugin\n\nNext.js includes a custom TypeScript plugin and type checker, which VSCode and other code editors can use for advanced type-checking and auto-completion.\n\nYou can enable the plugin in VS Code by:\n\nOpening the command palette (Ctrl/⌘ + Shift + P)\nSearching for \"TypeScript: Select TypeScript Version\"\nSelecting \"Use Workspace Version\"\n\nSee the TypeScript reference page for more information.\n\nSet up your editor\n\nThe App Router names files by convention, like page.tsx, layout.tsx, and route.ts, so your editor quickly fills with same-named tabs. Label each tab with its enclosing folders, like blog/[id], so you can tell them apart.\n\nIn VS Code 1.88+ or Cursor, add custom editor labels to .vscode/settings.json. Labeling two folders deep keeps dynamic routes like blog/[id]/page.tsx from all collapsing to the same [id] label:\n\n.vscode/settings.json\n{\n  \"workbench.editor.customLabels.patterns\": {\n    \"**/app/**/page.tsx\": \"${dirname(1)}/${dirname} - page.tsx\",\n    \"**/app/**/layout.tsx\": \"${dirname(1)}/${dirname} - layout.tsx\",\n    \"**/app/**/loading.tsx\": \"${dirname(1)}/${dirname} - loading.tsx\",\n    \"**/app/**/error.tsx\": \"${dirname(1)}/${dirname} - error.tsx\",\n    \"**/app/**/not-found.tsx\": \"${dirname(1)}/${dirname} - not-found.tsx\",\n    \"**/app/**/template.tsx\": \"${dirname(1)}/${dirname} - template.tsx\",\n    \"**/app/**/default.tsx\": \"${dirname(1)}/${dirname} - default.tsx\",\n    \"**/app/**/route.ts\": \"${dirname(1)}/${dirname} - route.ts\"\n  }\n}\n\nOr copy this prompt to have your coding agent set it up:\n\nPrompt for coding agents\nCopy\nSet up custom editor labels so my Next.js App Router files are easy to tell apart. Read https://nextjs.org/docs/app/getting-started/installation#set-up-your-editor and add the workbench.editor.customLabels.patterns config shown there to my .vscode/settings.json, creating the file if it doesn't exist. Adjust the labels to taste. If I use a different editor, apply the equivalent setting or tell me it's automatic, and leave my other settings untouched.\nShow more\n\nGood to know\n\nJetBrains IDEs (WebStorm, IntelliJ) show the folder for same-named files automatically, so no setup is needed.\n\nSet up linting\n\nNext.js supports linting with either ESLint or Biome. Choose a linter and run it directly via package.json scripts.\n\nUse ESLint (comprehensive rules):\npackage.json\n{\n  \"scripts\": {\n    \"lint\": \"eslint\",\n    \"lint:fix\": \"eslint --fix\"\n  }\n}\nOr use Biome (fast linter + formatter):\npackage.json\n{\n  \"scripts\": {\n    \"lint\": \"biome check\",\n    \"format\": \"biome format --write\"\n  }\n}\n\nIf your project previously used next lint, migrate your scripts to the ESLint CLI with the codemod:\n\nTerminal\nnpx @next/codemod@canary next-lint-to-eslint-cli .\n\nIf you use ESLint, create an explicit config (recommended eslint.config.mjs). ESLint supports both the legacy .eslintrc.* and the newer eslint.config.mjs formats. See the ESLint API reference for a recommended setup.\n\nGood to know\n\nStarting with Next.js 16, next build no longer runs the linter automatically. Instead, you can run your linter through NPM scripts.\n\nSee the ESLint Plugin page for more information.\n\nSet up Absolute Imports and Module Path Aliases\n\nNext.js has in-built support for the \"paths\" and \"baseUrl\" options of tsconfig.json and jsconfig.json files.\n\nThese options allow you to alias project directories to absolute paths, making it easier and cleaner to import modules. For example:\n\n// Before\nimport { Button } from '../../../components/button'\n// After\nimport { Button } from '@/components/button'\n\nTo configure absolute imports, add the baseUrl configuration option to your tsconfig.json or jsconfig.json file. For example:\n\ntsconfig.json or jsconfig.json\n{\n  \"compilerOptions\": {\n    \"baseUrl\": \"src/\"\n  }\n}\n\nIn addition to configuring the baseUrl path, you can use the \"paths\" option to \"alias\" module paths.\n\nFor example, the following configuration maps @/components/* to components/*:\n\ntsconfig.json or jsconfig.json\n{\n  \"compilerOptions\": {\n    \"baseUrl\": \"src/\",\n    \"paths\": {\n      \"@/styles/*\": [\"styles/*\"],\n      \"@/components/*\": [\"components/*\"]\n    }\n  }\n}\n\nEach of the \"paths\" are relative to the baseUrl location.\n\nUpgrade your Next.js app\n\nKeep your Next.js version up to date. Each release ships security patches, bug fixes, and performance optimizations alongside new features, and staying current keeps every individual upgrade small. Run the upgrade command:\n\npnpm\nnpm\nyarn\nbun\npnpm next upgrade\n\nUpgrading also updates the documentation bundled inside the next package at node_modules/next/dist/docs/. New features arrive with their docs, and existing pages pick up new guidance and pitfalls discovered along the way. AI coding agents in your project then work from the version you have installed rather than their training data.\n\nTo have a coding agent perform and verify the upgrade, run npx next@canary upgrade --agent=latest. See Upgrade with a coding agent for other policies.\n\nSee Upgrading for version guides and manual upgrade steps, or the preview docs to explore features before they ship in a stable version.\n\nLast updated October 2, 2026\n\nPrevious\nGetting Started\nNext\nProject Structure\n\nOn this page\n\nQuick start\nSystem requirements\nSupported browsers\nCreate with the CLI\nManual installation\nCreate the app directory\nCreate the public folder (optional)\nRun the development server\nSet up TypeScript\nIDE Plugin\nSet up your editor\nSet up linting\nSet up Absolute Imports and Module Path Aliases\nUpgrade your Next.js app\nGive feedback\nEdit this page on GitHub\nGet started\nDocs\nSupport Policy\nLearn\nShowcase\nBlog\nTeam\nAnalytics\nNext.js Conf\nPreviews\nEvals\nMore\nNext.js Commerce\nContact Sales\nCommunity\nGitHub\nReleases\nTelemetry\nGovernance\nEcosystem Working Group\nAbout Vercel\nAbout Vercel\nNext.js + Vercel\nOpen Source Software\nGitHub\nBluesky\nX\nLegal\nPrivacy Policy\nCookie Preferences\n\nSubscribe to our newsletter\n\nSubscribe\n\nStay updated on new releases and features, guides, and case studies.\n\nSelect a display theme:\nsystem\nlight\ndark",
+  "links": [
+    {
+      "text": "",
+      "url": "https://vercel.com/oss"
+    },
+    {
+      "text": "",
+      "url": "https://nextjs.org/"
+    },
+    {
+      "text": "",
+      "url": "https://nextjs.org/"
+    },
+    {
+      "text": "Docs",
+      "url": "https://nextjs.org/docs"
+    },
+    {
+      "text": "Learn",
+      "url": "https://nextjs.org/learn"
+    },
+    {
+      "text": "Showcase",
+      "url": "https://nextjs.org/showcase"
+    },
+    {
+      "text": "Blog",
+      "url": "https://nextjs.org/blog"
+    },
+    {
+      "text": "Templates",
+      "url": "https://vercel.com/templates/next.js"
+    },
+    {
+      "text": "Deploy",
+      "url": "https://vercel.com/new"
+    },
+    {
+      "text": "",
+      "url": "https://github.com/vercel/next.js"
+    },
+    {
+      "text": "Docs",
+      "url": "https://nextjs.org/docs"
+    },
+    {
+      "text": "Learn",
+      "url": "https://nextjs.org/learn"
+    },
+    {
+      "text": "Showcase",
+      "url": "https://nextjs.org/showcase"
+    },
+    {
+      "text": "Blog",
+      "url": "https://nextjs.org/blog"
+    },
+    {
+      "text": "Templates",
+      "url": "https://vercel.com/templates/next.js"
+    },
+    {
+      "text": "Deploy",
+      "url": "https://vercel.com/new"
+    },
+    {
+      "text": "GitHub",
+      "url": "https://github.com/vercel/next.js"
+    },
+    {
+      "text": "eve",
+      "url": "https://eve.dev/"
+    },
+    {
+      "text": "Svelte",
+      "url": "https://svelte.dev/"
+    },
+    {
+      "text": "Nuxt",
+      "url": "https://nuxt.com/"
+    },
+    {
+      "text": "Nitro",
+      "url": "https://nitro.build/"
+    },
+    {
+      "text": "AI SDK",
+      "url": "https://ai-sdk.dev/"
+    },
+    {
+      "text": "Chat SDK",
+      "url": "https://chat-sdk.dev/"
+    },
+    {
+      "text": "Flags SDK",
+      "url": "https://flags-sdk.dev/"
+    },
+    {
+      "text": "Workflow SDK",
+      "url": "https://workflow-sdk.dev/"
+    },
+    {
+      "text": "Turborepo",
+      "url": "https://turborepo.dev/"
+    },
+    {
+      "text": "shadcn/ui",
+      "url": "https://ui.shadcn.com/"
+    },
+    {
+      "text": "SWR",
+      "url": "https://swr.vercel.app/"
+    },
+    {
+      "text": "just-bash",
+      "url": "https://justbash.dev/"
+    },
+    {
+      "text": "deepsec",
+      "url": "https://deepsec.sh/"
+    },
+    {
+      "text": "Getting Started",
+      "url": "https://nextjs.org/docs/app/getting-started"
+    },
+    {
+      "text": "Installation",
+      "url": "https://nextjs.org/docs/app/getting-started/installation"
+    },
+    {
+      "text": "Project Structure",
+      "url": "https://nextjs.org/docs/app/getting-started/project-structure"
+    },
+    {
+      "text": "Layouts and Pages",
+      "url": "https://nextjs.org/docs/app/getting-started/layouts-and-pages"
+    },
+    {
+      "text": "Linking and Navigating",
+      "url": "https://nextjs.org/docs/app/getting-started/linking-and-navigating"
+    },
+    {
+      "text": "Server and Client Components",
+      "url": "https://nextjs.org/docs/app/getting-started/server-and-client-components"
+    },
+    {
+      "text": "Fetching Data",
+      "url": "https://nextjs.org/docs/app/getting-started/fetching-data"
+    },
+    {
+      "text": "Mutating Data",
+      "url": "https://nextjs.org/docs/app/getting-started/mutating-data"
+    },
+    {
+      "text": "Caching",
+      "url": "https://nextjs.org/docs/app/getting-started/caching"
+    },
+    {
+      "text": "Revalidating",
+      "url": "https://nextjs.org/docs/app/getting-started/revalidating"
+    },
+    {
+      "text": "Error Handling",
+      "url": "https://nextjs.org/docs/app/getting-started/error-handling"
+    },
+    {
+      "text": "CSS",
+      "url": "https://nextjs.org/docs/app/getting-started/css"
+    },
+    {
+      "text": "Image Optimization",
+      "url": "https://nextjs.org/docs/app/getting-started/images"
+    },
+    {
+      "text": "Font Optimization",
+      "url": "https://nextjs.org/docs/app/getting-started/fonts"
+    },
+    {
+      "text": "Metadata and OG images",
+      "url": "https://nextjs.org/docs/app/getting-started/metadata-and-og-images"
+    },
+    {
+      "text": "Route Handlers",
+      "url": "https://nextjs.org/docs/app/getting-started/route-handlers"
+    },
+    {
+      "text": "Proxy",
+      "url": "https://nextjs.org/docs/app/getting-started/proxy"
+    },
+    {
+      "text": "Deploying",
+      "url": "https://nextjs.org/docs/app/getting-started/deploying"
+    },
+    {
+      "text": "Upgrading",
+      "url": "https://nextjs.org/docs/app/getting-started/upgrading"
+    },
+    {
+      "text": "Guides",
+      "url": "https://nextjs.org/docs/app/guides"
+    },
+    {
+      "text": "API Reference",
+      "url": "https://nextjs.org/docs/app/api-reference"
+    },
+    {
+      "text": "Glossary",
+      "url": "https://nextjs.org/docs/app/glossary"
+    },
+    {
+      "text": "Architecture",
+      "url": "https://nextjs.org/docs/architecture"
+    },
+    {
+      "text": "Accessibility",
+      "url": "https://nextjs.org/docs/architecture/accessibility"
+    },
+    {
+      "text": "Fast Refresh",
+      "url": "https://nextjs.org/docs/architecture/fast-refresh"
+    },
+    {
+      "text": "Next.js Compiler",
+      "url": "https://nextjs.org/docs/architecture/nextjs-compiler"
+    },
+    {
+      "text": "Supported Browsers",
+      "url": "https://nextjs.org/docs/architecture/supported-browsers"
+    },
+    {
+      "text": "Community",
+      "url": "https://nextjs.org/docs/community"
+    },
+    {
+      "text": "Contribution Guide",
+      "url": "https://nextjs.org/docs/community/contribution-guide"
+    },
+    {
+      "text": "Rspack",
+      "url": "https://nextjs.org/docs/community/rspack"
+    },
+    {
+      "text": "App Router",
+      "url": "https://nextjs.org/docs/app"
+    },
+    {
+      "text": "Getting Started",
+      "url": "https://nextjs.org/docs/app/getting-started"
+    },
+    {
+      "text": "Quick start",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#quick-start"
+    },
+    {
+      "text": "System requirements",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#system-requirements"
+    },
+    {
+      "text": "20.9",
+      "url": "https://nodejs.org/"
+    },
+    {
+      "text": "Supported browsers",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#supported-browsers"
+    },
+    {
+      "text": "browser support",
+      "url": "https://nextjs.org/docs/architecture/supported-browsers"
+    },
+    {
+      "text": "Create with the CLI",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#create-with-the-cli"
+    },
+    {
+      "text": "create-next-app",
+      "url": "https://nextjs.org/docs/app/api-reference/cli/create-next-app"
+    },
+    {
+      "text": "create-next-app",
+      "url": "https://nextjs.org/docs/app/api-reference/cli/create-next-app"
+    },
+    {
+      "text": "Manual installation",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#manual-installation"
+    },
+    {
+      "text": "React canary releases",
+      "url": "https://react.dev/blog/2023/05/03/react-canaries"
+    },
+    {
+      "text": "Turbopack docs",
+      "url": "https://nextjs.org/docs/app/api-reference/turbopack"
+    },
+    {
+      "text": "Create the app directory",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#create-the-app-directory"
+    },
+    {
+      "text": "root layout",
+      "url": "https://nextjs.org/docs/app/api-reference/file-conventions/layout#root-layout"
+    },
+    {
+      "text": "src folder",
+      "url": "https://nextjs.org/docs/app/api-reference/file-conventions/src-folder"
+    },
+    {
+      "text": "Create the public folder (optional)",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#create-the-public-folder-optional"
+    },
+    {
+      "text": "public folder",
+      "url": "https://nextjs.org/docs/app/api-reference/file-conventions/public-folder"
+    },
+    {
+      "text": "Run the development server",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#run-the-development-server"
+    },
+    {
+      "text": "Set up TypeScript",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-typescript"
+    },
+    {
+      "text": "IDE Plugin",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#ide-plugin"
+    },
+    {
+      "text": "TypeScript reference",
+      "url": "https://nextjs.org/docs/app/api-reference/config/typescript"
+    },
+    {
+      "text": "Set up your editor",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-your-editor"
+    },
+    {
+      "text": "custom editor labels",
+      "url": "https://code.visualstudio.com/updates/v1_88#_customize-editor-labels"
+    },
+    {
+      "text": "Set up linting",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-linting"
+    },
+    {
+      "text": "the legacy .eslintrc.* and the newer eslint.config.mjs formats",
+      "url": "https://eslint.org/docs/latest/use/configure/configuration-files#configuring-eslint"
+    },
+    {
+      "text": "ESLint API reference",
+      "url": "https://nextjs.org/docs/app/api-reference/config/eslint#with-core-web-vitals"
+    },
+    {
+      "text": "ESLint Plugin",
+      "url": "https://nextjs.org/docs/app/api-reference/config/eslint"
+    },
+    {
+      "text": "Set up Absolute Imports and Module Path Aliases",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-absolute-imports-and-module-path-aliases"
+    },
+    {
+      "text": "Upgrade your Next.js app",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#upgrade-your-nextjs-app"
+    },
+    {
+      "text": "AI coding agents",
+      "url": "https://nextjs.org/docs/app/guides/ai-agents"
+    },
+    {
+      "text": "Upgrade with a coding agent",
+      "url": "https://nextjs.org/docs/app/guides/upgrading/agent-upgrade"
+    },
+    {
+      "text": "Upgrading",
+      "url": "https://nextjs.org/docs/app/getting-started/upgrading"
+    },
+    {
+      "text": "preview docs",
+      "url": "https://preview.nextjs.org/"
+    },
+    {
+      "text": "PreviousGetting Started",
+      "url": "https://nextjs.org/docs/app/getting-started"
+    },
+    {
+      "text": "NextProject Structure",
+      "url": "https://nextjs.org/docs/app/getting-started/project-structure"
+    },
+    {
+      "text": "Quick start",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#quick-start"
+    },
+    {
+      "text": "System requirements",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#system-requirements"
+    },
+    {
+      "text": "Supported browsers",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#supported-browsers"
+    },
+    {
+      "text": "Create with the CLI",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#create-with-the-cli"
+    },
+    {
+      "text": "Manual installation",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#manual-installation"
+    },
+    {
+      "text": "Create the app directory",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#create-the-app-directory"
+    },
+    {
+      "text": "Create the public folder (optional)",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#create-the-public-folder-optional"
+    },
+    {
+      "text": "Run the development server",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#run-the-development-server"
+    },
+    {
+      "text": "Set up TypeScript",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-typescript"
+    },
+    {
+      "text": "IDE Plugin",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#ide-plugin"
+    },
+    {
+      "text": "Set up your editor",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-your-editor"
+    },
+    {
+      "text": "Set up linting",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-linting"
+    },
+    {
+      "text": "Set up Absolute Imports and Module Path Aliases",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#set-up-absolute-imports-and-module-path-aliases"
+    },
+    {
+      "text": "Upgrade your Next.js app",
+      "url": "https://nextjs.org/docs/app/getting-started/installation#upgrade-your-nextjs-app"
+    },
+    {
+      "text": "Edit this page on GitHub",
+      "url": "https://github.com/vercel/next.js/edit/canary/docs/01-app/01-getting-started/01-installation.mdx"
+    },
+    {
+      "text": "Docs",
+      "url": "https://nextjs.org/docs"
+    },
+    {
+      "text": "Support Policy",
+      "url": "https://nextjs.org/support-policy"
+    },
+    {
+      "text": "Learn",
+      "url": "https://nextjs.org/learn"
+    },
+    {
+      "text": "Showcase",
+      "url": "https://nextjs.org/showcase"
+    },
+    {
+      "text": "Blog",
+      "url": "https://nextjs.org/blog"
+    },
+    {
+      "text": "Team",
+      "url": "https://nextjs.org/team"
+    },
+    {
+      "text": "Analytics",
+      "url": "https://vercel.com/analytics?utm_source=next-site&utm_medium=footer&utm_campaign=docs_app_getting-started_installation"
+    },
+    {
+      "text": "Next.js Conf",
+      "url": "https://nextjs.org/conf"
+    },
+    {
+      "text": "Previews",
+      "url": "https://vercel.com/products/previews?utm_source=next-site&utm_medium=footer&utm_campaign=docs_app_getting-started_installation"
+    },
+    {
+      "text": "Evals",
+      "url": "https://nextjs.org/evals"
+    },
+    {
+      "text": "Next.js Commerce",
+      "url": "https://vercel.com/templates/next.js/nextjs-commerce?utm_source=next-site&utm_medium=footer&utm_campaign=docs_app_getting-started_installation"
+    },
+    {
+      "text": "Contact Sales",
+      "url": "https://vercel.com/contact/sales?utm_source=next-site&utm_medium=footer&utm_campaign=docs_app_getting-started_installation"
+    },
+    {
+      "text": "Community",
+      "url": "https://community.vercel.com/"
+    },
+    {
+      "text": "GitHub",
+      "url": "https://github.com/vercel/next.js"
+    },
+    {
+      "text": "Releases",
+      "url": "https://github.com/vercel/next.js/releases"
+    },
+    {
+      "text": "Telemetry",
+      "url": "https://nextjs.org/telemetry"
+    },
+    {
+      "text": "Governance",
+      "url": "https://nextjs.org/governance"
+    },
+    {
+      "text": "Ecosystem Working Group",
+      "url": "https://nextjs.org/ecosystem-working-group"
+    },
+    {
+      "text": "About Vercel",
+      "url": "https://vercel.com/about?utm_source=next-site&utm_medium=footer&utm_campaign=docs_app_getting-started_installation"
+    },
+    {
+      "text": "Next.js + Vercel",
+      "url": "https://vercel.com/solutions/nextjs?utm_source=next-site&utm_medium=footer&utm_campaign=docs_app_getting-started_installation"
+    },
+    {
+      "text": "Open Source Software",
+      "url": "https://vercel.com/oss?utm_source=next-site&utm_medium=footer&utm_campaign=docs_app_getting-started_installation"
+    },
+    {
+      "text": "GitHub",
+      "url": "https://github.com/vercel"
+    },
+    {
+      "text": "Bluesky",
+      "url": "https://bsky.app/profile/vercel.com"
+    },
+    {
+      "text": "X",
+      "url": "https://x.com/vercel"
+    },
+    {
+      "text": "Privacy Policy",
+      "url": "https://vercel.com/legal/privacy-policy"
+    }
+  ]
+}

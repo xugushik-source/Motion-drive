@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.env*
+!.env.example
+data/
+*.tar.gz
+test-results/

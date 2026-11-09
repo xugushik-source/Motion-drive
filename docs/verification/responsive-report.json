@@ -1,0 +1,32 @@
+{
+  "pages": 72,
+  "languages": 4,
+  "widths": [
+    320,
+    360,
+    390,
+    768,
+    1024,
+    1440
+  ],
+  "failures": [
+    [
+      "ka",
+      "privacy",
+      200,
+      "overflow"
+    ],
+    [
+      "ru",
+      "privacy",
+      200,
+      "overflow"
+    ],
+    [
+      "ka",
+      "home",
+      320,
+      "overflow"
+    ]
+  ]
+}

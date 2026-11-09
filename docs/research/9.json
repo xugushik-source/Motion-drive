@@ -1,0 +1,324 @@
+{
+  "requested": "https://next-intl.dev/docs/getting-started/app-router",
+  "url": "https://next-intl.dev/docs/getting-started/app-router",
+  "title": "Next.js App Router internationalization (i18n) – Internationalization (i18n) for Next.js",
+  "text": "Skip to content\nDocs\nExamples\nCLI\nBETA\nLearn\nBlog\nSearch\nK\nGitHub\nGetting started\nApp Router\nPages Router\nUsage guide\nTranslations\nNumbers\nDates and times\nLists\nDisplay names\nRequest configuration\nuseExtracted\nNext.js plugin\nRouting\nSetup\nConfiguration\nProxy / middleware\nNavigation\nEnvironments\nServer & Client Components\nServer Actions, Metadata & Route Handlers\nError files (e.g. not-found)\nTesting\nCore library\nRuntime requirements\nWorkflows & integrations\nTypeScript augmentation\nLocalization management with Crowdin\nAI agents\nLinting messages\nStorybook\nDesign principles\n\nPRESENTED BY\n\nSystem\n\nOn This Page\n\nGetting started\nmessages/en.json\ni18n/request.ts\nnext.config.ts\napp/layout.tsx\napp/page.tsx\nNext steps\nLocale-based routing\nProvide a locale\nInternationalization isn’t just translating words\nEdit this page\nDocs\nGetting started\nApp Router\nNext.js App Router internationalization (i18n)\n\nPrefer to watch a video?\n\nSet up next-intl\nGetting started\n\nIf you haven’t done so already, create a Next.js app that uses the App Router and run:\n\nnpm install next-intl\n\nNow, we’re going to create the following file structure:\n\n├── messages\n│   ├── en.json\n│   └── ...\n├── next.config.ts\n└── src\n    ├── i18n\n    │   └── request.ts\n    └── app\n        ├── layout.tsx\n        └── page.tsx\n\nLet’s set up the files:\n\nmessages/en.json\n\nMessages represent the translations that are available per language and can be provided either locally or loaded from a remote data source.\n\nThe simplest option is to add JSON files in your local project folder:\n\nmessages/en.json\n{\n  \"HomePage\": {\n    \"title\": \"Hello world!\"\n  }\n}\ni18n/request.ts\n\nnext-intl creates a request-scoped configuration object, which you can use to provide messages and other options based on the user’s locale to Server Components.\n\nsrc/i18n/request.ts\nimport {getRequestConfig} from 'next-intl/server';\n \nexport default getRequestConfig(async () => {\n  // Static for now, we'll change this later\n  const locale = 'en';\n \n  return {\n    locale,\n    messages: (await import(`../../messages/${locale}.json`)).default\n  };\n});\nCan I move this file somewhere else?\nnext.config.ts\n\nNow, set up the plugin which links your i18n/request.ts file to next-intl.\n\nnext.config.ts\nnext.config.js\nnext.config.ts\nimport {NextConfig} from 'next';\nimport createNextIntlPlugin from 'next-intl/plugin';\n \nconst nextConfig: NextConfig = {};\n \nconst withNextIntl = createNextIntlPlugin();\nexport default withNextIntl(nextConfig);\napp/layout.tsx\n\nTo make your request configuration available to Client Components, you can wrap the children in your root layout with NextIntlClientProvider.\n\napp/layout.tsx\nimport {NextIntlClientProvider} from 'next-intl';\n \ntype Props = {\n  children: React.ReactNode;\n};\n \nexport default async function RootLayout({children}: Props) {\n  return (\n    <html>\n      <body>\n        <NextIntlClientProvider>{children}</NextIntlClientProvider>\n      </body>\n    </html>\n  );\n}\napp/page.tsx\n\nUse translations in your page components or anywhere else!\n\napp/page.tsx\nimport {useTranslations} from 'next-intl';\n \nexport default function HomePage() {\n  const t = useTranslations('HomePage');\n  return <h1>{t('title')}</h1>;\n}\n\nIn case of async components, you can use the awaitable getTranslations function instead:\n\napp/page.tsx\nimport {getTranslations} from 'next-intl/server';\n \nexport default async function HomePage() {\n  const t = await getTranslations('HomePage');\n  return <h1>{t('title')}</h1>;\n}\nNext steps\nLocale-based routing\n\nIf you’d like to use unique pathnames for every language that your app supports (e.g. /en/about or example.de/über-uns), you can continue to set up a top-level [locale] segment for your app.\n\nSet up locale-based routing\n→\nProvide a locale\n\nIf your app doesn’t require unique pathnames per locale, you can provide a locale to next-intl based on user preferences or other application logic.\n\nThe simplest option is to use a cookie:\n\nsrc/i18n/request.ts\nimport {cookies} from 'next/headers';\nimport {getRequestConfig} from 'next-intl/server';\n \nexport default getRequestConfig(async () => {\n  const store = await cookies();\n  const locale = store.get('locale')?.value || 'en';\n \n  return {\n    locale\n    // ...\n  };\n});\nInternationalization isn’t just translating words\n\nnext-intl provides the essential foundation for internationalization in Next.js apps. It handles aspects like translations, date and number formatting, as well as internationalized routing.\n\nHowever, building for a global audience spans a wider range of topics:\n\nChoosing the right architecture and routing strategy for your app\nIntegrating with backend services or a CMS\nLeveraging generative AI for content localization\nStreamlining your development workflow with TypeScript and IDE tooling\nCollaborating with your team using a translation management system\nUnderstanding all the pieces that contribute to a truly localized experience\nMastering SEO for multilingual apps to reach global audiences\nBuild international Next.js apps with confidence\n\nLearn how to build delightful, multilingual apps with Next.js—from the basics to advanced patterns, all through a real-world project.\n\nGet started\n→\nLast updated on November 11, 2025\nGetting started\nPages Router\n\nDocs\n\n · \n\nExamples\n\n · \n\nCLI\nBETA\n\n · \n\nLearn\n\n · \n\nBlog\n\n · \nv3\nv4\n\nX\n\n · \n\nBluesky\n\n · \n\nGitHub\n\n · \n\nHosted on",
+  "links": [
+    {
+      "text": "Skip to content",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#reach-skip-nav"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/"
+    },
+    {
+      "text": "Docs",
+      "url": "https://next-intl.dev/docs/getting-started"
+    },
+    {
+      "text": "Examples",
+      "url": "https://next-intl.dev/examples"
+    },
+    {
+      "text": "CLIBeta",
+      "url": "https://cli.eloqnt.dev/docs"
+    },
+    {
+      "text": "Learn",
+      "url": "https://learn.next-intl.dev/"
+    },
+    {
+      "text": "Blog",
+      "url": "https://next-intl.dev/blog"
+    },
+    {
+      "text": "GitHubGitHub",
+      "url": "https://github.com/amannn/next-intl"
+    },
+    {
+      "text": "Getting started",
+      "url": "https://next-intl.dev/docs/getting-started"
+    },
+    {
+      "text": "App Router",
+      "url": "https://next-intl.dev/docs/getting-started/app-router"
+    },
+    {
+      "text": "Pages Router",
+      "url": "https://next-intl.dev/docs/getting-started/pages-router"
+    },
+    {
+      "text": "Usage guide",
+      "url": "https://next-intl.dev/docs/usage"
+    },
+    {
+      "text": "Translations",
+      "url": "https://next-intl.dev/docs/usage/translations"
+    },
+    {
+      "text": "Numbers",
+      "url": "https://next-intl.dev/docs/usage/numbers"
+    },
+    {
+      "text": "Dates and times",
+      "url": "https://next-intl.dev/docs/usage/dates-times"
+    },
+    {
+      "text": "Lists",
+      "url": "https://next-intl.dev/docs/usage/lists"
+    },
+    {
+      "text": "Display names",
+      "url": "https://next-intl.dev/docs/usage/display-name"
+    },
+    {
+      "text": "Request configuration",
+      "url": "https://next-intl.dev/docs/usage/configuration"
+    },
+    {
+      "text": "useExtracted",
+      "url": "https://next-intl.dev/docs/usage/extraction"
+    },
+    {
+      "text": "Next.js plugin",
+      "url": "https://next-intl.dev/docs/usage/plugin"
+    },
+    {
+      "text": "Routing",
+      "url": "https://next-intl.dev/docs/routing"
+    },
+    {
+      "text": "Setup",
+      "url": "https://next-intl.dev/docs/routing/setup"
+    },
+    {
+      "text": "Configuration",
+      "url": "https://next-intl.dev/docs/routing/configuration"
+    },
+    {
+      "text": "Proxy / middleware",
+      "url": "https://next-intl.dev/docs/routing/middleware"
+    },
+    {
+      "text": "Navigation",
+      "url": "https://next-intl.dev/docs/routing/navigation"
+    },
+    {
+      "text": "Environments",
+      "url": "https://next-intl.dev/docs/environments"
+    },
+    {
+      "text": "Server & Client Components",
+      "url": "https://next-intl.dev/docs/environments/server-client-components"
+    },
+    {
+      "text": "Server Actions, Metadata & Route Handlers",
+      "url": "https://next-intl.dev/docs/environments/actions-metadata-route-handlers"
+    },
+    {
+      "text": "Error files (e.g. not-found)",
+      "url": "https://next-intl.dev/docs/environments/error-files"
+    },
+    {
+      "text": "Testing",
+      "url": "https://next-intl.dev/docs/environments/testing"
+    },
+    {
+      "text": "Core library",
+      "url": "https://next-intl.dev/docs/environments/core-library"
+    },
+    {
+      "text": "Runtime requirements",
+      "url": "https://next-intl.dev/docs/environments/runtime-requirements"
+    },
+    {
+      "text": "Workflows & integrations",
+      "url": "https://next-intl.dev/docs/workflows"
+    },
+    {
+      "text": "TypeScript augmentation",
+      "url": "https://next-intl.dev/docs/workflows/typescript"
+    },
+    {
+      "text": "Localization management with Crowdin",
+      "url": "https://next-intl.dev/docs/workflows/localization-management"
+    },
+    {
+      "text": "AI agents",
+      "url": "https://next-intl.dev/docs/workflows/agents"
+    },
+    {
+      "text": "Linting messages",
+      "url": "https://next-intl.dev/docs/workflows/messages"
+    },
+    {
+      "text": "Storybook",
+      "url": "https://next-intl.dev/docs/workflows/storybook"
+    },
+    {
+      "text": "Design principles",
+      "url": "https://next-intl.dev/docs/design-principles"
+    },
+    {
+      "text": "Presented byCrowdin logo",
+      "url": "https://crowdin.com/?utm_source=next-intl.dev&utm_medium=referral&utm_campaign=next-intl.dev&utm_term=next-intl.dev"
+    },
+    {
+      "text": "Getting started",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#getting-started"
+    },
+    {
+      "text": "messages/en.json",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#messages"
+    },
+    {
+      "text": "i18n/request.ts",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#i18n-request"
+    },
+    {
+      "text": "next.config.ts",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#next-config"
+    },
+    {
+      "text": "app/layout.tsx",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#layout"
+    },
+    {
+      "text": "app/page.tsx",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#page"
+    },
+    {
+      "text": "Next steps",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#next-steps"
+    },
+    {
+      "text": "Locale-based routing",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#locale-based-routing"
+    },
+    {
+      "text": "Provide a locale",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#provide-a-locale"
+    },
+    {
+      "text": "Internationalization isn’t just translating words",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#internationalization-isnt-just-translating-words"
+    },
+    {
+      "text": "Edit this page",
+      "url": "https://github.com/amannn/next-intl/blob/main/docs/src/pages/docs/getting-started/app-router.mdx"
+    },
+    {
+      "text": "Getting started",
+      "url": "https://next-intl.dev/docs/getting-started"
+    },
+    {
+      "text": "Set up next-intl",
+      "url": "https://learn.next-intl.dev/chapters/03-translations/01-setup"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#getting-started"
+    },
+    {
+      "text": "create a Next.js app",
+      "url": "https://nextjs.org/docs/getting-started/installation"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#messages"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#i18n-request"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#i18n-request-path"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#next-config"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#layout"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#page"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#next-steps"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#locale-based-routing"
+    },
+    {
+      "text": "Set up locale-based routing→",
+      "url": "https://next-intl.dev/docs/routing"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#provide-a-locale"
+    },
+    {
+      "text": "",
+      "url": "https://next-intl.dev/docs/getting-started/app-router#internationalization-isnt-just-translating-words"
+    },
+    {
+      "text": "",
+      "url": "https://learn.next-intl.dev/"
+    },
+    {
+      "text": "Get started→",
+      "url": "https://learn.next-intl.dev/"
+    },
+    {
+      "text": "Getting started",
+      "url": "https://next-intl.dev/docs/getting-started"
+    },
+    {
+      "text": "Pages Router",
+      "url": "https://next-intl.dev/docs/getting-started/pages-router"
+    },
+    {
+      "text": "Docs",
+      "url": "https://next-intl.dev/docs"
+    },
+    {
+      "text": "Examples",
+      "url": "https://next-intl.dev/examples"
+    },
+    {
+      "text": "CLIBeta",
+      "url": "https://cli.eloqnt.dev/docs"
+    },
+    {
+      "text": "Learn",
+      "url": "https://learn.next-intl.dev/"
+    },
+    {
+      "text": "Blog",
+      "url": "https://next-intl.dev/blog"
+    },
+    {
+      "text": "X",
+      "url": "https://x.com/jamannnnnn"
+    },
+    {
+      "text": "Bluesky",
+      "url": "https://bsky.app/profile/amann.work"
+    },
+    {
+      "text": "GitHub",
+      "url": "https://github.com/amannn/next-intl"
+    },
+    {
+      "text": "Hosted onVercel",
+      "url": "https://vercel.com/?utm_source=next-intl&utm_campaign=oss"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "errors": [],
+  "passed": [
+    "CMS edit/save",
+    "published FAQ visible",
+    "mobile admin no overflow",
+    "media upload"
+  ]
+}

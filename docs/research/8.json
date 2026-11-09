@@ -1,0 +1,608 @@
+{
+  "requested": "https://platform.openai.com/docs/api-reference/responses/create",
+  "url": "https://developers.openai.com/api/reference/resources/responses/methods/create",
+  "title": "Create a model response | OpenAI API Reference",
+  "text": "Skip to content\nFor the complete documentation index, see llms.txt. Markdown versions of documentation pages are available by appending .md to the page URL.\nAPI Dashboard\nHome\nAPI\nChatGPT\nResources\nOverview\nModels\nAgents\nTools\nAudio & voice\nProduction\nAPI reference\nAPI Reference\nIntroduction\nAuthentication\nWorkload identity tokens\nDebugging requests\nBackwards compatibility\nResponses API\nOverview\nResponses\nCreate a response\nRetrieve a response\nDelete a response\nList input items\nCount input tokens\nCancel a response\nCompact a response\nConnect\nConversations\nStreaming events\nWebSocket events\nBeta APIs\nResponses (Multi-agent)\nStreaming events\nWebSocket events\nWebhooks\nEvents\nCreate a webhook\nRetrieve a webhook\nUpdate a webhook\nDelete a webhook\nList webhooks\nRotate Webhook Endpoint Signing Secret\nTest Webhook Endpoint\nPlatform APIs\nLive\nAudio\nImages\nDecisions\nEmbeddings\nEvals\nFine Tuning\nBatches\nFiles\nUploads\nModels\nModerations\nSafety\nContent Provenance Checks\nAgents API\nCreate an agent\nRetrieve an agent\nUpdate an agent\nDelete an agent\nList agents\nAutomations\nEnvironments\nSessions\nVaults\nVector Stores\nVector Stores\nFile Batches\nFiles\nChatKit\nSessions\nThreads\nContainers\nContainers\nFiles\nSkills\nSkills\nRealtime\nTranslations\nCalls\nClient Secrets\nConnect\nClient events\nServer events\nAdministration\nOverview\nAdmin API Keys\nAudit Logs\nCertificates\nData Retention\nExternal Keys\nExternal Storage\nGroups\nInvites\nProjects\nRoles\nSpend Alerts\nSpend Limit\nUsage\nUsers\nWorkload Identity Providers\nChat Completions\nChat Completions\nLegacy\nRealtime Beta\nCompletions\nAPI Reference\nResponses\nCopy Markdown\nCreate a model response\nPOST\n/responses\n\nCreates a model response. Provide text or image inputs to generate text or JSON outputs. Have the model call your own custom code or use built-in tools like web search or file search to use your own data as input for the model’s response.\n\nBody Parameters\nJSON\nExpand\naccess_programs: optional { cyber }\n\nDomain-specific access programs to use for this request.\n\nbackground: optional boolean or null (default: false)\n\nWhether to run the model response in the background. Learn more.\n\ncontext_management: optional array of object or null\n\nContext management configuration for this request.\n\nminItems1\nconversation: optional string or ResponseConversationParam or null\n\nThe conversation that this response belongs to. Items from this conversation are prepended to input_items for this response request. Input items and output items from this response are automatically added to this conversation after this response completes.\n\nimage: optional { context_compression }\n\nRequest level image options.\n\ninclude: optional array of ResponseIncludable or null\n\nSpecify additional output data to include in the model response. Currently supported values are:\n\nweb_search_call.action.sources: Include the sources of the web search tool call.\ncode_interpreter_call.outputs: Includes the outputs of python code execution in code interpreter tool call items.\ncomputer_call_output.output.image_url: Include image urls from the computer call output.\nfile_search_call.results: Include the search results of the file search tool call.\nmessage.input_image.image_url: Include image urls from the input message.\nmessage.output_text.logprobs: Include logprobs with assistant messages.\nreasoning.encrypted_content: Includes an encrypted version of reasoning tokens in reasoning item outputs. This enables reasoning items to be used in multi-turn conversations when using the Responses API statelessly (like when the store parameter is set to false, or when an organization is enrolled in the zero data retention program).\ninput: optional string or array of EasyInputMessage or Message or ResponseOutputMessage or 30 more\n\nText, image, or file inputs to the model, used to generate a response.\n\nLearn more:\n\nText inputs and outputs\nImage inputs\nFile inputs\nConversation state\nFunction calling\ninstructions: optional string or null\n\nA system (or developer) message inserted into the model’s context.\n\nWhen using along with previous_response_id, the instructions from a previous response will not be carried over to the next response. This makes it simple to swap out system (or developer) messages in new responses.\n\nmax_output_tokens: optional integer or null\n\nAn upper bound for the number of tokens that can be generated for a response, including visible output tokens and reasoning tokens.\n\nminimum16\nmax_tool_calls: optional integer or null\n\nThe maximum number of total calls to built-in tools that can be processed in a response. This maximum number applies across all built-in tool calls, not per individual tool. Any further attempts to call a tool by the model will be ignored.\n\nmetadata: optional Metadata or null\n\nSet of 16 key-value pairs that can be attached to an object. This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard.\n\nKeys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters.\n\nmodel: optional ResponsesModel\n\nModel ID used to generate the response, like gpt-6-astra. OpenAI offers a wide range of models with different capabilities, performance characteristics, and price points. Refer to the model guide to browse and compare available models.\n\nmoderation: optional object or null\n\nConfiguration for running moderation on the input and output of this response.\n\nparallel_tool_calls: optional boolean or null (default: true)\n\nWhether to allow the model to run tool calls in parallel.\n\nprevious_response_id: optional string or null\n\nThe unique ID of the previous response to the model. Use this to create multi-turn conversations. Learn more about conversation state. Cannot be used in conjunction with conversation.\n\nprompt: optional ResponsePrompt or null\n\nReference to a prompt template and its variables. Learn more.\n\nprompt_cache_key: optional string or null\n\nUsed by OpenAI to cache responses for similar requests to optimize your cache hit rates. Replaces the user field. Learn more.\n\nprompt_cache_options: optional { comparison_response_id, mode, prewarm, ttl }\n\nOptions for prompt caching. Supported for gpt-5.6 and later models. By default, OpenAI automatically chooses one implicit cache breakpoint. You can add explicit breakpoints to content blocks with prompt_cache_breakpoint. Each request can write up to four breakpoints. For cache matching, OpenAI considers up to the latest 80 breakpoints in the conversation, without a content-block lookback limit. Set mode to explicit to disable the implicit breakpoint. The ttl defaults to 30m. Supported lifetimes depend on the API. See the prompt caching guide for current details.\n\nprompt_cache_retention: optional \"in_memory\" or \"24h\" or null\n\nDeprecated.\n\nDeprecated. Use prompt_cache_options.ttl instead.\n\nThe retention policy for the prompt cache. Set to 24h to enable extended prompt caching, which keeps cached prefixes active for longer, up to a maximum of 24 hours. Learn more. This field expresses a maximum retention policy, while prompt_cache_options.ttl expresses a minimum cache lifetime. The two fields are independent and do not interact. For gpt-5.5, gpt-5.5-pro, and future models, only 24h is supported.\n\nFor older models that support both in_memory and 24h, the default depends on your organization’s data retention policy:\n\nOrganizations without ZDR enabled default to 24h.\nOrganizations with ZDR enabled default to in_memory when prompt_cache_retention is not specified.\nreasoning: optional Reasoning or null\n\nConfiguration options for reasoning models.\n\nsafety_identifier: optional string or null\n\nA stable identifier used to help detect users of your application that may be violating OpenAI’s usage policies. The IDs should be a string that uniquely identifies each user, with a maximum length of 128 characters. We recommend hashing their username or email address, in order to avoid sending us any identifying information. Learn more.\n\nmaxLength128\nservice_tier: optional ServiceTier or null (default: \"auto\")\n\nSpecifies the processing type used for serving the request.\n\nIf set to ‘auto’, then the request will be processed with the service tier configured in the Project settings. Unless otherwise configured, the Project will use ‘default’.\nIf set to ‘default’, then the request will be processed with the standard pricing and performance for the selected model.\nIf set to ‘flex’, then the request will be processed with the Flex Processing service tier.\nTo opt-in to Fast mode at the request level, include the service_tier=fast or service_tier=priority parameter for Responses or Chat Completions. The response will show service_tier=priority regardless of if you specify service_tier=fast or priority in your request.\nIf set to ‘ultrafast’, then the request will be processed with the access-controlled Ultrafast Processing service tier. This tier is currently available for gpt-5.6-sol; a response served through it will show service_tier=ultrafast.\nWhen not set, the default behavior is ‘auto’.\n\nWhen the service_tier parameter is set, the response body will include the service_tier value based on the processing mode actually used to serve the request. This response value may be different from the value set in the parameter.\n\nstore: optional boolean or null (default: true)\n\nWhether to store the generated model response for later retrieval via API. Defaults to true when omitted. If set to true, response data will be stored for at least 30 days, subject to the data retention exceptions.\n\nstream: optional boolean or null (default: false)\n\nIf set to true, the model response data will be streamed to the client as it is generated using server-sent events. See the Streaming section below for more information.\n\nstream_options: optional object or null\n\nOptions for streaming responses. Only set this when you set stream: true.\n\ntemperature: optional number or null (default: 1)\n\nWhat sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. We generally recommend altering this or top_p but not both.\n\nminimum0\nmaximum2\ntext: optional ResponseTextConfig { format, verbosity }\n\nConfiguration options for a text response from the model. Can be plain text or structured JSON data. Learn more:\n\nText inputs and outputs\nStructured Outputs\ntool_choice: optional ToolChoiceOptions or ToolChoiceAllowed or ToolChoiceTypes or 6 more\n\nHow the model should select which tool (or tools) to use when generating a response. See the tools parameter to see how to specify which tools the model can call.\n\ntools: optional array of Function or FileSearch or Computer or 13 more\n\nAn array of tools the model may call while generating a response. You can specify which tool to use by setting the tool_choice parameter.\n\nWe support the following categories of tools:\n\nBuilt-in tools: Tools that are provided by OpenAI that extend the model’s capabilities, like web search or file search. Learn more about built-in tools.\nMCP Tools: Integrations with third-party systems via custom MCP servers or predefined connectors such as Google Drive and SharePoint. Learn more about MCP Tools.\nFunction calls (custom tools): Functions that are defined by you, enabling the model to call your own code with strongly typed arguments and outputs. Learn more about function calling. You can also use custom tools to call your own code.\ntop_logprobs: optional integer or null\n\nAn integer between 0 and 20 specifying the maximum number of most likely tokens to return at each token position, each with an associated log probability. In some cases, the number of returned tokens may be fewer than requested.\n\nminimum0\nmaximum20\ntop_p: optional number or null (default: 1)\n\nAn alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.\n\nWe generally recommend altering this or temperature but not both.\n\nminimum0\nmaximum1\ntruncation: optional \"auto\" or \"disabled\" or null (default: \"disabled\")\n\nDeprecated.\n\nThe truncation strategy to use for the model response.\n\nauto: If the input to this Response exceeds the model’s context window size, the model will truncate the response to fit the context window by dropping items from the beginning of the conversation.\ndisabled (default): If the input size will exceed the context window size for a model, the request will fail with a 400 error.\nuser: optional string or null\n\nDeprecated.\n\nThis field is being replaced by safety_identifier and prompt_cache_key. Use prompt_cache_key instead to maintain caching optimizations. A stable identifier for your end-users. Used to boost cache hit rates by better bucketing similar requests and to help OpenAI detect and prevent abuse. Learn more.\n\nReturns\nExpand\nResponse { id, access_programs, created_at, 36 more }\nFile input\nFile search\nFunctions\nImage input\nReasoning\nStreaming\nText input\nWeb search\nCreate a model response\nSDK language\nHTTP\ncurl https://api.openai.com/v1/responses \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -d '{\n    \"model\": \"gpt-6-astra\",\n    \"input\": [\n      {\n        \"role\": \"user\",\n        \"content\": [\n          {\"type\": \"input_text\", \"text\": \"what is in this file?\"},\n          {\n            \"type\": \"input_file\",\n            \"file_url\": \"https://www.berkshirehathaway.com/letters/2024ltr.pdf\",\n            \"detail\": \"auto\"\n          }\n        ]\n      }\n    ]\n  }'\n\nResponse example\n{\n  \"id\": \"resp_686eef60237881a2bd1180bb8b13de430e34c516d176ff86\",\n  \"object\": \"response\",\n  \"access_programs\": null,\n  \"created_at\": 1752100704,\n  \"status\": \"completed\",\n  \"completed_at\": 1752100705,\n  \"background\": false,\n  \"error\": null,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-6-astra\",\n  \"output\": [\n    {\n      \"id\": \"msg_686eef60d3e081a29283bdcbc4322fd90e34c516d176ff86\",\n      \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n          \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\": [],\n          \"text\": \"The file seems to contain excerpts from a letter to the shareholders of Berkshire Hathaway Inc., likely written by Warren Buffett. It covers several topics:\\n\\n1. **Communication Philosophy**: Buffett emphasizes the importance of transparency and candidness in reporting mistakes and successes to shareholders.\\n\\n2. **Mistakes and Learnings**: The letter acknowledges past mistakes in business assessments and management hires, highlighting the importance of correcting errors promptly.\\n\\n3. **CEO Succession**: Mention of Greg Abel stepping in as the new CEO and continuing the tradition of honest communication.\\n\\n4. **Pete Liegl Story**: A detailed account of acquiring Forest River and the relationship with its founder, highlighting trust and effective business decisions.\\n\\n5. **2024 Performance**: Overview of business performance, particularly in insurance and investment activities, with a focus on GEICO's improvement.\\n\\n6. **Tax Contributions**: Discussion of significant tax payments to the U.S. Treasury, credited to shareholders' reinvestments.\\n\\n7. **Investment Strategy**: A breakdown of Berkshire\\u2019s investments in both controlled subsidiaries and marketable equities, along with a focus on long-term holding strategies.\\n\\n8. **American Capitalism**: Reflections on America\\u2019s economic development and Berkshire\\u2019s role within it.\\n\\n9. **Property-Casualty Insurance**: Insights into the P/C insurance business model and its challenges and benefits.\\n\\n10. **Japanese Investments**: Information about Berkshire\\u2019s investments in Japanese companies and future plans.\\n\\n11. **Annual Meeting**: Details about the upcoming annual gathering in Omaha, including schedule changes and new book releases.\\n\\n12. **Personal Anecdotes**: Light-hearted stories about family and interactions, conveying Buffett's personable approach.\\n\\n13. **Financial Performance Data**: Tables comparing Berkshire\\u2019s annual performance to the S&P 500, showing impressive long-term gains.\\n\\nOverall, the letter reinforces Berkshire Hathaway's commitment to transparency, investment in both its businesses and the wider economy, and emphasizes strong leadership and prudent financial management.\"\n        }\n      ],\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"previous_response_id\": null,\n  \"reasoning\": {\n    \"effort\": null,\n    \"summary\": null\n  },\n  \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    }\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 8438,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0,\n      \"cache_write_tokens\": 0\n    },\n    \"output_tokens\": 398,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 8836\n  },\n  \"user\": null,\n  \"metadata\": {}\n}\n",
+  "links": [
+    {
+      "text": "\nSkip to content\n",
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/create#_top"
+    },
+    {
+      "text": "llms.txt",
+      "url": "https://developers.openai.com/llms.txt"
+    },
+    {
+      "text": "     ChatGPT   ",
+      "url": "https://developers.openai.com/"
+    },
+    {
+      "text": "API Dashboard",
+      "url": "https://platform.openai.com/login"
+    },
+    {
+      "text": "Try ChatGPT",
+      "url": "https://chatgpt.com/"
+    },
+    {
+      "text": " Home  ",
+      "url": "https://developers.openai.com/"
+    },
+    {
+      "text": " API  ",
+      "url": "https://developers.openai.com/api/docs"
+    },
+    {
+      "text": "   Overview    Get started with the OpenAI API   ",
+      "url": "https://developers.openai.com/api/docs"
+    },
+    {
+      "text": "   Models    Explore models and compare capabilities   ",
+      "url": "https://developers.openai.com/api/docs/models"
+    },
+    {
+      "text": "   Agents    Build persistent agents on hosted infrastructure   ",
+      "url": "https://developers.openai.com/api/docs/guides/agents"
+    },
+    {
+      "text": "   Tools    Connect models to tools and data   ",
+      "url": "https://developers.openai.com/api/docs/guides/tools"
+    },
+    {
+      "text": "   Audio & voice    Build speech and realtime voice experiences   ",
+      "url": "https://developers.openai.com/api/docs/guides/audio"
+    },
+    {
+      "text": "   Production    Deploy and scale your API integrations   ",
+      "url": "https://developers.openai.com/api/docs/guides/production-best-practices"
+    },
+    {
+      "text": "   API reference    Explore endpoints, parameters, and responses   ",
+      "url": "https://developers.openai.com/api/reference/overview"
+    },
+    {
+      "text": " ChatGPT  ",
+      "url": "https://developers.openai.com/chatgpt"
+    },
+    {
+      "text": "   Plugins    Extend ChatGPT and Codex   ",
+      "url": "https://developers.openai.com/plugins"
+    },
+    {
+      "text": "   Sign in with ChatGPT    Apps powered by your user's ChatGPT plan   ",
+      "url": "https://developers.openai.com/siwc"
+    },
+    {
+      "text": "   Commerce    Build commerce flows in ChatGPT   ",
+      "url": "https://developers.openai.com/commerce"
+    },
+    {
+      "text": "   Ads    Publish and measure ads in ChatGPT   ",
+      "url": "https://developers.openai.com/ads"
+    },
+    {
+      "text": "   Workspace Agents    Trigger published ChatGPT workspace agents   ",
+      "url": "https://developers.openai.com/workspace-agents"
+    },
+    {
+      "text": "   ChatGPT + Codex user docs    Guides and product docs for ChatGPT and Codex   ",
+      "url": "https://learn.chatgpt.com/docs"
+    },
+    {
+      "text": "   Use cases    Example workflows and tasks teams can take on with ChatGPT or Codex   ",
+      "url": "https://learn.chatgpt.com/use-cases"
+    },
+    {
+      "text": " Docs  ",
+      "url": "https://developers.openai.com/codex"
+    },
+    {
+      "text": " Use cases  ",
+      "url": "https://learn.chatgpt.com/use-cases"
+    },
+    {
+      "text": " Resources  ",
+      "url": "https://developers.openai.com/codex/resources"
+    },
+    {
+      "text": " Resources  ",
+      "url": "https://developers.openai.com/learn"
+    },
+    {
+      "text": "   Showcase    Demo apps to get inspired   ",
+      "url": "https://developers.openai.com/showcase"
+    },
+    {
+      "text": "   Blog    Learnings and experiences from developers   ",
+      "url": "https://developers.openai.com/blog"
+    },
+    {
+      "text": "   Cookbook    Notebook examples for building with OpenAI models   ",
+      "url": "https://developers.openai.com/cookbook"
+    },
+    {
+      "text": "   Learn    Docs, videos, and demo apps for building with OpenAI   ",
+      "url": "https://developers.openai.com/learn"
+    },
+    {
+      "text": "   Community    Programs, meetups, and support for builders   ",
+      "url": "https://developers.openai.com/community"
+    },
+    {
+      "text": "  Overview    ",
+      "url": "https://developers.openai.com/api/docs"
+    },
+    {
+      "text": "  Models    ",
+      "url": "https://developers.openai.com/api/docs/models"
+    },
+    {
+      "text": "  Agents    ",
+      "url": "https://developers.openai.com/api/docs/guides/agents"
+    },
+    {
+      "text": "  Tools    ",
+      "url": "https://developers.openai.com/api/docs/guides/tools"
+    },
+    {
+      "text": "  Audio & voice    ",
+      "url": "https://developers.openai.com/api/docs/guides/audio"
+    },
+    {
+      "text": "  Production    ",
+      "url": "https://developers.openai.com/api/docs/guides/production-best-practices"
+    },
+    {
+      "text": "  API reference    ",
+      "url": "https://developers.openai.com/api/reference/overview"
+    },
+    {
+      "text": " Overview  ",
+      "url": "https://developers.openai.com/api/docs"
+    },
+    {
+      "text": " Models  ",
+      "url": "https://developers.openai.com/api/docs/models"
+    },
+    {
+      "text": " Agents  ",
+      "url": "https://developers.openai.com/api/docs/guides/agents"
+    },
+    {
+      "text": " Tools  ",
+      "url": "https://developers.openai.com/api/docs/guides/tools"
+    },
+    {
+      "text": " Audio & voice  ",
+      "url": "https://developers.openai.com/api/docs/guides/audio"
+    },
+    {
+      "text": " Production  ",
+      "url": "https://developers.openai.com/api/docs/guides/production-best-practices"
+    },
+    {
+      "text": " API reference  ",
+      "url": "https://developers.openai.com/api/reference/overview"
+    },
+    {
+      "text": " Overview  ",
+      "url": "https://developers.openai.com/chatgpt"
+    },
+    {
+      "text": " Plugins  ",
+      "url": "https://developers.openai.com/plugins"
+    },
+    {
+      "text": " Sign in with ChatGPT  ",
+      "url": "https://developers.openai.com/siwc"
+    },
+    {
+      "text": " Commerce  ",
+      "url": "https://developers.openai.com/commerce"
+    },
+    {
+      "text": " Ads  ",
+      "url": "https://developers.openai.com/ads"
+    },
+    {
+      "text": " Workspace Agents  ",
+      "url": "https://developers.openai.com/workspace-agents"
+    },
+    {
+      "text": " ChatGPT + Codex user docs  ",
+      "url": "https://learn.chatgpt.com/docs"
+    },
+    {
+      "text": " Use cases  ",
+      "url": "https://learn.chatgpt.com/use-cases"
+    },
+    {
+      "text": " Showcase  ",
+      "url": "https://developers.openai.com/showcase"
+    },
+    {
+      "text": " Blog  ",
+      "url": "https://developers.openai.com/blog"
+    },
+    {
+      "text": " Cookbook  ",
+      "url": "https://developers.openai.com/cookbook"
+    },
+    {
+      "text": " Learn  ",
+      "url": "https://developers.openai.com/learn"
+    },
+    {
+      "text": " Community  ",
+      "url": "https://developers.openai.com/community"
+    },
+    {
+      "text": "API Dashboard",
+      "url": "https://platform.openai.com/login"
+    },
+    {
+      "text": "Try ChatGPT",
+      "url": "https://chatgpt.com/"
+    },
+    {
+      "text": " API ",
+      "url": "https://developers.openai.com/api/docs"
+    },
+    {
+      "text": " ChatGPT ",
+      "url": "https://developers.openai.com/chatgpt"
+    },
+    {
+      "text": " Docs ",
+      "url": "https://developers.openai.com/codex"
+    },
+    {
+      "text": " Use cases ",
+      "url": "https://learn.chatgpt.com/use-cases"
+    },
+    {
+      "text": " Resources ",
+      "url": "https://developers.openai.com/resources"
+    },
+    {
+      "text": " Resources ",
+      "url": "https://developers.openai.com/learn"
+    },
+    {
+      "text": " Overview ",
+      "url": "https://developers.openai.com/api/docs"
+    },
+    {
+      "text": " Models ",
+      "url": "https://developers.openai.com/api/docs/models"
+    },
+    {
+      "text": " Agents ",
+      "url": "https://developers.openai.com/api/docs/guides/agents"
+    },
+    {
+      "text": " Tools ",
+      "url": "https://developers.openai.com/api/docs/guides/tools"
+    },
+    {
+      "text": " Audio & voice ",
+      "url": "https://developers.openai.com/api/docs/guides/audio"
+    },
+    {
+      "text": " Production ",
+      "url": "https://developers.openai.com/api/docs/guides/production-best-practices"
+    },
+    {
+      "text": " API reference ",
+      "url": "https://developers.openai.com/api/reference/overview"
+    },
+    {
+      "text": "   Introduction    ",
+      "url": "https://developers.openai.com/api/reference/overview"
+    },
+    {
+      "text": "   Authentication    ",
+      "url": "https://developers.openai.com/api/reference/overview#authentication"
+    },
+    {
+      "text": "   Workload identity tokens    ",
+      "url": "https://developers.openai.com/api/reference/workload-identity-federation"
+    },
+    {
+      "text": "   Debugging requests    ",
+      "url": "https://developers.openai.com/api/reference/overview#debugging-requests"
+    },
+    {
+      "text": "   Backwards compatibility    ",
+      "url": "https://developers.openai.com/api/reference/overview#backwards-compatibility"
+    },
+    {
+      "text": "   Overview    ",
+      "url": "https://developers.openai.com/api/reference/responses/overview"
+    },
+    {
+      "text": "   Create a response    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/create"
+    },
+    {
+      "text": "   Retrieve a response    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/retrieve"
+    },
+    {
+      "text": "   Delete a response    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/delete"
+    },
+    {
+      "text": "   List input items    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/subresources/input_items/methods/list"
+    },
+    {
+      "text": "   Count input tokens    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/subresources/input_tokens/methods/count"
+    },
+    {
+      "text": "   Cancel a response    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/cancel"
+    },
+    {
+      "text": "   Compact a response    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/compact"
+    },
+    {
+      "text": "   Connect    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/methods/connect"
+    },
+    {
+      "text": "   Create a conversation    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/methods/create"
+    },
+    {
+      "text": "   Retrieve a conversation    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/methods/retrieve"
+    },
+    {
+      "text": "   Update a conversation    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/methods/update"
+    },
+    {
+      "text": "   Delete a conversation    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/methods/delete"
+    },
+    {
+      "text": "   Create an item    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/subresources/items/methods/create"
+    },
+    {
+      "text": "   Retrieve an item    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/subresources/items/methods/retrieve"
+    },
+    {
+      "text": "   Delete an item    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/subresources/items/methods/delete"
+    },
+    {
+      "text": "   List items    ",
+      "url": "https://developers.openai.com/api/reference/resources/conversations/subresources/items/methods/list"
+    },
+    {
+      "text": "   Streaming events    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/streaming-events"
+    },
+    {
+      "text": "   WebSocket events    ",
+      "url": "https://developers.openai.com/api/reference/resources/responses/websocket-events"
+    },
+    {
+      "text": "   Create a responses (multi-agent)    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/methods/create"
+    },
+    {
+      "text": "   Retrieve a responses (multi-agent)    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/methods/retrieve"
+    },
+    {
+      "text": "   Delete a responses (multi-agent)    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/methods/delete"
+    },
+    {
+      "text": "   Cancel a responses (multi-agent)    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/methods/cancel"
+    },
+    {
+      "text": "   Compact a responses (multi-agent)    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/methods/compact"
+    },
+    {
+      "text": "   Connect    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/methods/connect"
+    },
+    {
+      "text": "   List input items    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/subresources/input_items/methods/list"
+    },
+    {
+      "text": "   Count input tokens    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/subresources/input_tokens/methods/count"
+    },
+    {
+      "text": "   Streaming events    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/streaming-events"
+    },
+    {
+      "text": "   WebSocket events    ",
+      "url": "https://developers.openai.com/api/reference/resources/beta/subresources/responses/websocket-events"
+    },
+    {
+      "text": "   Events    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks"
+    },
+    {
+      "text": "   Create a webhook    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks/methods/create"
+    },
+    {
+      "text": "   Retrieve a webhook    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks/methods/retrieve"
+    },
+    {
+      "text": "   Update a webhook    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks/methods/update"
+    },
+    {
+      "text": "   Delete a webhook    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks/methods/delete"
+    },
+    {
+      "text": "   List webhooks    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks/methods/list"
+    },
+    {
+      "text": "   Rotate Webhook Endpoint Signing Secret    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks/methods/rotate_secret"
+    },
+    {
+      "text": "   Test Webhook Endpoint    ",
+      "url": "https://developers.openai.com/api/reference/resources/webhooks/methods/test"
+    },
+    {
+      "text": "   Create session    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/methods/create"
+    },
+    {
+      "text": "   Primary WebSocket    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/primary-websocket"
+    },
+    {
+      "text": "   Sideband WebSocket    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/sideband-websocket"
+    },
+    {
+      "text": "   Fork WebSocket    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/fork-websocket"
+    },
+    {
+      "text": "   Accept session    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/subresources/sessions/methods/accept"
+    },
+    {
+      "text": "   Download recording    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/subresources/sessions/methods/download_recording"
+    },
+    {
+      "text": "   Fork session    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/subresources/sessions/methods/fork"
+    },
+    {
+      "text": "   Hang up session    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/subresources/sessions/methods/hangup"
+    },
+    {
+      "text": "   Transfer call    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/subresources/sessions/methods/refer"
+    },
+    {
+      "text": "   Reject call    ",
+      "url": "https://developers.openai.com/api/reference/resources/live/subresources/sessions/methods/reject"
+    },
+    {
+      "text": "   Create a speech    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create"
+    },
+    {
+      "text": "   Create a transcription    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create"
+    },
+    {
+      "text": "   Transcription streaming events    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/streaming-events"
+    },
+    {
+      "text": "   Create a translation    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/translations/methods/create"
+    },
+    {
+      "text": "   Create a voice consent    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/create"
+    },
+    {
+      "text": "   Retrieve a voice consent    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/retrieve"
+    },
+    {
+      "text": "   Update a voice consent    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/update"
+    },
+    {
+      "text": "   Delete a voice consent    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/delete"
+    },
+    {
+      "text": "   List voice consents    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/voice_consents/methods/list"
+    },
+    {
+      "text": "   Create a voice    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/voices/methods/create"
+    },
+    {
+      "text": "   Delete a voice    ",
+      "url": "https://developers.openai.com/api/reference/resources/audio/subresources/voices/methods/delete"
+    },
+    {
+      "text": "   Generate an Image    ",
+      "url": "https://developers.openai.com/api/reference/resources/images/methods/generate"
+    },
+    {
+      "text": "   Edit an Image    ",
+      "url": "https://developers.openai.com/api/reference/resources/images/methods/edit"
+    },
+    {
+      "text": "   Create image variation    ",
+      "url": "https://developers.openai.com/api/reference/resources/images/methods/create_variation"
+    },
+    {
+      "text": "   Image generation streaming events    ",
+      "url": "https://developers.openai.com/api/reference/resources/images/generation-streaming-events"
+    },
+    {
+      "text": "   Image edit streaming events    ",
+      "url": "https://developers.openai.com/api/reference/resources/images/edit-streaming-events"
+    },
+    {
+      "text": "   Decisions    ",
+      "url": "https://developers.openai.com/api/reference/resources/decisions/methods/create"
+    },
+    {
+      "text": "   Create an embedding    ",
+      "url": "https://developers.openai.com/api/reference/resources/embeddings/methods/create"
+    },
+    {
+      "text": "   Create an eval    ",
+      "url": "https://developers.openai.com/api/reference/resources/evals/methods/create"
+    },
+    {
+      "text": "   Retrieve an eval    ",
+      "url": "https://developers.openai.com/api/reference/resources/evals/methods/retrieve"
+    },
+    {
+      "text": "   Update an eval    ",
+      "url": "https://developers.openai.com/api/reference/resources/evals/methods/update"
+    },
+    {
+      "text": "   Delete an eval    ",
+      "url": "https://developers.openai.com/api/reference/resources/evals/methods/delete"
+    },
+    {
+      "text": "   List evals    ",
+      "url": "https://developers.openai.com/api/reference/resources/evals/methods/list"
+    },
+    {
+      "text": "   Create a run    ",
+      "url": "https://developers.openai.com/api/reference/resources/evals/subresources/runs/methods/create"
+    },
+    {
+      "text": "   Retrieve a run    ",
+      "url": "https://developers.openai.com/api/reference/resources/evals/subresources/runs/methods/retrieve"
+    }
+  ]
+}

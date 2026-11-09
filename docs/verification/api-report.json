@@ -1,0 +1,18 @@
+{
+  "passed": [
+    "RBAC",
+    "anonymous restriction",
+    "booking ownership",
+    "unscheduled request",
+    "slot overlap",
+    "double booking",
+    "slot release",
+    "instructor isolation",
+    "exam engine",
+    "FAQ fallback",
+    "import masking",
+    "CSRF origin",
+    "SQLite persistence"
+  ],
+  "paid_api_calls": 0
+}

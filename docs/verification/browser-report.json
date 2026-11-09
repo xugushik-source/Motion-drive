@@ -1,0 +1,17 @@
+{
+  "errors": [],
+  "viewport": [
+    390,
+    844
+  ],
+  "scenarios": [
+    "four languages",
+    "mobile navigation",
+    "FAQ fallback",
+    "registration",
+    "booking persistence",
+    "cancellation",
+    "admin isolation",
+    "reduced motion"
+  ]
+}
