@@ -1,3 +1,4 @@
+import { supabaseRootCa } from "./certificates/supabase-root-2021";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -54,7 +55,7 @@ function getPool() {
     max: 3,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 10000,
-    ssl: { rejectUnauthorized: true },
+    ssl: { rejectUnauthorized: true, ca: supabaseRootCa },
   }));
 }
 const tables = new Set([
