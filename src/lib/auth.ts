@@ -20,23 +20,24 @@ export async function currentUser() {
   const token = (await cookies()).get("md_session")?.value;
   if (!token) return null;
   return (
-    one(
+    (await one(
       "SELECT u.id,u.email,u.name,u.role,u.locale FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.id=? AND s.expires>?",
       token,
       Date.now(),
-    ) || null
+    )) || null
   );
 }
 export async function startSession(userId: string) {
   const token = randomBytes(32).toString("hex");
-  db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(
-    token,
-    userId,
-    Date.now() + 7 * 86400000,
-  );
+  await db
+    .prepare("INSERT INTO sessions VALUES(?,?,?)")
+    .run(token, userId, Date.now() + 7 * 86400000);
   (await cookies()).set("md_session", token, {
     httpOnly: true,
-    secure: process.env.APP_URL?.startsWith("https://") || false,
+    secure:
+      process.env.VERCEL === "1" ||
+      process.env.APP_URL?.startsWith("https://") ||
+      false,
     sameSite: "lax",
     path: "/",
     maxAge: 604800,

@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { api, Field, Notice, type Item } from "./Site";
+import { georgiaDay } from "./AvailabilityPicker";
 type Props = {
   user: Item;
   locale: string;
@@ -54,14 +55,21 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
     [notice, setNotice] = useState(""),
     [editing, setEditing] = useState<Item | null>(null),
     [audit, setAudit] = useState<Item[]>([]),
-    [freeSlots, setFreeSlots] = useState<Item[]>([]);
+    [freeSlots, setFreeSlots] = useState<Item[]>([]),
+    [filterCity, setFilterCity] = useState(""),
+    [filterDay, setFilterDay] = useState(""),
+    [filterStatus, setFilterStatus] = useState("");
   const admin = user.role === "admin" && page === "admin",
+    operator = user.role === "operator" && page === "operator",
+    staff = admin || operator,
     instructor = user.role === "instructor" && page === "instructor";
   const tabs = admin
     ? modules
-    : instructor
-      ? ["bookings", "students", "schedule", "lessons"]
-      : ["bookings", "progress", "results", "materials", "messages"];
+    : operator
+      ? ["bookings", "schedule", "students", "messages"]
+      : instructor
+        ? ["bookings", "students", "schedule", "lessons"]
+        : ["bookings", "progress", "results", "materials", "messages"];
   async function refresh() {
     try {
       setData(await api("dashboard"));
@@ -72,6 +80,13 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
   }
   useEffect(() => {
     refresh();
+    const timer = setInterval(refresh, 15000);
+    const focus = () => refresh();
+    window.addEventListener("focus", focus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", focus);
+    };
   }, []);
   async function act(path: string, body: any) {
     setError("");
@@ -88,7 +103,9 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
   }
   if (!data) return <Notice>{error || t("loading")}</Notice>;
   const fmt = (s: string) =>
-    new Date(s).toLocaleString(locale, {
+    new Date(
+      /(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(s) ? s : s + "Z",
+    ).toLocaleString(locale, {
       timeZone: "Asia/Tbilisi",
       dateStyle: "medium",
       timeStyle: "short",
@@ -142,6 +159,12 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               <ArrowUpRight size={16} />
             </Link>
           )}
+          {user.role === "operator" && page !== "operator" && (
+            <Link href={"/" + locale + "/operator"}>
+              {t("operator")}
+              <ArrowUpRight size={16} />
+            </Link>
+          )}
           {user.role === "instructor" && page !== "instructor" && (
             <Link href={"/" + locale + "/instructor"}>
               {t("instructor")}
@@ -182,132 +205,193 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             {notice}
           </p>
         )}
+        {(tab === "bookings" || tab === "schedule") && (
+          <>
+            <div className="workspace-filters">
+              <Field label={t("city")}>
+                <select
+                  value={filterCity}
+                  onChange={(e) => setFilterCity(e.target.value)}
+                >
+                  <option value="">{t("all")}</option>
+                  <option value="akhalkalaki">{t("city1")}</option>
+                  <option value="ninotsminda">{t("city2")}</option>
+                </select>
+              </Field>
+              <Field label={t("chooseDay")}>
+                <input
+                  type="date"
+                  value={filterDay}
+                  onChange={(e) => setFilterDay(e.target.value)}
+                />
+              </Field>
+              {tab === "bookings" && (
+                <Field label={t("status")}>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="">{t("all")}</option>
+                    {["pending", "confirmed", "cancelled", "completed"].map(
+                      (s) => (
+                        <option key={s} value={s}>
+                          {t(s)}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </Field>
+              )}
+              <button
+                type="button"
+                className="button small outline-dark"
+                onClick={() => {
+                  setFilterCity("");
+                  setFilterDay("");
+                  setFilterStatus("");
+                  refresh();
+                }}
+              >
+                {t("refreshCalendar")}
+              </button>
+            </div>
+            <small>{t("availabilityRefresh")}</small>
+          </>
+        )}
         {tab === "bookings" && (
           <>
             <Notice>{t("notification")}</Notice>
             {data.bookings.length ? (
-              data.bookings.map((b: Item) => (
-                <article className="booking-record" key={b.id}>
-                  <div className="record-top">
-                    <span className={"status " + b.status}>{t(b.status)}</span>
-                    <small>{fmt(b.created + "Z")}</small>
-                  </div>
-                  <h3>
-                    {t(b.program)} ·{" "}
-                    {t(b.city === "akhalkalaki" ? "city1" : "city2")}
-                  </h3>
-                  <p>
-                    {t("gearbox")}: {t(b.gearbox)}
-                  </p>
-                  <p>
-                    {b.name} · {b.contact}
-                  </p>
-                  <p>{b.note}</p>
-                  {b.slot_id ? (
+              data.bookings
+                .filter(
+                  (b: Item) =>
+                    (!filterCity || b.city === filterCity) &&
+                    (!filterStatus || b.status === filterStatus) &&
+                    (!filterDay ||
+                      (b.slot_start && georgiaDay(b.slot_start) === filterDay)),
+                )
+                .map((b: Item) => (
+                  <article className="booking-record" key={b.id}>
+                    <div className="record-top">
+                      <span className={"status " + b.status}>
+                        {t(b.status)}
+                      </span>
+                      <small>{fmt(b.created)}</small>
+                    </div>
+                    <h3>
+                      {t(b.program)} ·{" "}
+                      {t(b.city === "akhalkalaki" ? "city1" : "city2")}
+                    </h3>
+                    <p>
+                      {t("gearbox")}: {t(b.gearbox)}
+                    </p>
+                    <p>
+                      {b.name} · {b.contact}
+                    </p>
+                    <p>{b.note}</p>
                     <p>
                       {t("date")}:{" "}
-                      {data.slots.find((s: Item) => s.id === b.slot_id)?.start
-                        ? fmt(
-                            data.slots.find((s: Item) => s.id === b.slot_id)
-                              .start,
-                          )
-                        : b.slot_id}
+                      {b.slot_start ? fmt(b.slot_start) : t("agreeTime")}
                     </p>
-                  ) : (
-                    <p>{t("agreeTime")}</p>
-                  )}
-                  <div className="record-actions">
-                    {["pending", "confirmed"].includes(b.status) && (
-                      <>
-                        {!instructor && (
-                          <button
-                            className="button small outline-dark"
-                            onClick={() =>
-                              act("booking/status", {
-                                id: b.id,
-                                status: "cancelled",
-                              })
-                            }
-                          >
-                            {t("cancel")}
-                          </button>
-                        )}
-                        {admin && b.status === "pending" && (
-                          <button
-                            className="button small"
-                            onClick={() =>
-                              act("booking/status", {
-                                id: b.id,
-                                status: "confirmed",
-                              })
-                            }
-                          >
-                            {t("confirmed")}
-                            <Check size={16} />
-                          </button>
-                        )}
-                        {!instructor && (
-                          <form
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              const form = new FormData(e.currentTarget);
-                              await act("booking/reschedule", {
-                                id: b.id,
-                                slot_id: form.get("slot_id"),
-                              });
-                            }}
-                          >
-                            <label className="sr-only" htmlFor={"slot-" + b.id}>
-                              {t("date")}
-                            </label>
-                            <select required id={"slot-" + b.id} name="slot_id">
-                              <option value="">{t("change")}</option>
-                              {freeSlots
-                                .filter((s) => s.city === b.city)
-                                .map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    {fmt(s.start)}
-                                  </option>
-                                ))}
-                            </select>
-                            <button className="button small outline-dark">
-                              {t("save")}
+                    <div className="record-actions">
+                      {["pending", "confirmed"].includes(b.status) && (
+                        <>
+                          {!instructor && (
+                            <button
+                              className="button small outline-dark"
+                              onClick={() =>
+                                act("booking/status", {
+                                  id: b.id,
+                                  status: "cancelled",
+                                })
+                              }
+                            >
+                              {t("cancel")}
                             </button>
-                          </form>
-                        )}
-                      </>
-                    )}
-                    {(admin || instructor) && b.status === "confirmed" && (
-                      <form
-                        className="lesson-form"
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          const f = Object.fromEntries(
-                            new FormData(e.currentTarget),
-                          );
-                          await act("lesson", { bookingId: b.id, ...f });
-                        }}
-                      >
-                        <input
-                          name="skills"
-                          required
-                          placeholder={t("skills")}
-                          aria-label={t("skills")}
-                        />
-                        <input
-                          name="recommendation"
-                          required
-                          placeholder={t("recommendation")}
-                          aria-label={t("recommendation")}
-                        />
-                        <button className="button small">
-                          {t("completed")}
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                </article>
-              ))
+                          )}
+                          {staff && b.status === "pending" && (
+                            <button
+                              className="button small"
+                              onClick={() =>
+                                act("booking/status", {
+                                  id: b.id,
+                                  status: "confirmed",
+                                })
+                              }
+                            >
+                              {t("confirmed")}
+                              <Check size={16} />
+                            </button>
+                          )}
+                          {!instructor && (
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = new FormData(e.currentTarget);
+                                await act("booking/reschedule", {
+                                  id: b.id,
+                                  slot_id: form.get("slot_id"),
+                                });
+                              }}
+                            >
+                              <label
+                                className="sr-only"
+                                htmlFor={"slot-" + b.id}
+                              >
+                                {t("date")}
+                              </label>
+                              <select
+                                required
+                                id={"slot-" + b.id}
+                                name="slot_id"
+                              >
+                                <option value="">{t("change")}</option>
+                                {freeSlots
+                                  .filter((s) => s.city === b.city)
+                                  .map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                      {fmt(s.start)}
+                                    </option>
+                                  ))}
+                              </select>
+                              <button className="button small outline-dark">
+                                {t("save")}
+                              </button>
+                            </form>
+                          )}
+                        </>
+                      )}
+                      {(admin || instructor) && b.status === "confirmed" && (
+                        <form
+                          className="lesson-form"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            const f = Object.fromEntries(
+                              new FormData(e.currentTarget),
+                            );
+                            await act("lesson", { bookingId: b.id, ...f });
+                          }}
+                        >
+                          <input
+                            name="skills"
+                            required
+                            placeholder={t("skills")}
+                            aria-label={t("skills")}
+                          />
+                          <input
+                            name="recommendation"
+                            required
+                            placeholder={t("recommendation")}
+                            aria-label={t("recommendation")}
+                          />
+                          <button className="button small">
+                            {t("completed")}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </article>
+                ))
             ) : (
               <Empty t={t} />
             )}
@@ -360,6 +444,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                         >
                           <option value="student">{t("student")}</option>
                           <option value="instructor">{t("instructor")}</option>
+                          <option value="operator">{t("operator")}</option>
                         </select>
                       </Field>
                     </>
@@ -404,7 +489,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               data.messages.map((m: Item) => (
                 <article className="booking-record" key={m.id}>
                   <small>
-                    {fmt(m.created + "Z")} · {m.locale.toUpperCase()}
+                    {fmt(m.created)} · {m.locale.toUpperCase()}
                   </small>
                   <p>
                     <strong>{m.text}</strong>
@@ -418,7 +503,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                       {t("reply")}: {m.admin_reply}
                     </p>
                   )}
-                  {admin && (
+                  {staff && (
                     <form
                       onSubmit={async (e) => {
                         e.preventDefault();
@@ -456,17 +541,18 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                 const f = Object.fromEntries(new FormData(e.currentTarget));
                 const r = await act("slot/create", {
                   ...f,
-                  instructor_id: instructor ? user.id : f.instructor_id,
+                  instructor_id: instructor ? user.id : f.instructor_id || null,
+                  intervalMinutes: Number(f.intervalMinutes),
                   start: new Date(String(f.start) + "+04:00").toISOString(),
                   end: new Date(String(f.end) + "+04:00").toISOString(),
                 });
                 if (r) (e.target as HTMLFormElement).reset();
               }}
             >
-              {admin && (
+              {staff && (
                 <Field label={t("instructors")}>
-                  <select name="instructor_id" required>
-                    <option value="">—</option>
+                  <select name="instructor_id">
+                    <option value="">{t("assignInstructorLater")}</option>
                     {data.users
                       .filter((u: Item) => u.role === "instructor")
                       .map((u: Item) => (
@@ -491,33 +577,69 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                   <input required type="datetime-local" name="end" />
                 </Field>
               </div>
+              <Field label={t("slotDuration")}>
+                <select name="intervalMinutes" defaultValue="60">
+                  {[30, 45, 60, 90, 120].map((n) => (
+                    <option key={n} value={n}>
+                      {n} {t("minutes")}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <p>{t("splitHours")}</p>
               <button className="button small">
                 {t("add")}
                 <Plus size={17} />
               </button>
             </form>
-            {data.slots.map((s: Item) => (
-              <article className="booking-record" key={s.id}>
-                <h3>
-                  {fmt(s.start)} — {fmt(s.end)}
-                </h3>
-                <p>
-                  {data.users.find((u: Item) => u.id === s.instructor_id)
-                    ?.name || user.name}
-                </p>
-                <button
-                  className="button small outline-dark"
-                  onClick={() =>
-                    act("slot/availability", {
-                      id: s.id,
-                      available: !s.available,
-                    })
-                  }
-                >
-                  {t(s.available ? "available" : "unavailable")}
-                </button>
-              </article>
-            ))}
+            <div className="schedule-summary">
+              <span>
+                {t("freeTimes")}:{" "}
+                {
+                  data.slots.filter(
+                    (s: Item) =>
+                      s.available &&
+                      !s.booking_id &&
+                      Date.parse(s.start) > Date.now(),
+                  ).length
+                }
+              </span>
+              <span>
+                {t("occupiedTimes")}:{" "}
+                {data.slots.filter((s: Item) => s.booking_id).length}
+              </span>
+            </div>
+            {data.slots
+              .filter(
+                (s: Item) =>
+                  (!filterCity || s.city === filterCity) &&
+                  (!filterDay || georgiaDay(s.start) === filterDay),
+              )
+              .map((s: Item) => (
+                <article className="booking-record" key={s.id}>
+                  <h3>
+                    {fmt(s.start)} — {fmt(s.end)}
+                  </h3>
+                  <p>
+                    {data.users.find((u: Item) => u.id === s.instructor_id)
+                      ?.name || t("assignInstructorLater")}
+                  </p>
+                  <button
+                    className="button small outline-dark"
+                    disabled={Boolean(s.booking_id)}
+                    onClick={() =>
+                      act("slot/availability", {
+                        id: s.id,
+                        available: !s.available,
+                      })
+                    }
+                  >
+                    {s.booking_id
+                      ? t(s.booking_status)
+                      : t(s.available ? "available" : "unavailable")}
+                  </button>
+                </article>
+              ))}
           </>
         )}
         {tab === "lessons" && (

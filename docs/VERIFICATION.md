@@ -50,3 +50,22 @@ Production-mode local verification (`VERCEL=1`, Node 24):
 - Browser JavaScript errors: none.
 - Screenshots: `deploy-desktop.png`, `deploy-mobile.png` in this directory.
 - Public site remains noindex; online accounts/booking/chat need durable storage before activation.
+
+## Online calendar, operator and chatbot — 2026-11-09
+
+- PostgreSQL migration/query/constraint tests run against PGlite: slot uniqueness,
+  cancellation/reuse, parameter binding and atomic rate-limit upsert pass. Anonymous
+  database roles cannot access the private schema; the app role cannot alter tables.
+- Isolated local API flow (`scripts/online-check.py`): student registration cannot
+  choose a role; operators cannot grant roles; schedule splitting/overlap validation,
+  simultaneous double-booking (one winner), booked-slot closure protection,
+  rescheduling, cancellation/release, confirmation and student data isolation pass.
+- FAQ retrieval, unknown-question handoff, operator reply and chat history isolation
+  pass. Cross-origin mutations are rejected.
+- Chromium (`scripts/online-browser-check.py`): mobile day/time picker, real booking
+  submission, account date rendering, operator calendar and sourced chatbot pass;
+  no JavaScript errors or horizontal overflow on tested pages.
+- New screenshots are isolated test data, not production bookings:
+  `online-calendar-mobile.png`, `online-operator-desktop.png`.
+- Production PostgreSQL persistence and real media upload remain unverified until
+  the database placement decision is approved; see DEPLOYMENT.md.

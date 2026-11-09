@@ -20,6 +20,7 @@ const pages = [
   "account",
   "admin",
   "instructor",
+  "operator",
   "privacy",
   "terms",
   "akhalkalaki",
@@ -28,7 +29,10 @@ const pages = [
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ locale: string; slug?: string[] }>;
+  params: Promise<{
+    locale: string;
+    slug?: string[];
+  }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const messages = (
@@ -42,7 +46,7 @@ export async function generateMetadata({
   return {
     title,
     description:
-      records("settings").find(
+      (await records("settings")).find(
         (s) =>
           s.key === "site_description" &&
           s.locale === locale &&
@@ -51,18 +55,22 @@ export async function generateMetadata({
     metadataBase: new URL(base),
     alternates: {
       canonical: `/${locale}/${path}`,
-      languages: Object.fromEntries([
-        ...locales.map((l) => [l, `/${l}/${path}`]),
-        ["x-default", `/ru/${path}`],
-      ]),
+      languages: Object.fromEntries(
+        await Promise.all([
+          ...locales.map((l) => [l, `/${l}/${path}`]),
+          ["x-default", `/ru/${path}`],
+        ]),
+      ),
     },
-    robots: ["account", "admin", "instructor", "booking"].includes(path)
+    robots: ["account", "admin", "instructor", "operator", "booking"].includes(
+      path,
+    )
       ? { index: false, follow: false }
       : { index: false, follow: true },
     openGraph: {
       title,
       description:
-        records("settings").find(
+        (await records("settings")).find(
           (s) =>
             s.key === "site_description" &&
             s.locale === locale &&
@@ -76,29 +84,34 @@ export async function generateMetadata({
 export default async function Page({
   params,
 }: {
-  params: Promise<{ locale: string; slug?: string[] }>;
+  params: Promise<{
+    locale: string;
+    slug?: string[];
+  }>;
 }) {
   const { locale, slug } = await params;
   const path = slug?.join("/") || "";
   if (!pages.includes(path)) notFound();
   const content = Object.fromEntries(
-    [
-      "courses",
-      "instructors",
-      "branches",
-      "media",
-      "reviews",
-      "faq",
-      "materials",
-      "translations",
-    ].map((k) => [
-      k,
-      records(k).filter(
-        (r) =>
-          r.status === "published" &&
-          (k !== "reviews" || r.permission === true),
-      ),
-    ]),
+    await Promise.all(
+      [
+        "courses",
+        "instructors",
+        "branches",
+        "media",
+        "reviews",
+        "faq",
+        "materials",
+        "translations",
+      ].map(async (k) => [
+        k,
+        (await records(k)).filter(
+          (r) =>
+            r.status === "published" &&
+            (k !== "reviews" || r.permission === true),
+        ),
+      ]),
+    ),
   );
   return (
     <>
@@ -117,7 +130,12 @@ export default async function Page({
           }).replace(/</g, "\\u003c"),
         }}
       />
-      <Site locale={locale} page={path} initialContent={content} contactOnly={contactOnly} />
+      <Site
+        locale={locale}
+        page={path}
+        initialContent={content}
+        contactOnly={contactOnly}
+      />
     </>
   );
 }

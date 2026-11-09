@@ -2483,3 +2483,24 @@ h3 {
 .header .brand { gap:0; }
 @media(max-width:600px) { .logo-crop { width:128px; height:66px; } .logo-crop img { top:-68%; } }
 .chat-toggle { text-decoration:none; }
+
+.availability-picker {border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;}
+.calendar-heading {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.calendar-heading span,.calendar-legend {font-size:12px;color:var(--muted);}
+.calendar-month {display:flex;align-items:center;justify-content:space-between;margin:18px 0;}
+.calendar-month button {background:transparent;border:1px solid var(--line);border-radius:50%;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;}
+.calendar-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;}
+.calendar-grid>small {text-align:center;color:var(--muted);padding-bottom:7px;}
+.calendar-grid button {position:relative;background:#fff;border:1px solid var(--line);border-radius:8px;min-height:44px;cursor:pointer;}
+.calendar-grid button:disabled {opacity:.35;cursor:default;background:var(--paper);}
+.calendar-grid button small {position:absolute;right:4px;bottom:1px;font-size:9px;color:var(--muted);}
+.calendar-grid button.selected,.time-grid button.selected {background:var(--ink);color:#fff;border-color:var(--ink);}
+.calendar-grid button.selected small {color:#fff;}
+.time-grid {display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+.time-grid button {display:flex;align-items:center;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:white;cursor:pointer;}
+.selected-time {font-weight:600;font-size:13px;}
+.workspace-filters {display:flex;flex-wrap:wrap;gap:12px;padding:16px 0;align-items:end;}
+.workspace-filters .field {flex:1;min-width:140px;}
+.schedule-summary {display:flex;gap:12px;flex-wrap:wrap;margin:18px 0;}
+.schedule-summary span {padding:12px 16px;background:var(--paper);border:1px solid var(--line);border-radius:8px;}
+@media(max-width:480px){.availability-picker{padding:12px;}.calendar-grid{gap:3px;}.calendar-grid button{min-height:39px;}.time-grid button{font-size:12px;padding:9px 8px;}}

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { api, Field, Notice, type Item } from "./Site";
+import AvailabilityPicker from "./AvailabilityPicker";
 type Common = { locale: string; t: (k: string) => string };
 export function Auth({
   locale,
@@ -132,6 +133,7 @@ export function Booking({
 } & Common) {
   const [localUser, setLocalUser] = useState(user),
     [slots, setSlots] = useState<Item[]>([]),
+    [selectedSlot, setSelectedSlot] = useState(""),
     [city, setCity] = useState("akhalkalaki"),
     [instructor, setInstructor] = useState(""),
     [error, setError] = useState(""),
@@ -139,9 +141,28 @@ export function Booking({
     [busy, setBusy] = useState(false);
   useEffect(() => setLocalUser(user), [user]);
   useEffect(() => {
-    api("slots")
-      .then(setSlots)
-      .catch(() => setError(t("serverError")));
+    let active = true;
+    async function refreshSlots() {
+      try {
+        const next = await api("slots");
+        if (active) {
+          setSlots(next);
+          setSelectedSlot((current) =>
+            next.some((s: Item) => s.id === current) ? current : "",
+          );
+        }
+      } catch {
+        if (active) setError(t("serverError"));
+      }
+    }
+    refreshSlots();
+    const timer = setInterval(refreshSlots, 15000);
+    window.addEventListener("focus", refreshSlots);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener("focus", refreshSlots);
+    };
   }, []);
   if (!localUser)
     return user === undefined ? (
@@ -181,12 +202,17 @@ export function Booking({
           setBusy(true);
           setError("");
           const f = Object.fromEntries(new FormData(e.currentTarget));
+          if (!selectedSlot) {
+            setError(t("chooseTime"));
+            setBusy(false);
+            return;
+          }
           try {
             await api("booking/create", {
               ...f,
               city,
               instructor_id: instructor || null,
-              slot_id: f.slot_id || null,
+              slot_id: selectedSlot,
               consent: true,
             });
             setSent(true);
@@ -206,6 +232,7 @@ export function Booking({
               onChange={(e) => {
                 setCity(e.target.value);
                 setInstructor("");
+                setSelectedSlot("");
               }}
             >
               <option value="akhalkalaki">{t("city1")}</option>
@@ -235,7 +262,10 @@ export function Booking({
           <Field label={t("instructors")}>
             <select
               value={instructor}
-              onChange={(e) => setInstructor(e.target.value)}
+              onChange={(e) => {
+                setInstructor(e.target.value);
+                setSelectedSlot("");
+              }}
             >
               <option value="">{t("any")}</option>
               {content.instructors
@@ -248,26 +278,19 @@ export function Booking({
             </select>
           </Field>
         </div>
-        <Field label={t("date")}>
-          <select name="slot_id" key={city + instructor}>
-            <option value="">{t("agreeTime")}</option>
-            {available.map((s) => (
-              <option value={s.id} key={s.id}>
-                {new Date(s.start).toLocaleString(locale, {
-                  timeZone: "Asia/Tbilisi",
-                })}{" "}
-                —{" "}
-                {new Date(s.end).toLocaleTimeString(locale, {
-                  timeZone: "Asia/Tbilisi",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-                (Georgia)
-              </option>
-            ))}
-          </select>
-        </Field>
-        {!available.length && <Notice>{t("noSlots")}</Notice>}
+        {available.length > 0 ? (
+          <AvailabilityPicker
+            key={city + instructor}
+            slots={available}
+            locale={locale}
+            t={t}
+            value={selectedSlot}
+            onChange={setSelectedSlot}
+          />
+        ) : (
+          <Notice>{t("noSlots")}</Notice>
+        )}
+        <small>{t("availabilityRefresh")}</small>
         <div className="form-grid">
           <Field label={t("name")}>
             <input
@@ -309,7 +332,7 @@ export function Booking({
             {error}
           </p>
         )}
-        <button className="button" disabled={busy}>
+        <button className="button" disabled={busy || !selectedSlot}>
           {t(busy ? "loading" : "send")}
           <ArrowUpRight size={20} />
         </button>

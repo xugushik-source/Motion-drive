@@ -1,26 +1,29 @@
-import { DatabaseSync } from "node:sqlite";
-import { randomBytes, scryptSync, randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-const email = process.env.ADMIN_EMAIL,
-  password = process.env.ADMIN_PASSWORD;
-if (!email || !password || password.length < 12)
-  throw Error(
-    "Set ADMIN_EMAIL and ADMIN_PASSWORD (12+ characters) in your terminal environment. Never share them in chat.",
+import { randomUUID } from "node:crypto";
+import { db, one } from "../src/lib/db";
+import { hashPassword } from "../src/lib/auth";
+async function main() {
+  // Provision an owner account from a protected terminal environment, never browser input.
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase(),
+    password = process.env.ADMIN_PASSWORD;
+  if (!email || !password || password.length < 12)
+    throw Error(
+      "Set ADMIN_EMAIL and ADMIN_PASSWORD (12+ chars) in a protected terminal environment.",
+    );
+  if (await one("SELECT id FROM users WHERE email=?", email))
+    throw Error(
+      "Account already exists. Use manage-user.ts to assign a role without changing its password.",
+    );
+  await db
+    .prepare(
+      "INSERT INTO users(id,email,name,password,role) VALUES(?,?,?,?, 'admin')",
+    )
+    .run(randomUUID(), email, "Motion Drive", hashPassword(password));
+  console.log("Administrator created.");
+  process.exit(0);
+}
+main().catch(() => {
+  console.error(
+    "Account setup failed. Check environment variables and database access.",
   );
-const path = resolve(process.env.DATABASE_PATH || "./data/motion-drive.sqlite");
-mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-const db = new DatabaseSync(path);
-db.exec(
-  "CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'student',locale TEXT NOT NULL DEFAULT 'ru')",
-);
-const salt = randomBytes(16).toString("hex");
-db.prepare(
-  "INSERT INTO users(id,email,name,password,role) VALUES(?,?,?,?, 'admin')",
-).run(
-  randomUUID(),
-  email.toLowerCase(),
-  "Motion Drive",
-  salt + ":" + scryptSync(password, salt, 64).toString("hex"),
-);
-console.log("Administrator created.");
+  process.exit(1);
+});

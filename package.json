@@ -7,24 +7,29 @@
     "build": "next build --webpack",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "setup:admin": "node --experimental-strip-types scripts/create-admin.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "setup:admin": "node --import tsx scripts/create-admin.ts"
   },
   "dependencies": {
+    "@vercel/blob": "2.8.2",
     "lucide-react": "latest",
     "motion": "latest",
     "next": "latest",
     "next-intl": "latest",
+    "pg": "8.23.1",
     "react": "latest",
     "react-dom": "latest",
     "zod": "latest"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
     "@playwright/test": "latest",
     "@types/node": "latest",
+    "@types/pg": "8.23.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "prettier": "^3.9.10",
+    "tsx": "4.23.15",
     "typescript": "latest"
   }
 }

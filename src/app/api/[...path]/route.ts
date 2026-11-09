@@ -1,12 +1,15 @@
+import { get as getBlob, put as putBlob } from "@vercel/blob";
+import { findKnowledge } from "../../../lib/knowledge";
 import { contactOnly } from "../../../lib/deployment";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import {
   db,
+  transaction,
   all,
   one,
   records,
@@ -74,34 +77,56 @@ const publicKinds = [
   "materials",
   "translations",
 ];
-function approved(kind: string) {
-  return records(kind).filter(
+async function approved(kind: string) {
+  return (await records(kind)).filter(
     (r) =>
       r.status === "published" && (kind !== "reviews" || r.permission === true),
   );
 }
 export async function GET(
   req: NextRequest,
-  ctx: { params: Promise<{ path: string[] }> },
+  ctx: {
+    params: Promise<{
+      path: string[];
+    }>;
+  },
 ) {
   try {
     if (contactOnly) {
       const path = (await ctx.params).path;
       if (path[0] === "me") return json({ user: null });
-      if (path[0] === "public") return json(Object.fromEntries(publicKinds.map((k) => [k, approved(k)])));
+      if (path[0] === "slots" || (path[0] === "chat" && path[1] === "history"))
+        return json([]);
+      if (path[0] === "public")
+        return json(
+          Object.fromEntries(
+            await Promise.all(
+              publicKinds.map(async (k) => [k, await approved(k)]),
+            ),
+          ),
+        );
       return json({ error: "bookingsPaused" }, 503);
     }
     const p = (await ctx.params).path;
     const user = await currentUser();
     if (p[0] === "public")
-      return json(Object.fromEntries(publicKinds.map((k) => [k, approved(k)])));
+      return json(
+        Object.fromEntries(
+          await Promise.all(
+            publicKinds.map(async (k) => [k, await approved(k)]),
+          ),
+        ),
+      );
     if (p[0] === "me") {
       const response = json({ user });
       if (!req.cookies.get("md_guest"))
         response.cookies.set("md_guest", randomUUID(), {
           httpOnly: true,
           sameSite: "lax",
-          secure: process.env.APP_URL?.startsWith("https://") || false,
+          secure:
+            process.env.VERCEL === "1" ||
+            process.env.APP_URL?.startsWith("https://") ||
+            false,
           path: "/",
           maxAge: 86400,
         });
@@ -111,54 +136,74 @@ export async function GET(
       const guest = req.cookies.get("md_guest")?.value;
       return json(
         user
-          ? all(
-              "SELECT id,text,answer,admin_reply FROM messages WHERE user_id=? ORDER BY created DESC LIMIT 40",
-              user.id,
+          ? (
+              await all(
+                "SELECT id,text,answer,admin_reply FROM messages WHERE user_id=? ORDER BY created DESC LIMIT 40",
+                user.id,
+              )
             ).reverse()
           : guest
-            ? all(
-                "SELECT id,text,answer,admin_reply FROM messages WHERE guest_id=? AND user_id IS NULL ORDER BY created DESC LIMIT 40",
-                guest,
+            ? (
+                await all(
+                  "SELECT id,text,answer,admin_reply FROM messages WHERE guest_id=? AND user_id IS NULL ORDER BY created DESC LIMIT 40",
+                  guest,
+                )
               ).reverse()
             : [],
       );
     }
     if (p[0] === "slots")
       return json(
-        all(
-          "SELECT s.* FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
+        await all(
+          "SELECT s.id,s.city,s.start,s.end,s.instructor_id FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
           new Date().toISOString(),
         ),
       );
     if (p[0] === "files" && p[1]) {
-      const f = one("SELECT * FROM uploads WHERE id=?", p[1]);
+      const f = await one("SELECT * FROM uploads WHERE id=?", p[1]);
       if (!f) return fail("notFound", 404);
-      const published = approved("media").some(
+      const published = (await approved("media")).some(
         (m) => m.url === `/api/files/${f.id}`,
       );
       if (!published && (!user || user.role !== "admin"))
         return fail("forbidden", 403);
-      return new NextResponse(readFileSync(resolve("data/uploads", f.id)), {
-        headers: {
-          "Content-Type": f.mime,
-          "Cache-Control": "private, max-age=300",
-          "X-Content-Type-Options": "nosniff",
+      const remote =
+        process.env.VERCEL === "1"
+          ? await getBlob("uploads/" + f.id, {
+              access: "private",
+              useCache: false,
+            })
+          : null;
+      if (process.env.VERCEL === "1" && (!remote || remote.statusCode !== 200))
+        return fail("notFound", 404);
+      return new NextResponse(
+        remote?.stream || readFileSync(resolve("data/uploads", f.id)),
+        {
+          headers: {
+            "Content-Type": f.mime,
+            "Cache-Control": "private, max-age=300",
+            "X-Content-Type-Options": "nosniff",
+          },
         },
-      });
+      );
     }
     if (!user) return fail("loginRequired", 401);
     if (p[0] === "dashboard") {
       const admin = user.role === "admin",
+        operator = user.role === "operator",
+        staff = admin || operator,
         instructor = user.role === "instructor";
-      const bookings = admin
-        ? all("SELECT * FROM bookings ORDER BY created DESC")
-        : all(
-            "SELECT * FROM bookings WHERE " +
+      const bookings = staff
+        ? await all(
+            "SELECT b.*,s.start AS slot_start,s.end AS slot_end FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id ORDER BY b.created DESC",
+          )
+        : await all(
+            "SELECT b.*,s.start AS slot_start,s.end AS slot_end FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b." +
               (instructor ? "instructor_id" : "user_id") +
-              "=? ORDER BY created DESC",
+              "=? ORDER BY b.created DESC",
             user.id,
           );
-      const lessons = records("lessons").filter(
+      const lessons = (await records("lessons")).filter(
         (l) =>
           admin ||
           (instructor ? l.instructorId === user.id : l.studentId === user.id),
@@ -170,37 +215,43 @@ export async function GET(
         results: instructor
           ? []
           : admin
-            ? all("SELECT * FROM results ORDER BY created DESC")
-            : all(
+            ? await all("SELECT * FROM results ORDER BY created DESC")
+            : await all(
                 "SELECT * FROM results WHERE user_id=? ORDER BY created DESC",
                 user.id,
               ),
-        messages: admin
-          ? all("SELECT * FROM messages ORDER BY created DESC")
-          : all(
+        messages: staff
+          ? await all("SELECT * FROM messages ORDER BY created DESC")
+          : await all(
               "SELECT * FROM messages WHERE user_id=? ORDER BY created DESC",
               user.id,
             ),
-        slots: admin
-          ? all("SELECT * FROM slots ORDER BY start")
+        slots: staff
+          ? await all(
+              "SELECT s.*,b.id AS booking_id,b.status AS booking_status FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') ORDER BY s.start",
+            )
           : instructor
-            ? all(
+            ? await all(
                 "SELECT * FROM slots WHERE instructor_id=? ORDER BY start",
                 user.id,
               )
             : [],
-        users: admin
-          ? all("SELECT id,name,email,role FROM users")
+        users: staff
+          ? await all("SELECT id,name,email,role FROM users")
           : instructor
-            ? all(
+            ? await all(
                 "SELECT DISTINCT u.id,u.name FROM users u JOIN bookings b ON b.user_id=u.id WHERE b.instructor_id=?",
                 user.id,
               )
             : [],
         records: admin
-          ? Object.fromEntries(kinds.map((k) => [k, records(k)]))
+          ? Object.fromEntries(
+              await Promise.all(kinds.map(async (k) => [k, await records(k)])),
+            )
           : {},
-        usage: admin ? all("SELECT * FROM usage ORDER BY created DESC") : [],
+        usage: admin
+          ? await all("SELECT * FROM usage ORDER BY created DESC")
+          : [],
       });
     }
     return fail("notFound", 404);
@@ -212,15 +263,63 @@ function error(e: unknown) {
   if (e instanceof ApiError) return json({ error: e.code }, e.status);
   if (e instanceof SyntaxError) return json({ error: "invalid" }, 400);
   if (e instanceof z.ZodError) return json({ error: "invalid" }, 400);
-  console.error(e instanceof Error ? e.message : "server error");
+  if ((e as any)?.code === "23505")
+    return json({ error: "accountExists" }, 409);
+  console.error("Motion Drive API failure", (e as any)?.code || "internal");
   return json({ error: "serverError" }, 500);
 }
 export async function POST(
   req: NextRequest,
-  ctx: { params: Promise<{ path: string[] }> },
+  ctx: {
+    params: Promise<{
+      path: string[];
+    }>;
+  },
 ) {
   try {
-    if (contactOnly) return json({ error: "bookingsPaused" }, 503);
+    if (contactOnly) {
+      const path = (await ctx.params).path;
+      if (path[0] !== "chat") return json({ error: "bookingsPaused" }, 503);
+      const v = z
+        .object({
+          message: z.string().trim().min(1).max(1800),
+          locale: localeSchema,
+          handoff: z.boolean().optional(),
+        })
+        .parse(await req.json());
+      const ip = createHash("sha256")
+        .update(req.headers.get("x-forwarded-for") || "anonymous")
+        .digest("hex");
+      if (!(await limit("public-chat:" + ip, 30, 600)))
+        return json({ error: "rateLimit" }, 429);
+      const language = /[ა-ჰ]/.test(v.message)
+        ? "ka"
+        : /[Ա-ֆ]/.test(v.message)
+          ? "hy"
+          : /[а-яё]/i.test(v.message)
+            ? "ru"
+            : v.locale;
+      const match = v.handoff
+        ? undefined
+        : findKnowledge(
+            v.message,
+            (await approved("faq")).filter((q) => q.locale === language),
+          );
+      const contact = {
+        ru: "По этому вопросу свяжитесь со школой: Ахалкалаки +995 597 93 93 27, Ниноцминда +995 597 92 74 92. Автоматическая передача обращения оператору станет доступна после подключения базы.",
+        en: "Please contact the school: Akhalkalaki +995 597 93 93 27, Ninotsminda +995 597 92 74 92. Automatic operator handoff will be available once the database is connected.",
+        ka: "დაუკავშირდით სკოლას: ახალქალაქი +995 597 93 93 27, ნინოწმინდა +995 597 92 74 92. ოპერატორთან ავტომატური გადაცემა ხელმისაწვდომი იქნება ბაზის დაკავშირების შემდეგ.",
+        hy: "Կապվեք դպրոցի հետ՝ Ախալքալաք +995 597 93 93 27, Նինոծմինդա +995 597 92 74 92։ Օպերատորին ավտոմատ փոխանցումը հասանելի կլինի բազան միացնելուց հետո։",
+      };
+      return json({
+        answer:
+          (match?.source?.startsWith("/") ? null : match?.answer) ||
+          contact[language],
+        locale: language,
+        mode: match ? "faq" : "contact",
+        source: match?.source || null,
+      });
+    }
     const p = (await ctx.params).path;
     const origin = req.headers.get("origin");
     if (
@@ -234,12 +333,12 @@ export async function POST(
     const user = await currentUser();
     const identity =
       user?.id || req.cookies.get("md_guest")?.value || "anonymous";
-    if (!limit("api:" + identity, 100)) return fail("rateLimit", 429);
+    if (!(await limit("api:" + identity, 100))) return fail("rateLimit", 429);
     if (p[0] === "upload") {
       if (user?.role !== "admin") return fail("forbidden", 403);
       const data = await req.formData(),
         file = data.get("file");
-      if (!(file instanceof File) || file.size > 25 * 1024 * 1024)
+      if (!(file instanceof File) || file.size > 3 * 1024 * 1024)
         return fail("tooLarge", 413);
       const bytes = Buffer.from(await file.arrayBuffer());
       let mime = "";
@@ -260,46 +359,61 @@ export async function POST(
         mime = "video/webm";
       if (!mime) return fail("invalid");
       const id = randomUUID();
-      mkdirSync("data/uploads", { recursive: true, mode: 0o700 });
-      writeFileSync(resolve("data/uploads", id), bytes, { mode: 0o600 });
-      db.prepare(
-        "INSERT INTO uploads(id,user_id,mime,name) VALUES(?,?,?,?)",
-      ).run(id, user.id, mime, file.name.slice(0, 150));
+      if (process.env.VERCEL === "1")
+        await putBlob("uploads/" + id, bytes, {
+          access: "private",
+          contentType: mime,
+          addRandomSuffix: false,
+        });
+      else {
+        mkdirSync("data/uploads", { recursive: true, mode: 0o700 });
+        writeFileSync(resolve("data/uploads", id), bytes, { mode: 0o600 });
+      }
+      await db
+        .prepare("INSERT INTO uploads(id,user_id,mime,name) VALUES(?,?,?,?)")
+        .run(id, user.id, mime, file.name.slice(0, 150));
       return json({ url: "/api/files/" + id, type: mime });
     }
     const body = await req.json();
     if (p[0] === "auth") {
-      if (!limit("auth:" + identity, 12, 600)) return fail("rateLimit", 429);
+      if (!(await limit("auth:" + identity, 12, 600)))
+        return fail("rateLimit", 429);
       if (p[1] === "logout") {
         const c = await cookies();
-        db.prepare("DELETE FROM sessions WHERE id=?").run(
-          c.get("md_session")?.value || "",
-        );
+        await db
+          .prepare("DELETE FROM sessions WHERE id=?")
+          .run(c.get("md_session")?.value || "");
         c.delete("md_session");
         return json({ ok: true });
       }
       if (p[1] === "register") {
         const v = registerSchema.parse(body);
-        if (one("SELECT id FROM users WHERE email=?", v.email.toLowerCase()))
+        if (
+          await one("SELECT id FROM users WHERE email=?", v.email.toLowerCase())
+        )
           return fail("accountExists");
         const id = randomUUID();
-        db.prepare(
-          "INSERT INTO users(id,email,name,password,locale) VALUES(?,?,?,?,?)",
-        ).run(
-          id,
-          v.email.toLowerCase(),
-          v.name,
-          hashPassword(v.password),
-          v.locale,
-        );
+        await db
+          .prepare(
+            "INSERT INTO users(id,email,name,password,locale) VALUES(?,?,?,?,?)",
+          )
+          .run(
+            id,
+            v.email.toLowerCase(),
+            v.name,
+            hashPassword(v.password),
+            v.locale,
+          );
         await startSession(id);
-        return json({ user: safe(one("SELECT * FROM users WHERE id=?", id)!) });
+        return json({
+          user: safe((await one("SELECT * FROM users WHERE id=?", id))!),
+        });
       }
       if (p[1] === "login") {
         const v = z
           .object({ email: z.email(), password: z.string().max(128) })
           .parse(body);
-        const u = one(
+        const u = await one(
           "SELECT * FROM users WHERE email=?",
           v.email.toLowerCase(),
         );
@@ -311,111 +425,165 @@ export async function POST(
     }
     if (p[0] === "chat") return await chat(body, user, identity);
     if (!user) return fail("loginRequired", 401);
-    if (p[0] === "booking") {
-      if (p[1] === "create") {
-        if (
-          records("settings").some(
-            (s) =>
-              s.status === "published" &&
-              s.key === "booking_enabled" &&
-              s.value === "false",
+    if (p[0] === "booking")
+      return await transaction(async () => {
+        if (p[1] === "create") {
+          if (
+            (await records("settings")).some(
+              (s) =>
+                s.status === "published" &&
+                s.key === "booking_enabled" &&
+                s.value === "false",
+            )
           )
-        )
-          return fail("bookingsPaused");
-        const v = bookingSchema.parse(body);
-        if (
-          v.instructor_id &&
-          !approved("instructors").some((i) => i.userId === v.instructor_id)
-        )
-          return fail("invalid");
-        let slot: Row | undefined;
-        if (v.slot_id) {
-          slot = one(
-            "SELECT * FROM slots WHERE id=? AND available=1",
+            return fail("bookingsPaused");
+          const v = bookingSchema.parse(body);
+          if (!v.slot_id) return fail("chooseTime", 400);
+          if (
+            v.instructor_id &&
+            !(await approved("instructors")).some(
+              (i) => i.userId === v.instructor_id,
+            )
+          )
+            return fail("invalid");
+          let slot: Row | undefined;
+          if (v.slot_id) {
+            slot = await one(
+              "SELECT * FROM slots WHERE id=? AND available=1 FOR UPDATE",
+              v.slot_id,
+            );
+            if (
+              !slot ||
+              slot.city !== v.city ||
+              Date.parse(slot.start) <= Date.now() ||
+              (v.instructor_id && v.instructor_id !== slot.instructor_id)
+            )
+              return fail("slotUnavailable", 409);
+          }
+          if (
+            await one(
+              "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
+              v.slot_id,
+            )
+          )
+            return fail("slotUnavailable", 409);
+          const id = randomUUID();
+          try {
+            await db
+              .prepare(
+                "INSERT INTO bookings(id,user_id,city,program,gearbox,instructor_id,slot_id,name,contact,note) VALUES(?,?,?,?,?,?,?,?,?,?)",
+              )
+              .run(
+                id,
+                user.id,
+                v.city,
+                v.program,
+                v.gearbox,
+                slot?.instructor_id || v.instructor_id || null,
+                v.slot_id || null,
+                v.name,
+                v.contact,
+                v.note,
+              );
+          } catch {
+            return fail("slotUnavailable", 409);
+          }
+          await db
+            .prepare(
+              "INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)",
+            )
+            .run(
+              user.id,
+              "booking:create",
+              JSON.stringify({ id, slot_id: v.slot_id }),
+            );
+          return json({ id, status: "pending" });
+        }
+        if (p[1] === "reschedule") {
+          const v = z
+            .object({ id: z.string(), slot_id: z.string() })
+            .parse(body);
+          const b = await one(
+            "SELECT * FROM bookings WHERE id=? FOR UPDATE",
+            v.id,
+          );
+          if (
+            !b ||
+            (!["admin", "operator"].includes(user.role) &&
+              b.user_id !== user.id)
+          )
+            return fail("forbidden", 403);
+          if (!["pending", "confirmed"].includes(b.status))
+            return fail("invalid");
+          const slot = await one(
+            "SELECT * FROM slots WHERE id=? AND available=1 FOR UPDATE",
             v.slot_id,
           );
           if (
-            !slot ||
-            slot.city !== v.city ||
-            Date.parse(slot.start) <= Date.now() ||
-            (v.instructor_id && v.instructor_id !== slot.instructor_id)
+            await one(
+              "SELECT id FROM bookings WHERE slot_id=? AND id<>? AND status IN ('pending','confirmed','completed')",
+              v.slot_id,
+              b.id,
+            )
           )
             return fail("slotUnavailable", 409);
+          if (
+            !slot ||
+            slot.city !== b.city ||
+            Date.parse(slot.start) <= Date.now()
+          )
+            return fail("slotUnavailable", 409);
+          try {
+            await db
+              .prepare(
+                "UPDATE bookings SET slot_id=?,instructor_id=?,status='pending' WHERE id=?",
+              )
+              .run(slot.id, slot.instructor_id, b.id);
+          } catch {
+            return fail("slotUnavailable", 409);
+          }
+          return json({ ok: true });
         }
-        const id = randomUUID();
-        try {
-          db.prepare(
-            "INSERT INTO bookings(id,user_id,city,program,gearbox,instructor_id,slot_id,name,contact,note) VALUES(?,?,?,?,?,?,?,?,?,?)",
-          ).run(
-            id,
-            user.id,
-            v.city,
-            v.program,
-            v.gearbox,
-            slot?.instructor_id || v.instructor_id || null,
-            v.slot_id || null,
-            v.name,
-            v.contact,
-            v.note,
-          );
-        } catch {
-          return fail("slotUnavailable", 409);
-        }
-        return json({ id, status: "pending" });
-      }
-      if (p[1] === "reschedule") {
-        const v = z.object({ id: z.string(), slot_id: z.string() }).parse(body);
-        const b = one("SELECT * FROM bookings WHERE id=?", v.id);
-        if (!b || (user.role !== "admin" && b.user_id !== user.id))
+        const v = z
+          .object({
+            id: z.string(),
+            status: z.enum(["cancelled", "confirmed", "pending"]),
+            note: z.string().max(1200).optional(),
+          })
+          .parse(body);
+        const b = await one(
+          "SELECT * FROM bookings WHERE id=? FOR UPDATE",
+          v.id,
+        );
+        if (!b) return fail("notFound", 404);
+        if (
+          !["admin", "operator"].includes(user.role) &&
+          (b.user_id !== user.id || v.status !== "cancelled")
+        )
           return fail("forbidden", 403);
         if (!["pending", "confirmed"].includes(b.status))
           return fail("invalid");
-        const slot = one(
-          "SELECT * FROM slots WHERE id=? AND available=1",
-          v.slot_id,
-        );
-        if (
-          !slot ||
-          slot.city !== b.city ||
-          Date.parse(slot.start) <= Date.now()
-        )
-          return fail("slotUnavailable", 409);
+        if (v.status === "confirmed" && !b.slot_id) return fail("slotRequired");
+        if (v.status !== "cancelled") {
+          const slot = await one(
+            "SELECT * FROM slots WHERE id=? FOR UPDATE",
+            b.slot_id,
+          );
+          if (!slot || !slot.available) return fail("slotUnavailable", 409);
+        }
         try {
-          db.prepare(
-            "UPDATE bookings SET slot_id=?,instructor_id=?,status='pending' WHERE id=?",
-          ).run(slot.id, slot.instructor_id, b.id);
+          await db
+            .prepare(
+              "UPDATE bookings SET status=?,note=COALESCE(?,note) WHERE id=?",
+            )
+            .run(v.status, v.note || null, v.id);
         } catch {
           return fail("slotUnavailable", 409);
         }
         return json({ ok: true });
-      }
-      const v = z
-        .object({
-          id: z.string(),
-          status: z.enum(["cancelled", "confirmed", "pending"]),
-          note: z.string().max(1200).optional(),
-        })
-        .parse(body);
-      const b = one("SELECT * FROM bookings WHERE id=?", v.id);
-      if (!b) return fail("notFound", 404);
-      if (
-        user.role !== "admin" &&
-        (b.user_id !== user.id || v.status !== "cancelled")
-      )
-        return fail("forbidden", 403);
-      if (b.status === "completed") return fail("invalid");
-      if (v.status === "confirmed" && !b.slot_id) return fail("slotRequired");
-      try {
-        db.prepare(
-          "UPDATE bookings SET status=?,note=COALESCE(?,note) WHERE id=?",
-        ).run(v.status, v.note || null, v.id);
-      } catch {
-        return fail("slotUnavailable", 409);
-      }
-      return json({ ok: true });
-    }
+      });
     if (p[0] === "lesson") {
-      if (!["admin", "instructor"].includes(user.role))
+      if (!["admin", "operator", "instructor"].includes(user.role))
         return fail("forbidden", 403);
       const v = z
         .object({
@@ -424,7 +592,7 @@ export async function POST(
           recommendation: z.string().max(2000),
         })
         .parse(body);
-      const b = one(
+      const b = await one(
         "SELECT b.*,s.start FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id=?",
         v.bookingId,
       );
@@ -436,7 +604,7 @@ export async function POST(
         Date.parse(b.start) > Date.now()
       )
         return fail("invalid");
-      saveRecord(
+      await saveRecord(
         "lessons",
         b.id,
         {
@@ -448,74 +616,120 @@ export async function POST(
         },
         user.id,
       );
-      db.prepare("UPDATE bookings SET status='completed' WHERE id=?").run(b.id);
+      await db
+        .prepare("UPDATE bookings SET status='completed' WHERE id=?")
+        .run(b.id);
       return json({ ok: true });
     }
-    if (p[0] === "slot") {
-      if (!["admin", "instructor"].includes(user.role))
-        return fail("forbidden", 403);
-      if (p[1] === "availability") {
-        const v = z
-          .object({ id: z.string(), available: z.boolean() })
-          .parse(body);
-        const slot = one("SELECT * FROM slots WHERE id=?", v.id);
-        if (
-          !slot ||
-          (user.role === "instructor" && slot.instructor_id !== user.id)
-        )
+    if (p[0] === "slot")
+      return await transaction(async () => {
+        if (!["admin", "operator", "instructor"].includes(user.role))
           return fail("forbidden", 403);
-        db.prepare("UPDATE slots SET available=? WHERE id=?").run(
-          v.available ? 1 : 0,
-          v.id,
-        );
-        return json({ ok: true });
-      }
-      const v = z
-        .object({
-          instructor_id: z.string(),
-          city: z.enum(["akhalkalaki", "ninotsminda"]),
-          start: z.iso.datetime(),
-          end: z.iso.datetime(),
-        })
-        .parse(body);
-      if (
-        (user.role === "instructor" && v.instructor_id !== user.id) ||
-        !one(
-          "SELECT id FROM users WHERE id=? AND role='instructor'",
-          v.instructor_id,
+        if (p[1] === "availability") {
+          const v = z
+            .object({ id: z.string(), available: z.boolean() })
+            .parse(body);
+          const slot = await one(
+            "SELECT * FROM slots WHERE id=? FOR UPDATE",
+            v.id,
+          );
+          if (
+            !slot ||
+            (user.role === "instructor" && slot.instructor_id !== user.id)
+          )
+            return fail("forbidden", 403);
+          if (
+            await one(
+              "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
+              v.id,
+            )
+          )
+            return fail("slotOccupied", 409);
+          await db
+            .prepare("UPDATE slots SET available=? WHERE id=?")
+            .run(v.available ? 1 : 0, v.id);
+          await db
+            .prepare(
+              "INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)",
+            )
+            .run(user.id, "slot:availability", JSON.stringify(v));
+          return json({ ok: true });
+        }
+        const v = z
+          .object({
+            instructor_id: z.string().nullable().optional(),
+            city: z.enum(["akhalkalaki", "ninotsminda"]),
+            start: z.iso.datetime(),
+            end: z.iso.datetime(),
+            intervalMinutes: z.number().int().min(15).max(240).optional(),
+          })
+          .parse(body);
+        const instructorId = v.instructor_id || null;
+        if (user.role === "instructor" && instructorId !== user.id)
+          return fail("forbidden", 403);
+        if (
+          instructorId &&
+          !(await one(
+            "SELECT id FROM users WHERE id=? AND role='instructor' FOR UPDATE",
+            instructorId,
+          ))
         )
-      )
-        return fail("forbidden", 403);
-      if (
-        Date.parse(v.start) <= Date.now() ||
-        Date.parse(v.end) <= Date.parse(v.start)
-      )
-        return fail("invalid");
-      if (
-        one(
-          "SELECT id FROM slots WHERE instructor_id=? AND start<? AND end>?",
-          v.instructor_id,
+          return fail("invalid");
+        // Serialize open-branch calendars using a locked branch row, also on SQLite.
+        const lockId = "calendar:" + v.city;
+        await db
+          .prepare(
+            "INSERT INTO records(id,kind,data) VALUES(?,'calendar','{}') ON CONFLICT(id) DO NOTHING",
+          )
+          .run(lockId);
+        await one("SELECT id FROM records WHERE id=? FOR UPDATE", lockId);
+        const start = Date.parse(v.start),
+          end = Date.parse(v.end);
+        if (start <= Date.now() || end <= start || end - start > 24 * 3600000)
+          return fail("invalid");
+        const overlap = await one(
+          "SELECT id FROM slots WHERE (instructor_id=? OR (instructor_id IS NULL AND ? IS NULL AND city=?)) AND start<? AND end>?",
+          instructorId,
+          instructorId,
+          v.city,
           v.end,
           v.start,
-        )
-      )
-        return fail("slotUnavailable", 409);
-      const id = randomUUID();
-      db.prepare(
-        "INSERT INTO slots(id,instructor_id,city,start,end) VALUES(?,?,?,?,?)",
-      ).run(id, v.instructor_id, v.city, v.start, v.end);
-      return json({ id });
-    }
+        );
+        if (overlap) return fail("slotUnavailable", 409);
+        const interval = (v.intervalMinutes || (end - start) / 60000) * 60000;
+        if ((end - start) % interval !== 0 || (end - start) / interval > 48)
+          return fail("invalid");
+        const ids = [];
+        for (let at = start; at < end; at += interval) {
+          const id = randomUUID();
+          ids.push(id);
+          await db
+            .prepare(
+              "INSERT INTO slots(id,instructor_id,city,start,end) VALUES(?,?,?,?,?)",
+            )
+            .run(
+              id,
+              instructorId,
+              v.city,
+              new Date(at).toISOString(),
+              new Date(at + interval).toISOString(),
+            );
+        }
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(user.id, "slot:create", JSON.stringify({ ids, ...v }));
+        return json({ id: ids[0], ids });
+      });
     if (p[0] === "exam") {
       if (p[1] === "start") {
         const locale = localeSchema.parse(body.locale);
-        const qs = approved("questions")
+        const qs = (await approved("questions"))
           .filter((q) => q.locale === locale && q.verified)
           .sort(() => Math.random() - 0.5)
           .slice(
             0,
             Number(
-              records("settings").find(
+              (await records("settings")).find(
                 (s) =>
                   s.status === "published" && s.key === "exam_question_count",
               )?.value || 20,
@@ -523,15 +737,17 @@ export async function POST(
           );
         if (!qs.length) return fail("noQuestions");
         const minutes = Number(
-          records("settings").find(
+          (await records("settings")).find(
             (s) => s.status === "published" && s.key === "exam_minutes",
           )?.value || 20,
         );
         const id = randomUUID(),
           deadline = Date.now() + minutes * 60000;
-        db.prepare(
-          "INSERT INTO attempts(id,user_id,questions,deadline) VALUES(?,?,?,?)",
-        ).run(id, user.id, JSON.stringify(qs), deadline);
+        await db
+          .prepare(
+            "INSERT INTO attempts(id,user_id,questions,deadline) VALUES(?,?,?,?)",
+          )
+          .run(id, user.id, JSON.stringify(qs), deadline);
         return json({
           id,
           deadline,
@@ -545,7 +761,7 @@ export async function POST(
             answers: z.record(z.string(), z.number().int().min(-1).max(5)),
           })
           .parse(body);
-        const a = one(
+        const a = await one(
           "SELECT * FROM attempts WHERE id=? AND user_id=?",
           v.id,
           user.id,
@@ -560,14 +776,20 @@ export async function POST(
         const score = answers.filter(
           (q: Row) => q.selected === q.correct,
         ).length;
-        db.prepare("UPDATE attempts SET finished=1 WHERE id=?").run(a.id);
-        db.prepare(
-          "INSERT INTO results(id,user_id,answers,score,total) VALUES(?,?,?,?,?)",
-        ).run(a.id, user.id, JSON.stringify(answers), score, qs.length);
+        await db.prepare("UPDATE attempts SET finished=1 WHERE id=?").run(a.id);
+        await db
+          .prepare(
+            "INSERT INTO results(id,user_id,answers,score,total) VALUES(?,?,?,?,?)",
+          )
+          .run(a.id, user.id, JSON.stringify(answers), score, qs.length);
         return json({ score, total: qs.length, answers });
       }
     }
-    if (user.role !== "admin") return fail("forbidden", 403);
+    if (
+      user.role !== "admin" &&
+      !(user.role === "operator" && p[0] === "admin" && p[1] === "reply")
+    )
+      return fail("forbidden", 403);
     if (p[0] === "admin") {
       if (p[1] === "reply") {
         const v = z
@@ -576,20 +798,25 @@ export async function POST(
             answer: z.string().trim().min(1).max(6000),
           })
           .parse(body);
-        if (!one("SELECT id FROM messages WHERE id=?", v.id))
+        if (!(await one("SELECT id FROM messages WHERE id=?", v.id)))
           return fail("notFound", 404);
-        db.prepare(
-          "UPDATE messages SET admin_reply=?,escalated=0 WHERE id=?",
-        ).run(v.answer, v.id);
+        await db
+          .prepare("UPDATE messages SET admin_reply=?,escalated=0 WHERE id=?")
+          .run(v.answer, v.id);
         return json({ ok: true });
       }
       if (p[1] === "role") {
         const v = z
-          .object({ id: z.string(), role: z.enum(["student", "instructor"]) })
+          .object({
+            id: z.string(),
+            role: z.enum(["student", "instructor", "operator"]),
+          })
           .parse(body);
-        const u = one("SELECT * FROM users WHERE id=?", v.id);
+        const u = await one("SELECT * FROM users WHERE id=?", v.id);
         if (!u || u.role === "admin") return fail("invalid");
-        db.prepare("UPDATE users SET role=? WHERE id=?").run(v.role, v.id);
+        await db
+          .prepare("UPDATE users SET role=? WHERE id=?")
+          .run(v.role, v.id);
         return json({ ok: true });
       }
       if (p[1] === "record") {
@@ -630,6 +857,7 @@ export async function POST(
           data = z
             .object({
               question: z.string().min(3).max(1000),
+              aliases: z.array(z.string().min(1).max(150)).max(30).optional(),
               answer: z.string().min(2).max(6000),
               category: z.string().max(100),
               locale: localeSchema,
@@ -666,33 +894,34 @@ export async function POST(
         if (
           v.kind === "instructors" &&
           data.userId &&
-          !one(
+          !(await one(
             "SELECT id FROM users WHERE id=? AND role='instructor'",
             data.userId,
-          )
+          ))
         )
           return fail("invalid");
         const id = v.id || randomUUID();
-        const existing = one("SELECT kind FROM records WHERE id=?", id);
+        const existing = await one("SELECT kind FROM records WHERE id=?", id);
         if (existing && existing.kind !== v.kind) return fail("invalid");
-        saveRecord(v.kind, id, data, user.id);
+        await saveRecord(v.kind, id, data, user.id);
         return json({ id });
       }
       if (p[1] === "delete") {
         const v = z.object({ kind: z.string(), id: z.string() }).parse(body);
-        const r = one(
+        const r = await one(
           "SELECT * FROM records WHERE id=? AND kind=?",
           v.id,
           v.kind,
         );
         if (r) {
-          db.prepare(
-            "INSERT INTO audit(actor,action,before_value) VALUES(?,?,?)",
-          ).run(user.id, "delete:" + v.kind, r.data);
-          db.prepare("DELETE FROM records WHERE id=? AND kind=?").run(
-            v.id,
-            v.kind,
-          );
+          await db
+            .prepare(
+              "INSERT INTO audit(actor,action,before_value) VALUES(?,?,?)",
+            )
+            .run(user.id, "delete:" + v.kind, r.data);
+          await db
+            .prepare("DELETE FROM records WHERE id=? AND kind=?")
+            .run(v.id, v.kind);
         }
         return json({ ok: true });
       }
@@ -702,14 +931,10 @@ export async function POST(
           .min(1)
           .max(1000)
           .parse(body.questions);
-        db.exec("BEGIN");
-        try {
-          for (const q of qs) saveRecord("questions", randomUUID(), q, user.id);
-          db.exec("COMMIT");
-        } catch (e) {
-          db.exec("ROLLBACK");
-          throw e;
-        }
+        await transaction(async () => {
+          for (const q of qs)
+            await saveRecord("questions", randomUUID(), q, user.id);
+        });
         return json({ count: qs.length });
       }
       if (p[1] === "import") {
@@ -727,7 +952,11 @@ export async function POST(
         }
         const groups = new Map<
           string,
-          { question: string; count: number; locale: string }
+          {
+            question: string;
+            count: number;
+            locale: string;
+          }
         >();
         for (const line of lines) {
           const question = anonymize(line.trim()).slice(0, 2000);
@@ -755,11 +984,13 @@ export async function POST(
           groups: [...groups.values()].sort((a, b) => b.count - a.count),
           note: "Identifiers masked automatically; review names and free text manually before approval. Similar-meaning clustering and AI drafting not enabled.",
         };
-        saveRecord("imports", id, data, user.id);
+        await saveRecord("imports", id, data, user.id);
         return json({ id, ...data });
       }
       if (p[1] === "audit")
-        return json(all("SELECT * FROM audit ORDER BY id DESC LIMIT 200"));
+        return json(
+          await all("SELECT * FROM audit ORDER BY id DESC LIMIT 200"),
+        );
     }
     return fail("notFound", 404);
   } catch (e) {
@@ -780,7 +1011,8 @@ async function chat(body: any, user: Row | null, identity: string) {
       handoff: z.boolean().optional(),
     })
     .parse(body);
-  if (!limit("chat:" + identity, 20, 3600)) return fail("rateLimit", 429);
+  if (!(await limit("chat:" + identity, 20, 3600)))
+    return fail("rateLimit", 429);
   const locale = /[ა-ჰ]/.test(v.message)
     ? "ka"
     : /[Ա-ֆ]/.test(v.message)
@@ -788,20 +1020,11 @@ async function chat(body: any, user: Row | null, identity: string) {
       : /[а-яё]/i.test(v.message)
         ? "ru"
         : v.locale;
-  const knowledge = [...approved("faq"), ...approved("knowledge")].filter(
-    (q) => q.locale === locale,
-  );
-  const normalized = v.message
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-  const match = knowledge.find(
-    (q) =>
-      String(q.question)
-        .toLocaleLowerCase()
-        .replace(/[^\p{L}\p{N}]+/gu, " ")
-        .trim() === normalized,
-  );
+  const knowledge = [
+    ...(await approved("faq")),
+    ...(await approved("knowledge")),
+  ].filter((q) => q.locale === locale);
+  const match = v.handoff ? undefined : findKnowledge(v.message, knowledge);
   let answer = match?.answer || fallback[locale],
     mode = match ? "faq" : "fallback";
   // This branch requires explicit server-side enabling, verified pricing and non-zero budgets.
@@ -830,12 +1053,12 @@ async function chat(body: any, user: Row | null, identity: string) {
       (Buffer.byteLength(instructions + v.message) * inputPrice +
         maxOutput * outputPrice) /
       1e6;
-    const spentDay = one(
+    const spentDay = (await one(
         "SELECT COALESCE(SUM(usd),0) AS n FROM usage WHERE created>=date('now')",
-      )!.n,
-      spentMonth = one(
+      ))!.n,
+      spentMonth = (await one(
         "SELECT COALESCE(SUM(usd),0) AS n FROM usage WHERE created>=date('now','start of month')",
-      )!.n;
+      ))!.n;
     if (
       daily > 0 &&
       monthly > 0 &&
@@ -845,7 +1068,9 @@ async function chat(body: any, user: Row | null, identity: string) {
       spentMonth + reserved <= monthly
     ) {
       const id = randomUUID();
-      db.prepare("INSERT INTO usage(id,usd) VALUES(?,?)").run(id, reserved);
+      await db
+        .prepare("INSERT INTO usage(id,usd) VALUES(?,?)")
+        .run(id, reserved);
       try {
         const r = await fetch("https://api.openai.com/v1/responses", {
           method: "POST",
@@ -874,13 +1099,15 @@ async function chat(body: any, user: Row | null, identity: string) {
             mode = "ai";
           }
           if (data.usage)
-            db.prepare("UPDATE usage SET usd=?,tokens=? WHERE id=?").run(
-              (data.usage.input_tokens * inputPrice +
-                data.usage.output_tokens * outputPrice) /
-                1e6,
-              data.usage.total_tokens,
-              id,
-            );
+            await db
+              .prepare("UPDATE usage SET usd=?,tokens=? WHERE id=?")
+              .run(
+                (data.usage.input_tokens * inputPrice +
+                  data.usage.output_tokens * outputPrice) /
+                  1e6,
+                data.usage.total_tokens,
+                id,
+              );
         }
       } catch {
         /* Keep reservation when network outcome is unknown. */
@@ -888,16 +1115,18 @@ async function chat(body: any, user: Row | null, identity: string) {
     }
   }
   const id = randomUUID();
-  db.prepare(
-    "INSERT INTO messages(id,user_id,locale,text,answer,escalated,guest_id) VALUES(?,?,?,?,?,?,?)",
-  ).run(
-    id,
-    user?.id || null,
-    locale,
-    anonymize(v.message),
-    answer,
-    v.handoff || mode === "fallback" ? 1 : 0,
-    user ? null : identity === "anonymous" ? null : identity,
-  );
-  return json({ id, answer, locale, mode });
+  await db
+    .prepare(
+      "INSERT INTO messages(id,user_id,locale,text,answer,escalated,guest_id) VALUES(?,?,?,?,?,?,?)",
+    )
+    .run(
+      id,
+      user?.id || null,
+      locale,
+      anonymize(v.message),
+      answer,
+      v.handoff || mode === "fallback" ? 1 : 0,
+      user ? null : identity === "anonymous" ? null : identity,
+    );
+  return json({ id, answer, locale, mode, source: match?.source || null });
 }

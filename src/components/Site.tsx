@@ -350,7 +350,12 @@ export default function Site({
   const header = (
     <header className={"header " + (page ? "header-light" : "")}>
       <Link href={href()} className="brand" aria-label="Motion Drive">
-        <span className="logo-crop"><img src="/images/logo-original.jpg" alt="MotionDrive Driving School" /></span>
+        <span className="logo-crop">
+          <img
+            src="/images/logo-original.jpg"
+            alt="MotionDrive Driving School"
+          />
+        </span>
       </Link>
       <nav className="desktop-nav">
         {nav.map((k) => (
@@ -687,11 +692,32 @@ export default function Site({
                   <p>{t("legalText")}</p>
                 </div>
               )}
-              {contactOnly && ["booking", "account", "admin", "instructor"].includes(page) && (<><Notice>{t("contactBooking")}</Notice>{contacts()}<a className="text-link" href="https://www.instagram.com/avtoshkola_akhalkalaki/" target="_blank" rel="noreferrer">Instagram <ArrowUpRight size={18} /></a></>)}
+              {contactOnly &&
+                [
+                  "booking",
+                  "account",
+                  "admin",
+                  "instructor",
+                  "operator",
+                ].includes(page) && (
+                  <>
+                    <Notice>{t("contactBooking")}</Notice>
+                    {contacts()}
+                    <a
+                      className="text-link"
+                      href="https://www.instagram.com/avtoshkola_akhalkalaki/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Instagram <ArrowUpRight size={18} />
+                    </a>
+                  </>
+                )}
               {!contactOnly && page === "booking" && (
                 <Booking locale={locale} t={t} user={user} content={content} />
               )}
-              {!contactOnly && page === "account" &&
+              {!contactOnly &&
+                page === "account" &&
                 (user === undefined ? (
                   <Notice>{t("loading")}</Notice>
                 ) : user ? (
@@ -705,7 +731,8 @@ export default function Site({
                 ) : (
                   <Auth locale={locale} t={t} onUser={setUser} />
                 ))}
-              {!contactOnly && ["admin", "instructor"].includes(page) &&
+              {!contactOnly &&
+                ["admin", "instructor", "operator"].includes(page) &&
                 (user === undefined ? (
                   <Notice>{t("loading")}</Notice>
                 ) : user && (user.role === "admin" || user.role === page) ? (
@@ -722,11 +749,21 @@ export default function Site({
                     <Auth locale={locale} t={t} onUser={setUser} />
                   </>
                 ))}
-              {page === "exam" && (contactOnly ? <Notice>{t("noQuestions")}</Notice> : <Exam locale={locale} t={t} user={user} />)}
+              {page === "exam" &&
+                (contactOnly ? (
+                  <Notice>{t("noQuestions")}</Notice>
+                ) : (
+                  <Exam locale={locale} t={t} user={user} />
+                ))}
             </section>
-            {!["admin", "instructor", "account", "exam", "booking"].includes(
-              page,
-            ) && cta}
+            {![
+              "admin",
+              "instructor",
+              "operator",
+              "account",
+              "exam",
+              "booking",
+            ].includes(page) && cta}
           </>
         )}
       </main>
@@ -740,7 +777,7 @@ export default function Site({
               </span>
             </Link>
             <p>{t("footerText")}</p>
-            <small>{contactOnly ? `${t("city1")} · ${t("city2")}` : t("draft")}</small>
+            <small>{`${t("city1")} · ${t("city2")}`}</small>
           </div>
           <div className="footer-nav">
             {[
@@ -786,17 +823,18 @@ export default function Site({
           <span>KA / HY / RU / EN</span>
         </div>
       </footer>
-      {!contactOnly && <button
-        className="chat-toggle"
-        onClick={() => setChat(!chat)}
-        aria-label={t(chat ? "close" : "chatTitle")}
-      >
-        {chat ? <X /> : <MessageCircle />}
-        <span>{t("chatTitle")}</span>
-        <span className="online-dot" />
-      </button>}
-      {contactOnly && <a className="chat-toggle" href={href("contacts")} aria-label={t("contacts")}><MessageCircle /><span>{t("contacts")}</span></a>}
-      {!contactOnly && chat && <Chat locale={locale} t={t} close={() => setChat(false)} />}
+      {
+        <button
+          className="chat-toggle"
+          onClick={() => setChat(!chat)}
+          aria-label={t(chat ? "close" : "chatTitle")}
+        >
+          {chat ? <X /> : <MessageCircle />}
+          <span>{t("chatTitle")}</span>
+          <span className="online-dot" />
+        </button>
+      }
+      {chat && <Chat locale={locale} t={t} close={() => setChat(false)} />}
       {activeMedia && (
         <div
           className="lightbox"
@@ -844,9 +882,9 @@ function Chat({
   t: (k: string) => string;
   close: () => void;
 }) {
-  const [items, setItems] = useState<{ text: string; own?: boolean }[]>([
-      { text: t("chatWelcome") },
-    ]),
+  const [items, setItems] = useState<
+      { text: string; own?: boolean; source?: string }[]
+    >([{ text: t("chatWelcome") }]),
     [input, setInput] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -888,7 +926,7 @@ function Chat({
     setError("");
     try {
       const r = await api("chat", { message, locale, handoff });
-      setItems((x) => [...x, { text: r.answer }]);
+      setItems((x) => [...x, { text: r.answer, source: r.source }]);
     } catch (e) {
       setError(t((e as Error).message));
     } finally {
@@ -910,6 +948,16 @@ function Chat({
         {items.map((m, i) => (
           <p className={m.own ? "own" : ""} key={i}>
             {m.text}
+            {m.source && /^(https:\/\/|\/(ka|hy|ru|en)\/)/.test(m.source) && (
+              <a
+                className="chat-source"
+                href={m.source}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t("source")} ↗
+              </a>
+            )}
           </p>
         ))}
         {busy && <p>{t("loading")}</p>}
