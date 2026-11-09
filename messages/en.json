@@ -213,5 +213,6 @@
   "slotDuration": "Lesson duration",
   "minutes": "min",
   "splitHours": "This period will be split into individual bookable slots.",
-  "slotOccupied": "This slot is booked. Reschedule or cancel the booking first."
+  "slotOccupied": "This slot is booked. Reschedule or cancel the booking first.",
+  "chatPublicWelcome": "Hello! Ask me about locations, phone numbers, opening hours and lessons. For individual enquiries, please contact the school using the Contact page."
 }

@@ -834,7 +834,14 @@ export default function Site({
           <span className="online-dot" />
         </button>
       }
-      {chat && <Chat locale={locale} t={t} close={() => setChat(false)} />}
+      {chat && (
+        <Chat
+          locale={locale}
+          t={t}
+          ready={!contactOnly}
+          close={() => setChat(false)}
+        />
+      )}
       {activeMedia && (
         <div
           className="lightbox"
@@ -873,18 +880,21 @@ export default function Site({
     </MotionConfig>
   );
 }
+const hrefForContacts = (locale: string) => `/${locale}/contacts`;
 function Chat({
   locale,
   t,
   close,
+  ready = true,
 }: {
   locale: string;
   t: (k: string) => string;
   close: () => void;
+  ready?: boolean;
 }) {
   const [items, setItems] = useState<
       { text: string; own?: boolean; source?: string }[]
-    >([{ text: t("chatWelcome") }]),
+    >([{ text: t(ready ? "chatWelcome" : "chatPublicWelcome") }]),
     [input, setInput] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -896,7 +906,7 @@ function Chat({
         .then((history: Item[]) => {
           if (active && history.length)
             setItems([
-              { text: t("chatWelcome") },
+              { text: t(ready ? "chatWelcome" : "chatPublicWelcome") },
               ...history.flatMap((m) => [
                 { text: m.text, own: true },
                 { text: m.answer },
@@ -964,10 +974,14 @@ function Chat({
         <div ref={end} />
       </div>
       <div className="chat-tools">
-        <button onClick={() => send(true)} disabled={busy}>
-          {t("handoff")}
-          <ArrowUpRight size={15} />
-        </button>
+        {ready ? (
+          <button onClick={() => send(true)} disabled={busy}>
+            {t("handoff")}
+            <ArrowUpRight size={15} />
+          </button>
+        ) : (
+          <Link href={hrefForContacts(locale)}>{t("contacts")} ↗</Link>
+        )}
         <small>{t("chatPrivacy")}</small>
         {error && (
           <p role="alert" className="error">
