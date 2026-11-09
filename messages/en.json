@@ -193,5 +193,6 @@
   "notification": "Status updates appear here. External notifications are not connected yet.",
   "languages": "Teaching languages",
   "vehicle": "Vehicle",
-  "bookingsPaused": "Enrollment requests are temporarily paused. Please contact the school."
+  "bookingsPaused": "Enrollment requests are temporarily paused. Please contact the school.",
+  "reply": "Administrator reply"
 }

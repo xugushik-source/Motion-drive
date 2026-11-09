@@ -1,8 +1,82 @@
-import test from 'node:test';import assert from 'node:assert/strict';
-import {registerSchema,bookingSchema,questionSchema,anonymize} from '../src/lib/schemas.ts';
-import {readFileSync} from 'node:fs';
-test('all four dictionaries have the same nonempty keys',()=>{const all=['ru','en','ka','hy'].map(l=>JSON.parse(readFileSync(`messages/${l}.json`,'utf8')));for(const d of all){assert.deepEqual(Object.keys(d).sort(),Object.keys(all[0]).sort());assert.ok(Object.values(d).every(x=>typeof x==='string'&&x.length>0));}});
-test('registration cannot set a privileged role and enforces password length',()=>{const parsed=registerSchema.parse({email:'student@example.com',password:'a-valid-long-password',name:'Student',locale:'ru',role:'admin'});assert.equal('role'in parsed,false);assert.equal(registerSchema.safeParse({...parsed,password:'short'}).success,false);});
-test('booking requires consent and rejects spam honeypot',()=>{const b={city:'akhalkalaki',program:'theory',gearbox:'none',name:'Student',contact:'test@example.com',consent:true};assert.ok(bookingSchema.safeParse(b).success);assert.equal(bookingSchema.safeParse({...b,consent:false}).success,false);assert.equal(bookingSchema.safeParse({...b,website:'spam'}).success,false);});
-test('question bank requires verification, source and a valid answer index',()=>{const q={question:'Verified training question?',options:['A','B'],correct:0,explanation:'Reviewed explanation',topic:'Signs',locale:'en',source:'https://www.sa.gov.ge/',verified:true,status:'draft',verifiedAt:'2026-11-09'};assert.ok(questionSchema.safeParse(q).success);assert.equal(questionSchema.safeParse({...q,correct:3}).success,false);assert.equal(questionSchema.safeParse({...q,verified:false}).success,false);});
-test('import masks contact identifiers',()=>{const s=anonymize('Write user@example.com or +995 597 93 93 27 @username https://example.com/profile');assert.ok(!s.includes('user@example.com'));assert.ok(!s.includes('597'));assert.ok(!s.includes('@username'));assert.ok(s.includes('[url]'));});
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  registerSchema,
+  bookingSchema,
+  questionSchema,
+  anonymize,
+} from "../src/lib/schemas.ts";
+import { readFileSync } from "node:fs";
+test("all four dictionaries have the same nonempty keys", () => {
+  const all = ["ru", "en", "ka", "hy"].map((l) =>
+    JSON.parse(readFileSync(`messages/${l}.json`, "utf8")),
+  );
+  for (const d of all) {
+    assert.deepEqual(Object.keys(d).sort(), Object.keys(all[0]).sort());
+    assert.ok(
+      Object.values(d).every((x) => typeof x === "string" && x.length > 0),
+    );
+  }
+});
+test("registration cannot set a privileged role and enforces password length", () => {
+  const parsed = registerSchema.parse({
+    email: "student@example.com",
+    password: "a-valid-long-password",
+    name: "Student",
+    locale: "ru",
+    role: "admin",
+  });
+  assert.equal("role" in parsed, false);
+  assert.equal(
+    registerSchema.safeParse({ ...parsed, password: "short" }).success,
+    false,
+  );
+});
+test("booking requires consent and rejects spam honeypot", () => {
+  const b = {
+    city: "akhalkalaki",
+    program: "theory",
+    gearbox: "none",
+    name: "Student",
+    contact: "test@example.com",
+    consent: true,
+  };
+  assert.ok(bookingSchema.safeParse(b).success);
+  assert.equal(
+    bookingSchema.safeParse({ ...b, consent: false }).success,
+    false,
+  );
+  assert.equal(
+    bookingSchema.safeParse({ ...b, website: "spam" }).success,
+    false,
+  );
+});
+test("question bank requires verification, source and a valid answer index", () => {
+  const q = {
+    question: "Verified training question?",
+    options: ["A", "B"],
+    correct: 0,
+    explanation: "Reviewed explanation",
+    topic: "Signs",
+    locale: "en",
+    source: "https://www.sa.gov.ge/",
+    verified: true,
+    status: "draft",
+    verifiedAt: "2026-11-09",
+  };
+  assert.ok(questionSchema.safeParse(q).success);
+  assert.equal(questionSchema.safeParse({ ...q, correct: 3 }).success, false);
+  assert.equal(
+    questionSchema.safeParse({ ...q, verified: false }).success,
+    false,
+  );
+});
+test("import masks contact identifiers", () => {
+  const s = anonymize(
+    "Write user@example.com or +995 597 93 93 27 @username https://example.com/profile",
+  );
+  assert.ok(!s.includes("user@example.com"));
+  assert.ok(!s.includes("597"));
+  assert.ok(!s.includes("@username"));
+  assert.ok(s.includes("[url]"));
+});

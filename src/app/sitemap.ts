@@ -1,2 +1,27 @@
-import type {MetadataRoute} from 'next';
-export default function sitemap():MetadataRoute.Sitemap{const base=process.env.APP_URL||'http://localhost:3000';return ['ka','hy','ru','en'].flatMap(l=>['','about','courses','pricing','instructors','exam','gallery','faq','contacts','reviews','akhalkalaki','ninotsminda'].map(p=>({url:`${base}/${l}/${p}`,alternates:{languages:Object.fromEntries(['ka','hy','ru','en'].map(x=>[x,`${base}/${x}/${p}`]))}})));}
+import type { MetadataRoute } from "next";
+export default function sitemap(): MetadataRoute.Sitemap {
+  const base = process.env.APP_URL || "http://localhost:3000";
+  return ["ka", "hy", "ru", "en"].flatMap((l) =>
+    [
+      "",
+      "about",
+      "courses",
+      "pricing",
+      "instructors",
+      "exam",
+      "gallery",
+      "faq",
+      "contacts",
+      "reviews",
+      "akhalkalaki",
+      "ninotsminda",
+    ].map((p) => ({
+      url: `${base}/${l}/${p}`,
+      alternates: {
+        languages: Object.fromEntries(
+          ["ka", "hy", "ru", "en"].map((x) => [x, `${base}/${x}/${p}`]),
+        ),
+      },
+    })),
+  );
+}

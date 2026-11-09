@@ -1,9 +1,9 @@
-import {DatabaseSync} from 'node:sqlite';
-import {mkdirSync} from 'node:fs';
-import {dirname,resolve} from 'node:path';
-const path=resolve(process.env.DATABASE_PATH||'./data/motion-drive.sqlite');
-mkdirSync(dirname(path),{recursive:true,mode:0o700});
-export const db=new DatabaseSync(path);
+import { DatabaseSync } from "node:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+const path = resolve(process.env.DATABASE_PATH || "./data/motion-drive.sqlite");
+mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+export const db = new DatabaseSync(path);
 db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'student',locale TEXT NOT NULL DEFAULT 'ru');
 CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);
@@ -20,9 +20,43 @@ CREATE TABLE IF NOT EXISTS usage(id TEXT PRIMARY KEY,usd REAL NOT NULL,tokens IN
 CREATE TABLE IF NOT EXISTS limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,reset INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS uploads(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),mime TEXT NOT NULL,name TEXT NOT NULL,created TEXT DEFAULT CURRENT_TIMESTAMP);
 `);
-export type Row=Record<string,any>;
-export const all=(sql:string,...args:any[])=>db.prepare(sql).all(...args) as Row[];
-export const one=(sql:string,...args:any[])=>db.prepare(sql).get(...args) as Row|undefined;
-export function records(kind:string){return all('SELECT * FROM records WHERE kind=? ORDER BY updated DESC',kind).map(r=>({id:r.id,...JSON.parse(r.data)}));}
-export function saveRecord(kind:string,id:string,data:Row,actor:string){const before=one('SELECT data FROM records WHERE id=? AND kind=?',id,kind);db.prepare('INSERT INTO records(id,kind,data) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated=CURRENT_TIMESTAMP').run(id,kind,JSON.stringify(data));db.prepare('INSERT INTO audit(actor,action,before_value,after_value) VALUES(?,?,?,?)').run(actor,kind+':'+id,before?.data||null,JSON.stringify(data));}
-export function limit(key:string,max:number,seconds=60){const now=Date.now();db.prepare('INSERT INTO limits(key,count,reset) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN reset<? THEN 1 ELSE count+1 END,reset=CASE WHEN reset<? THEN excluded.reset ELSE reset END').run(key,now+seconds*1000,now,now);return (one('SELECT count FROM limits WHERE key=?',key)?.count||0)<=max;}
+const messageColumns = db.prepare("PRAGMA table_info(messages)").all() as {
+  name: string;
+}[];
+for (const [name, type] of [
+  ["guest_id", "TEXT"],
+  ["admin_reply", "TEXT NOT NULL DEFAULT ''"],
+])
+  if (!messageColumns.some((c) => c.name === name))
+    db.exec(`ALTER TABLE messages ADD COLUMN ${name} ${type}`);
+export type Row = Record<string, any>;
+export const all = (sql: string, ...args: any[]) =>
+  db.prepare(sql).all(...args) as Row[];
+export const one = (sql: string, ...args: any[]) =>
+  db.prepare(sql).get(...args) as Row | undefined;
+export function records(kind: string) {
+  return all(
+    "SELECT * FROM records WHERE kind=? ORDER BY updated DESC",
+    kind,
+  ).map((r) => ({ id: r.id, ...JSON.parse(r.data) }));
+}
+export function saveRecord(kind: string, id: string, data: Row, actor: string) {
+  const before = one(
+    "SELECT data FROM records WHERE id=? AND kind=?",
+    id,
+    kind,
+  );
+  db.prepare(
+    "INSERT INTO records(id,kind,data) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated=CURRENT_TIMESTAMP",
+  ).run(id, kind, JSON.stringify(data));
+  db.prepare(
+    "INSERT INTO audit(actor,action,before_value,after_value) VALUES(?,?,?,?)",
+  ).run(actor, kind + ":" + id, before?.data || null, JSON.stringify(data));
+}
+export function limit(key: string, max: number, seconds = 60) {
+  const now = Date.now();
+  db.prepare(
+    "INSERT INTO limits(key,count,reset) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN reset<? THEN 1 ELSE count+1 END,reset=CASE WHEN reset<? THEN excluded.reset ELSE reset END",
+  ).run(key, now + seconds * 1000, now, now);
+  return (one("SELECT count FROM limits WHERE key=?", key)?.count || 0) <= max;
+}

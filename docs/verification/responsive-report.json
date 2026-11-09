@@ -9,24 +9,5 @@
     1024,
     1440
   ],
-  "failures": [
-    [
-      "ka",
-      "privacy",
-      200,
-      "overflow"
-    ],
-    [
-      "ru",
-      "privacy",
-      200,
-      "overflow"
-    ],
-    [
-      "ka",
-      "home",
-      320,
-      "overflow"
-    ]
-  ]
+  "failures": []
 }

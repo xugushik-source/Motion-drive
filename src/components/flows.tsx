@@ -1,9 +1,469 @@
-'use client';
-import {useEffect,useState,useRef} from 'react';
-import Link from 'next/link';
-import {ArrowUpRight,ArrowRight,Check,Clock,ShieldCheck} from 'lucide-react';
-import {api,Field,Notice,type Item} from './Site';
-type Common={locale:string,t:(k:string)=>string};
-export function Auth({locale,t,onUser}:{onUser:(u:Item)=>void}&Common){const [register,setRegister]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false);return <div className="auth-layout"><div><span className="eyebrow">MOTION DRIVE / YOUR SPACE</span><h2>{t('account')}</h2><p>{t('loginToBook')}</p><div className="auth-perks">{['bookings','progress','materials'].map(k=><p key={k}><Check size={18}/>{t(k)}</p>)}</div></div><form className="form-card" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');const data=Object.fromEntries(new FormData(e.currentTarget));try{const r=await api('auth/'+(register?'register':'login'),{...data,locale});onUser(r.user);}catch(e){setError(t((e as Error).message));}finally{setBusy(false);}}}><div className="tabs"><button type="button" className={!register?'selected':''} onClick={()=>setRegister(false)}>{t('login')}</button><button type="button" className={register?'selected':''} onClick={()=>setRegister(true)}>{t('register')}</button></div>{register&&<Field label={t('name')}><input name="name" autoComplete="name" minLength={2} maxLength={100} required/></Field>}<Field label={t('email')}><input name="email" type="email" autoComplete="email" maxLength={180} required/></Field><Field label={t('password')}><input name="password" type="password" autoComplete={register?'new-password':'current-password'} minLength={register?12:1} maxLength={128} required/></Field>{register&&<label className="checkbox"><input type="checkbox" required/><span>{t('consent')} · <Link href={'/'+locale+'/privacy'}>{t('privacy')}</Link></span></label>}{error&&<p className="error" role="alert">{error}</p>}<button className="button" disabled={busy}>{t(busy?'loading':register?'register':'login')}<ArrowRight size={18}/></button></form></div>;}
-export function Booking({locale,t,user,content}:{user:Item|null|undefined,content:Record<string,Item[]>}&Common){const [localUser,setLocalUser]=useState(user),[slots,setSlots]=useState<Item[]>([]),[city,setCity]=useState('akhalkalaki'),[instructor,setInstructor]=useState(''),[error,setError]=useState(''),[sent,setSent]=useState(false),[busy,setBusy]=useState(false);useEffect(()=>setLocalUser(user),[user]);useEffect(()=>{api('slots').then(setSlots).catch(()=>setError(t('serverError')));},[]);if(!localUser)return user===undefined?<Notice>{t('loading')}</Notice>:<Auth locale={locale} t={t} onUser={setLocalUser}/>;if(sent)return <div className="success-card"><ShieldCheck size={55}/><h2>{t('sent')}</h2><Link className="button" href={'/'+locale+'/account'}>{t('account')}<ArrowUpRight/></Link></div>;const available=slots.filter(s=>s.city===city&&(!instructor||s.instructor_id===instructor));return <div className="booking-layout"><aside><p className="eyebrow">01 — 02 — 03</p><h2>{t('ctaTitle')}</h2><p>{t('ctaText')}</p><div className="booking-summary"><ShieldCheck size={22}/><p>{t('notification')}</p></div></aside><form className="form-card" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');const f=Object.fromEntries(new FormData(e.currentTarget));try{await api('booking/create',{...f,city,instructor_id:instructor||null,slot_id:f.slot_id||null,consent:true});setSent(true);}catch(e){setError(t((e as Error).message));if((e as Error).message==='slotUnavailable')api('slots').then(setSlots);}finally{setBusy(false);}}}><div className="form-grid"><Field label={t('city')}><select value={city} onChange={e=>{setCity(e.target.value);setInstructor('');}}><option value="akhalkalaki">{t('city1')}</option><option value="ninotsminda">{t('city2')}</option></select></Field><Field label={t('program')}><select name="program" required>{['theory','practice','individual','group','exam'].map(k=><option key={k} value={k}>{t(k)}</option>)}</select></Field><Field label={t('gearbox')}><select name="gearbox">{['none','manual','automatic'].map(k=><option key={k} value={k}>{t(k)}</option>)}</select></Field><Field label={t('instructors')}><select value={instructor} onChange={e=>setInstructor(e.target.value)}><option value="">{t('any')}</option>{content.instructors.filter(i=>i.userId).map(i=><option key={i.id} value={i.userId}>{i.title}</option>)}</select></Field></div><Field label={t('date')}><select name="slot_id" key={city+instructor}><option value="">{t('agreeTime')}</option>{available.map(s=><option value={s.id} key={s.id}>{new Date(s.start).toLocaleString(locale,{timeZone:'Asia/Tbilisi'})} — {new Date(s.end).toLocaleTimeString(locale,{timeZone:'Asia/Tbilisi',hour:'2-digit',minute:'2-digit'})} (Georgia)</option>)}</select></Field>{!available.length&&<Notice>{t('noSlots')}</Notice>}<div className="form-grid"><Field label={t('name')}><input name="name" defaultValue={localUser.name} minLength={2} maxLength={100} autoComplete="name" required/></Field><Field label={t('contact')}><input name="contact" defaultValue={localUser.email} minLength={5} maxLength={180} autoComplete="email" required/></Field></div><Field label={t('note')}><textarea name="note" maxLength={1200} rows={3}/></Field><div className="honeypot" aria-hidden="true"><input name="website" tabIndex={-1} autoComplete="off"/></div><label className="checkbox"><input type="checkbox" name="consent" required/><span>{t('consent')} · <Link href={'/'+locale+'/privacy'}>{t('privacy')}</Link></span></label><small>{t('confirm')}</small>{error&&<p className="error" role="alert">{error}</p>}<button className="button" disabled={busy}>{t(busy?'loading':'send')}<ArrowUpRight size={20}/></button></form></div>;}
-export function Exam({locale,t,user}:{user:Item|null|undefined}&Common){const [attempt,setAttempt]=useState<Item|null>(null),[answers,setAnswers]=useState<Record<string,number>>({}),[result,setResult]=useState<Item|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[seconds,setSeconds]=useState(1200);const submitting=useRef(false);async function submit(){if(!attempt||submitting.current)return;submitting.current=true;setBusy(true);try{setResult(await api('exam/submit',{id:attempt.id,answers}));setAttempt(null);}catch(e){setError(t((e as Error).message));}finally{setBusy(false);submitting.current=false;}}useEffect(()=>{if(!attempt)return;const tick=()=>setSeconds(Math.max(0,Math.ceil((attempt.deadline-Date.now())/1000)));tick();const timer=setInterval(tick,1000);return()=>clearInterval(timer);},[attempt]);useEffect(()=>{if(attempt&&seconds===0)void submit();},[seconds]);return <div className="exam-layout"><Notice>{t('examNotice')}</Notice><a className="text-link" href="https://www.sa.gov.ge/p/driver-license/theoretical-test" target="_blank" rel="noreferrer">{t('official')}<ArrowUpRight size={18}/></a>{!user?<Link className="button" href={'/'+locale+'/account'}>{t('login')}<ArrowRight/></Link>:!attempt&&!result?<button className="button" disabled={busy} onClick={async()=>{setError('');setBusy(true);try{setAttempt(await api('exam/start',{locale}));setAnswers({});setSeconds(1200);}catch(e){setError(t((e as Error).message));}finally{setBusy(false);}}}>{t(busy?'loading':'startExam')}<ArrowRight/></button>:null}{attempt&&<><div className="exam-timer"><Clock size={20}/>{t('timer')}: {Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</div>{attempt.questions.map((q:Item,i:number)=><fieldset className="question-card" key={q.id}><legend>{i+1}. {q.question}</legend>{q.options.map((option:string,n:number)=><label key={n} className={'answer-option '+(answers[q.id]===n?'chosen':'')}><input type="radio" name={q.id} checked={answers[q.id]===n} onChange={()=>setAnswers(a=>({...a,[q.id]:n}))}/>{option}</label>)}</fieldset>)}<button className="button" onClick={submit} disabled={busy}>{t('submitExam')}<Check/></button></>}{result&&<><h2>{result.score} / {result.total}</h2>{result.answers.map((q:Item)=><article className="question-card" key={q.id}><span className={q.selected===q.correct?'success':'error'}>{t(q.selected===q.correct?'correct':'wrong')}</span><h3>{q.question}</h3><p>{t('correct')}: {q.options[q.correct]}</p><p>{q.explanation}</p><a href={q.source} target="_blank" rel="noreferrer">{t('source')} ↗</a></article>)}<button className="button outline-dark" onClick={()=>setResult(null)}>{t('back')}</button></>}{error&&<p className="error" role="alert">{error}</p>}</div>;}
+"use client";
+import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
+import {
+  ArrowUpRight,
+  ArrowRight,
+  Check,
+  Clock,
+  ShieldCheck,
+} from "lucide-react";
+import { api, Field, Notice, type Item } from "./Site";
+type Common = { locale: string; t: (k: string) => string };
+export function Auth({
+  locale,
+  t,
+  onUser,
+}: { onUser: (u: Item) => void } & Common) {
+  const [register, setRegister] = useState(false),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  return (
+    <div className="auth-layout">
+      <div>
+        <span className="eyebrow">MOTION DRIVE / YOUR SPACE</span>
+        <h2>{t("account")}</h2>
+        <p>{t("loginToBook")}</p>
+        <div className="auth-perks">
+          {["bookings", "progress", "materials"].map((k) => (
+            <p key={k}>
+              <Check size={18} />
+              {t(k)}
+            </p>
+          ))}
+        </div>
+      </div>
+      <form
+        className="form-card"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError("");
+          const data = Object.fromEntries(new FormData(e.currentTarget));
+          try {
+            const r = await api("auth/" + (register ? "register" : "login"), {
+              ...data,
+              locale,
+            });
+            onUser(r.user);
+          } catch (e) {
+            setError(t((e as Error).message));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <div className="tabs">
+          <button
+            type="button"
+            className={!register ? "selected" : ""}
+            onClick={() => setRegister(false)}
+          >
+            {t("login")}
+          </button>
+          <button
+            type="button"
+            className={register ? "selected" : ""}
+            onClick={() => setRegister(true)}
+          >
+            {t("register")}
+          </button>
+        </div>
+        {register && (
+          <Field label={t("name")}>
+            <input
+              name="name"
+              autoComplete="name"
+              minLength={2}
+              maxLength={100}
+              required
+            />
+          </Field>
+        )}
+        <Field label={t("email")}>
+          <input
+            name="email"
+            type="email"
+            autoComplete="email"
+            maxLength={180}
+            required
+          />
+        </Field>
+        <Field label={t("password")}>
+          <input
+            name="password"
+            type="password"
+            autoComplete={register ? "new-password" : "current-password"}
+            minLength={register ? 12 : 1}
+            maxLength={128}
+            required
+          />
+        </Field>
+        {register && (
+          <label className="checkbox">
+            <input type="checkbox" required />
+            <span>
+              {t("consent")} ·{" "}
+              <Link href={"/" + locale + "/privacy"}>{t("privacy")}</Link>
+            </span>
+          </label>
+        )}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button className="button" disabled={busy}>
+          {t(busy ? "loading" : register ? "register" : "login")}
+          <ArrowRight size={18} />
+        </button>
+      </form>
+    </div>
+  );
+}
+export function Booking({
+  locale,
+  t,
+  user,
+  content,
+}: {
+  user: Item | null | undefined;
+  content: Record<string, Item[]>;
+} & Common) {
+  const [localUser, setLocalUser] = useState(user),
+    [slots, setSlots] = useState<Item[]>([]),
+    [city, setCity] = useState("akhalkalaki"),
+    [instructor, setInstructor] = useState(""),
+    [error, setError] = useState(""),
+    [sent, setSent] = useState(false),
+    [busy, setBusy] = useState(false);
+  useEffect(() => setLocalUser(user), [user]);
+  useEffect(() => {
+    api("slots")
+      .then(setSlots)
+      .catch(() => setError(t("serverError")));
+  }, []);
+  if (!localUser)
+    return user === undefined ? (
+      <Notice>{t("loading")}</Notice>
+    ) : (
+      <Auth locale={locale} t={t} onUser={setLocalUser} />
+    );
+  if (sent)
+    return (
+      <div className="success-card">
+        <ShieldCheck size={55} />
+        <h2>{t("sent")}</h2>
+        <Link className="button" href={"/" + locale + "/account"}>
+          {t("account")}
+          <ArrowUpRight />
+        </Link>
+      </div>
+    );
+  const available = slots.filter(
+    (s) => s.city === city && (!instructor || s.instructor_id === instructor),
+  );
+  return (
+    <div className="booking-layout">
+      <aside>
+        <p className="eyebrow">01 — 02 — 03</p>
+        <h2>{t("ctaTitle")}</h2>
+        <p>{t("ctaText")}</p>
+        <div className="booking-summary">
+          <ShieldCheck size={22} />
+          <p>{t("notification")}</p>
+        </div>
+      </aside>
+      <form
+        className="form-card"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError("");
+          const f = Object.fromEntries(new FormData(e.currentTarget));
+          try {
+            await api("booking/create", {
+              ...f,
+              city,
+              instructor_id: instructor || null,
+              slot_id: f.slot_id || null,
+              consent: true,
+            });
+            setSent(true);
+          } catch (e) {
+            setError(t((e as Error).message));
+            if ((e as Error).message === "slotUnavailable")
+              api("slots").then(setSlots);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <div className="form-grid">
+          <Field label={t("city")}>
+            <select
+              value={city}
+              onChange={(e) => {
+                setCity(e.target.value);
+                setInstructor("");
+              }}
+            >
+              <option value="akhalkalaki">{t("city1")}</option>
+              <option value="ninotsminda">{t("city2")}</option>
+            </select>
+          </Field>
+          <Field label={t("program")}>
+            <select name="program" required>
+              {["theory", "practice", "individual", "group", "exam"].map(
+                (k) => (
+                  <option key={k} value={k}>
+                    {t(k)}
+                  </option>
+                ),
+              )}
+            </select>
+          </Field>
+          <Field label={t("gearbox")}>
+            <select name="gearbox">
+              {["none", "manual", "automatic"].map((k) => (
+                <option key={k} value={k}>
+                  {t(k)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={t("instructors")}>
+            <select
+              value={instructor}
+              onChange={(e) => setInstructor(e.target.value)}
+            >
+              <option value="">{t("any")}</option>
+              {content.instructors
+                .filter((i) => i.userId)
+                .map((i) => (
+                  <option key={i.id} value={i.userId}>
+                    {i.title}
+                  </option>
+                ))}
+            </select>
+          </Field>
+        </div>
+        <Field label={t("date")}>
+          <select name="slot_id" key={city + instructor}>
+            <option value="">{t("agreeTime")}</option>
+            {available.map((s) => (
+              <option value={s.id} key={s.id}>
+                {new Date(s.start).toLocaleString(locale, {
+                  timeZone: "Asia/Tbilisi",
+                })}{" "}
+                —{" "}
+                {new Date(s.end).toLocaleTimeString(locale, {
+                  timeZone: "Asia/Tbilisi",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                (Georgia)
+              </option>
+            ))}
+          </select>
+        </Field>
+        {!available.length && <Notice>{t("noSlots")}</Notice>}
+        <div className="form-grid">
+          <Field label={t("name")}>
+            <input
+              name="name"
+              defaultValue={localUser.name}
+              minLength={2}
+              maxLength={100}
+              autoComplete="name"
+              required
+            />
+          </Field>
+          <Field label={t("contact")}>
+            <input
+              name="contact"
+              defaultValue={localUser.email}
+              minLength={5}
+              maxLength={180}
+              autoComplete="email"
+              required
+            />
+          </Field>
+        </div>
+        <Field label={t("note")}>
+          <textarea name="note" maxLength={1200} rows={3} />
+        </Field>
+        <div className="honeypot" aria-hidden="true">
+          <input name="website" tabIndex={-1} autoComplete="off" />
+        </div>
+        <label className="checkbox">
+          <input type="checkbox" name="consent" required />
+          <span>
+            {t("consent")} ·{" "}
+            <Link href={"/" + locale + "/privacy"}>{t("privacy")}</Link>
+          </span>
+        </label>
+        <small>{t("confirm")}</small>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button className="button" disabled={busy}>
+          {t(busy ? "loading" : "send")}
+          <ArrowUpRight size={20} />
+        </button>
+      </form>
+    </div>
+  );
+}
+export function Exam({
+  locale,
+  t,
+  user,
+}: { user: Item | null | undefined } & Common) {
+  const [attempt, setAttempt] = useState<Item | null>(null),
+    [answers, setAnswers] = useState<Record<string, number>>({}),
+    [result, setResult] = useState<Item | null>(null),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [seconds, setSeconds] = useState(1200);
+  const submitting = useRef(false);
+  async function submit() {
+    if (!attempt || submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    try {
+      setResult(await api("exam/submit", { id: attempt.id, answers }));
+      setAttempt(null);
+    } catch (e) {
+      setError(t((e as Error).message));
+    } finally {
+      setBusy(false);
+      submitting.current = false;
+    }
+  }
+  useEffect(() => {
+    if (!attempt) return;
+    const tick = () =>
+      setSeconds(
+        Math.max(0, Math.ceil((attempt.deadline - Date.now()) / 1000)),
+      );
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [attempt]);
+  useEffect(() => {
+    if (attempt && seconds === 0) void submit();
+  }, [seconds]);
+  return (
+    <div className="exam-layout">
+      <Notice>{t("examNotice")}</Notice>
+      <a
+        className="text-link"
+        href="https://www.sa.gov.ge/p/driver-license/theoretical-test"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {t("official")}
+        <ArrowUpRight size={18} />
+      </a>
+      {!user ? (
+        <Link className="button" href={"/" + locale + "/account"}>
+          {t("login")}
+          <ArrowRight />
+        </Link>
+      ) : !attempt && !result ? (
+        <button
+          className="button"
+          disabled={busy}
+          onClick={async () => {
+            setError("");
+            setBusy(true);
+            try {
+              setAttempt(await api("exam/start", { locale }));
+              setAnswers({});
+              setSeconds(1200);
+            } catch (e) {
+              setError(t((e as Error).message));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {t(busy ? "loading" : "startExam")}
+          <ArrowRight />
+        </button>
+      ) : null}
+      {attempt && (
+        <>
+          <div className="exam-timer">
+            <Clock size={20} />
+            {t("timer")}: {Math.floor(seconds / 60)}:
+            {String(seconds % 60).padStart(2, "0")}
+          </div>
+          {attempt.questions.map((q: Item, i: number) => (
+            <fieldset className="question-card" key={q.id}>
+              <legend>
+                {i + 1}. {q.question}
+              </legend>
+              {q.options.map((option: string, n: number) => (
+                <label
+                  key={n}
+                  className={
+                    "answer-option " + (answers[q.id] === n ? "chosen" : "")
+                  }
+                >
+                  <input
+                    type="radio"
+                    name={q.id}
+                    checked={answers[q.id] === n}
+                    onChange={() => setAnswers((a) => ({ ...a, [q.id]: n }))}
+                  />
+                  {option}
+                </label>
+              ))}
+            </fieldset>
+          ))}
+          <button className="button" onClick={submit} disabled={busy}>
+            {t("submitExam")}
+            <Check />
+          </button>
+        </>
+      )}
+      {result && (
+        <>
+          <h2>
+            {result.score} / {result.total}
+          </h2>
+          {result.answers.map((q: Item) => (
+            <article className="question-card" key={q.id}>
+              <span className={q.selected === q.correct ? "success" : "error"}>
+                {t(q.selected === q.correct ? "correct" : "wrong")}
+              </span>
+              <h3>{q.question}</h3>
+              <p>
+                {t("correct")}: {q.options[q.correct]}
+              </p>
+              <p>{q.explanation}</p>
+              <a href={q.source} target="_blank" rel="noreferrer">
+                {t("source")} ↗
+              </a>
+            </article>
+          ))}
+          <button
+            className="button outline-dark"
+            onClick={() => setResult(null)}
+          >
+            {t("back")}
+          </button>
+        </>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}

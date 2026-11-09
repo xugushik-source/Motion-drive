@@ -12,7 +12,9 @@
     "FAQ fallback",
     "import masking",
     "CSRF origin",
-    "SQLite persistence"
+    "SQLite persistence",
+    "administrator chat reply",
+    "chat history isolation"
   ],
   "paid_api_calls": 0
 }
