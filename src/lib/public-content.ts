@@ -12,7 +12,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "Елена Барбарян",
       "offer": "Теория и практика вождения",
-      "whatsapp": "995597939327"
+      "whatsapp": "995597939327",
+      "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო"
     },
     {
       "id": "ninotsminda-ru",
@@ -25,7 +26,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "Аревик Гамбарян",
       "offer": "Теория. Практика вождения — в Ахалкалаки",
-      "whatsapp": "995597927492"
+      "whatsapp": "995597927492",
+      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო"
     },
     {
       "id": "akhalkalaki-en",
@@ -38,7 +40,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "Elena Barbaryan",
       "offer": "Theory and driving practice",
-      "whatsapp": "995597939327"
+      "whatsapp": "995597939327",
+      "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო"
     },
     {
       "id": "ninotsminda-en",
@@ -51,7 +54,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "Arevik Hambaryan",
       "offer": "Theory. Driving practice is in Akhalkalaki",
-      "whatsapp": "995597927492"
+      "whatsapp": "995597927492",
+      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო"
     },
     {
       "id": "akhalkalaki-ka",
@@ -64,7 +68,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "ელენა ბარბარიანი",
       "offer": "თეორია და მართვის პრაქტიკა",
-      "whatsapp": "995597939327"
+      "whatsapp": "995597939327",
+      "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო"
     },
     {
       "id": "ninotsminda-ka",
@@ -77,7 +82,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "არევიკ ჰამბარიანი",
       "offer": "თეორია. მართვის პრაქტიკა — ახალქალაქში",
-      "whatsapp": "995597927492"
+      "whatsapp": "995597927492",
+      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო"
     },
     {
       "id": "akhalkalaki-hy",
@@ -90,7 +96,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "Ելենա Բարբարյան",
       "offer": "Տեսություն և վարման պրակտիկա",
-      "whatsapp": "995597939327"
+      "whatsapp": "995597939327",
+      "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო"
     },
     {
       "id": "ninotsminda-hy",
@@ -103,7 +110,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "source": "https://jnews.ge/162061/",
       "admin": "Արևիկ Համբարյան",
       "offer": "Տեսություն։ Վարման պրակտիկան՝ Ախալքալաքում",
-      "whatsapp": "995597927492"
+      "whatsapp": "995597927492",
+      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო"
     }
   ],
   "faq": [
