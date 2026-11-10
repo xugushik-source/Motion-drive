@@ -101,7 +101,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "phone": "+995 597 92 74 92",
       "status": "published",
       "source": "https://jnews.ge/162061/",
-      "admin": "Արևիկ Գամբարյան",
+      "admin": "Արևիկ Համբարյան",
       "offer": "Տեսություն։ Վարման պրակտիկան՝ Ախալքալաքում",
       "whatsapp": "995597927492"
     }
