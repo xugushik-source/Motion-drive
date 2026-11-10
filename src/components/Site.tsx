@@ -269,7 +269,9 @@ export default function Site({
                 // an exact pin link from the school wins; otherwise the full Georgian address
                 b?.map ||
                 `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                  b?.mapQuery || `${b?.address || ""}, ${city}, Georgia`,
+                  b?.coords ||
+                    b?.mapQuery ||
+                    `${b?.address || ""}, ${city}, Georgia`,
                 )}`
               }
               target="_blank"
