@@ -2,21 +2,37 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import type { Item } from "./Site";
-export const georgiaDay = (iso: string) =>
-  new Date(Date.parse(iso) + 4 * 3600000).toISOString().slice(0, 10);
+import { georgiaDay } from "../lib/schedule";
+export { georgiaDay };
 export default function AvailabilityPicker({
   slots,
   locale,
   t,
   value,
   onChange,
+  max = 1,
 }: {
   slots: Item[];
   locale: string;
   t: (key: string) => string;
-  value: string;
-  onChange: (id: string) => void;
+  value: string[];
+  onChange: (ids: string[]) => void;
+  max?: number;
 }) {
+  // One lesson per day: picking another hour on the same day replaces it.
+  const toggle = (slot: Item) => {
+    if (value.includes(slot.id))
+      return onChange(value.filter((v) => v !== slot.id));
+    const sameDay = (id: string) =>
+      georgiaDay(slots.find((s) => s.id === id)?.start || "") ===
+      georgiaDay(slot.start);
+    const kept = max === 1 ? [] : value.filter((v) => !sameDay(v));
+    if (kept.length >= max) return;
+    onChange([...kept, slot.id]);
+  };
+  const pickedDays = new Set(
+    value.map((id) => georgiaDay(slots.find((s) => s.id === id)?.start || "")),
+  );
   const first = slots[0]?.start;
   const [month, setMonth] = useState(() =>
     georgiaDay(first || new Date().toISOString()).slice(0, 7),
@@ -91,11 +107,11 @@ export default function AvailabilityPicker({
               disabled={!count}
               aria-pressed={day === date}
               aria-label={`${date} · ${count} ${t("freeTimes")}`}
-              onClick={() => {
-                setDay(date);
-                onChange("");
-              }}
-              className={day === date ? "selected" : ""}
+              onClick={() => setDay(date)}
+              className={
+                (day === date ? "selected" : "") +
+                (pickedDays.has(date) ? " picked" : "")
+              }
             >
               <span>{i + 1}</span>
               {count > 0 && <small>{count}</small>}
@@ -110,9 +126,9 @@ export default function AvailabilityPicker({
           <button
             type="button"
             key={s.id}
-            className={value === s.id ? "selected" : ""}
-            aria-pressed={value === s.id}
-            onClick={() => onChange(s.id)}
+            className={value.includes(s.id) ? "selected" : ""}
+            aria-pressed={value.includes(s.id)}
+            onClick={() => toggle(s)}
           >
             <Clock size={15} />
             {format(s.start, { hour: "2-digit", minute: "2-digit" })}–
@@ -121,16 +137,13 @@ export default function AvailabilityPicker({
         ))}
       </div>
       {!available.length && <p>{t("chooseAvailableDay")}</p>}
-      {value && (
+      {value.length > 0 && (
         <p className="selected-time" role="status">
-          {t("selectedTime")}:{" "}
-          {format(slots.find((s) => s.id === value)!.start, {
-            dateStyle: "long",
-            timeStyle: "short",
-          })}
+          {t("selectedTime")}: {value.length}
+          {max > 1 ? ` / ${max}` : ""}
+          {max > 1 && value.length >= max && <> · {t("allPicked")}</>}
         </p>
       )}
-      <input type="hidden" name="slot_id" value={value} />
     </section>
   );
 }

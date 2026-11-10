@@ -16,9 +16,15 @@ import {
   Trash2,
   Pencil,
   ShieldCheck,
+  Download,
+  Layers,
+  CheckCheck,
+  KeyRound,
+  Copy,
 } from "lucide-react";
 import { api, Field, Notice, type Item } from "./Site";
 import { georgiaDay } from "./AvailabilityPicker";
+import { formatPhone } from "../lib/phone";
 type Props = {
   user: Item;
   locale: string;
@@ -30,6 +36,7 @@ const modules = [
   "bookings",
   "students",
   "instructors",
+  "packages",
   "courses",
   "schedule",
   "lessons",
@@ -58,18 +65,25 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
     [freeSlots, setFreeSlots] = useState<Item[]>([]),
     [filterCity, setFilterCity] = useState(""),
     [filterDay, setFilterDay] = useState(""),
-    [filterStatus, setFilterStatus] = useState("");
+    [filterStatus, setFilterStatus] = useState(""),
+    [search, setSearch] = useState(""),
+    [issued, setIssued] = useState<{ id: string; password: string } | null>(
+      null,
+    );
   const admin = user.role === "admin" && page === "admin",
     operator = user.role === "operator" && page === "operator",
     staff = admin || operator,
     instructor = user.role === "instructor" && page === "instructor";
-  const tabs = admin
-    ? modules
-    : operator
-      ? ["bookings", "schedule", "students", "messages"]
-      : instructor
-        ? ["bookings", "students", "schedule", "lessons"]
-        : ["bookings", "progress", "results", "materials", "messages"];
+  const tabs = [
+    ...(admin
+      ? modules
+      : operator
+        ? ["bookings", "schedule", "students", "messages"]
+        : instructor
+          ? ["bookings", "students", "schedule", "lessons"]
+          : ["bookings", "progress", "results", "materials", "messages"]),
+    "security",
+  ];
   async function refresh() {
     try {
       setData(await api("dashboard"));
@@ -101,6 +115,13 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
       return null;
     }
   }
+  // A temporary password from the operator must be replaced before anything else.
+  if (user.must_change_password)
+    return (
+      <div className="workspace-locked">
+        <ChangePassword t={t} forced onDone={() => window.location.reload()} />
+      </div>
+    );
   if (!data) return <Notice>{error || t("loading")}</Notice>;
   const fmt = (s: string) =>
     new Date(
@@ -110,6 +131,36 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
       dateStyle: "medium",
       timeStyle: "short",
     });
+  const query = search
+    .trim()
+    .toLowerCase()
+    .replace(/[\s()-]/g, "");
+  const visibleBookings: Item[] = data.bookings.filter(
+    (b: Item) =>
+      (!filterCity || b.city === filterCity) &&
+      (!filterStatus || b.status === filterStatus) &&
+      (!filterDay ||
+        (b.slot_start && georgiaDay(b.slot_start) === filterDay)) &&
+      (!query ||
+        (b.name + " " + b.contact)
+          .toLowerCase()
+          .replace(/[\s()-]/g, "")
+          .includes(query)),
+  );
+  // Lessons of one order travel together; the earliest lesson leads the card.
+  const groupMap = new Map<string, Item[]>();
+  for (const b of visibleBookings)
+    groupMap.set(b.series_id || b.id, [
+      ...(groupMap.get(b.series_id || b.id) || []),
+      b,
+    ]);
+  const groups = [...groupMap.values()].map((g) =>
+    g.sort(
+      (a, b) =>
+        Date.parse(a.slot_start || a.created) -
+        Date.parse(b.slot_start || b.created),
+    ),
+  );
   return (
     <div className="workspace">
       <aside className="workspace-nav">
@@ -261,141 +312,249 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         {tab === "bookings" && (
           <>
             <Notice>{t("notification")}</Notice>
-            {data.bookings.length ? (
-              data.bookings
-                .filter(
-                  (b: Item) =>
-                    (!filterCity || b.city === filterCity) &&
-                    (!filterStatus || b.status === filterStatus) &&
-                    (!filterDay ||
-                      (b.slot_start && georgiaDay(b.slot_start) === filterDay)),
-                )
-                .map((b: Item) => (
-                  <article className="booking-record" key={b.id}>
+            {staff && (
+              <div className="orders-toolbar">
+                <Field label={t("search")}>
+                  <input
+                    type="search"
+                    value={search}
+                    placeholder={t("searchPlaceholder")}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </Field>
+                <button
+                  type="button"
+                  className="button small outline-dark"
+                  onClick={() => exportCsv(visibleBookings, t, fmt)}
+                >
+                  <Download size={16} />
+                  {t("exportExcel")}
+                </button>
+                <span className="orders-count">
+                  {t("ordersCount")}: {groups.length} · {t("lessonsWord")}:{" "}
+                  {visibleBookings.length}
+                </span>
+              </div>
+            )}
+            {groups.length ? (
+              groups.map((g) => {
+                const b = g[0];
+                const series = g.length > 1 || !!b.series_id;
+                const active = g.filter((x) =>
+                  ["pending", "confirmed"].includes(x.status),
+                );
+                const counts = g.reduce(
+                  (m: Record<string, number>, x) => (
+                    (m[x.status] = (m[x.status] || 0) + 1),
+                    m
+                  ),
+                  {},
+                );
+                return (
+                  <article
+                    className={"booking-record" + (series ? " series" : "")}
+                    key={b.series_id || b.id}
+                  >
                     <div className="record-top">
-                      <span className={"status " + b.status}>
-                        {t(b.status)}
-                      </span>
+                      {series ? (
+                        <span className="series-badge">
+                          <Layers size={14} />
+                          {t("course")} · {g.length} {t("lessonsWord")}
+                        </span>
+                      ) : (
+                        <span className={"status " + b.status}>
+                          {t(b.status)}
+                        </span>
+                      )}
                       <small>{fmt(b.created)}</small>
                     </div>
                     <h3>
-                      {t(b.program)} ·{" "}
+                      {b.package_title || t(b.program)} ·{" "}
                       {t(b.city === "akhalkalaki" ? "city1" : "city2")}
                     </h3>
                     <p>
                       {t("gearbox")}: {t(b.gearbox)}
                     </p>
                     <p>
-                      {b.name} · {b.contact}
+                      <strong>{b.name}</strong> ·{" "}
+                      {staff ? (
+                        <a href={"tel:" + b.contact.replace(/[^+\d]/g, "")}>
+                          {formatPhone(b.contact)}
+                        </a>
+                      ) : (
+                        b.contact
+                      )}
                     </p>
-                    <p>{b.note}</p>
-                    <p>
-                      {t("date")}:{" "}
-                      {b.slot_start ? fmt(b.slot_start) : t("agreeTime")}
-                    </p>
-                    <div className="record-actions">
-                      {["pending", "confirmed"].includes(b.status) && (
-                        <>
-                          {!instructor && (
-                            <button
-                              className="button small outline-dark"
-                              onClick={() =>
-                                act("booking/status", {
-                                  id: b.id,
-                                  status: "cancelled",
-                                })
-                              }
-                            >
-                              {t("cancel")}
-                            </button>
-                          )}
-                          {staff && b.status === "pending" && (
+                    {b.note && <p className="booking-note">{b.note}</p>}
+                    {series && (
+                      <div className="series-status">
+                        {Object.entries(counts).map(([k, n]) => (
+                          <span key={k} className={"status " + k}>
+                            {t(k)}: {n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {series &&
+                      active.length > 0 &&
+                      !instructor &&
+                      b.series_id && (
+                        <div className="record-actions">
+                          {staff && g.some((x) => x.status === "pending") && (
                             <button
                               className="button small"
                               onClick={() =>
-                                act("booking/status", {
-                                  id: b.id,
+                                act("booking/series", {
+                                  series_id: b.series_id,
                                   status: "confirmed",
                                 })
                               }
                             >
-                              {t("confirmed")}
-                              <Check size={16} />
+                              {t("confirmAll")}
+                              <CheckCheck size={16} />
                             </button>
                           )}
-                          {!instructor && (
-                            <form
-                              onSubmit={async (e) => {
-                                e.preventDefault();
-                                const form = new FormData(e.currentTarget);
-                                await act("booking/reschedule", {
-                                  id: b.id,
-                                  slot_id: form.get("slot_id"),
-                                });
-                              }}
-                            >
-                              <label
-                                className="sr-only"
-                                htmlFor={"slot-" + b.id}
-                              >
-                                {t("date")}
-                              </label>
-                              <select
-                                required
-                                id={"slot-" + b.id}
-                                name="slot_id"
-                              >
-                                <option value="">{t("change")}</option>
-                                {freeSlots
-                                  .filter((s) => s.city === b.city)
-                                  .map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                      {fmt(s.start)}
-                                    </option>
-                                  ))}
-                              </select>
-                              <button className="button small outline-dark">
-                                {t("save")}
-                              </button>
-                            </form>
-                          )}
-                        </>
-                      )}
-                      {(admin || instructor) && b.status === "confirmed" && (
-                        <form
-                          className="lesson-form"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            const f = Object.fromEntries(
-                              new FormData(e.currentTarget),
-                            );
-                            await act("lesson", { bookingId: b.id, ...f });
-                          }}
-                        >
-                          <input
-                            name="skills"
-                            required
-                            placeholder={t("skills")}
-                            aria-label={t("skills")}
-                          />
-                          <input
-                            name="recommendation"
-                            required
-                            placeholder={t("recommendation")}
-                            aria-label={t("recommendation")}
-                          />
-                          <button className="button small">
-                            {t("completed")}
+                          <button
+                            className="button small outline-dark"
+                            onClick={() =>
+                              confirm(t("cancelAllConfirm")) &&
+                              act("booking/series", {
+                                series_id: b.series_id,
+                                status: "cancelled",
+                              })
+                            }
+                          >
+                            {t("cancelAll")}
                           </button>
-                        </form>
+                        </div>
                       )}
-                    </div>
+                    {(series ? g : [b]).map((b) => (
+                      <div
+                        className={series ? "lesson-row" : "lesson-single"}
+                        key={b.id}
+                      >
+                        <p className="lesson-when">
+                          <CalendarDays size={15} />
+                          {b.slot_start ? fmt(b.slot_start) : t("agreeTime")}
+                          {series && (
+                            <span className={"status " + b.status}>
+                              {t(b.status)}
+                            </span>
+                          )}
+                        </p>
+                        <div className="record-actions">
+                          {["pending", "confirmed"].includes(b.status) && (
+                            <>
+                              {!instructor && (
+                                <button
+                                  className="button small outline-dark"
+                                  onClick={() =>
+                                    act("booking/status", {
+                                      id: b.id,
+                                      status: "cancelled",
+                                    })
+                                  }
+                                >
+                                  {t("cancel")}
+                                </button>
+                              )}
+                              {staff && b.status === "pending" && (
+                                <button
+                                  className="button small"
+                                  onClick={() =>
+                                    act("booking/status", {
+                                      id: b.id,
+                                      status: "confirmed",
+                                    })
+                                  }
+                                >
+                                  {t("confirmAction")}
+                                  <Check size={16} />
+                                </button>
+                              )}
+                              {!instructor && (
+                                <form
+                                  onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const form = new FormData(e.currentTarget);
+                                    await act("booking/reschedule", {
+                                      id: b.id,
+                                      slot_id: form.get("slot_id"),
+                                    });
+                                  }}
+                                >
+                                  <label
+                                    className="sr-only"
+                                    htmlFor={"slot-" + b.id}
+                                  >
+                                    {t("date")}
+                                  </label>
+                                  <select
+                                    required
+                                    id={"slot-" + b.id}
+                                    name="slot_id"
+                                  >
+                                    <option value="">{t("change")}</option>
+                                    {freeSlots
+                                      .filter((s) => s.city === b.city)
+                                      .map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                          {fmt(s.start)}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <button className="button small outline-dark">
+                                    {t("save")}
+                                  </button>
+                                </form>
+                              )}
+                            </>
+                          )}
+                          {(admin || instructor) &&
+                            b.status === "confirmed" && (
+                              <form
+                                className="lesson-form"
+                                onSubmit={async (e) => {
+                                  e.preventDefault();
+                                  const f = Object.fromEntries(
+                                    new FormData(e.currentTarget),
+                                  );
+                                  await act("lesson", {
+                                    bookingId: b.id,
+                                    ...f,
+                                  });
+                                }}
+                              >
+                                <input
+                                  name="skills"
+                                  required
+                                  placeholder={t("skills")}
+                                  aria-label={t("skills")}
+                                />
+                                <input
+                                  name="recommendation"
+                                  required
+                                  placeholder={t("recommendation")}
+                                  aria-label={t("recommendation")}
+                                />
+                                <button className="button small">
+                                  {t("completed")}
+                                </button>
+                              </form>
+                            )}
+                        </div>
+                      </div>
+                    ))}
                   </article>
-                ))
+                );
+              })
             ) : (
               <Empty t={t} />
             )}
           </>
+        )}
+        {tab === "security" && (
+          <ChangePassword t={t} onDone={() => setNotice(t("saved"))} />
         )}
         {tab === "progress" && (
           <>
@@ -428,7 +587,46 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               .map((u: Item) => (
                 <article key={u.id}>
                   <strong>{u.name}</strong>
-                  <p>{u.email}</p>
+                  <p>
+                    {u.phone ? (
+                      <a href={"tel:" + u.phone}>{formatPhone(u.phone)}</a>
+                    ) : (
+                      u.email
+                    )}
+                    {!admin && u.role !== "student" && <> · {t(u.role)}</>}
+                  </p>
+                  {staff && (admin || u.role === "student") && (
+                    <button
+                      type="button"
+                      className="button small outline-dark"
+                      onClick={async () => {
+                        if (!confirm(t("resetConfirm"))) return;
+                        const r = await act("admin/reset-password", {
+                          id: u.id,
+                        });
+                        if (r) setIssued({ id: u.id, password: r.password });
+                      }}
+                    >
+                      <KeyRound size={15} />
+                      {t("resetPassword")}
+                    </button>
+                  )}
+                  {issued && issued.id === u.id && (
+                    <div className="temp-password" role="status">
+                      <small>{t("tempPasswordText")}</small>
+                      <code>{issued.password}</code>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={t("copy")}
+                        onClick={() =>
+                          navigator.clipboard?.writeText(issued!.password)
+                        }
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  )}
                   {admin && (
                     <>
                       <code>{u.id}</code>
@@ -922,16 +1120,29 @@ function RecordEditor({
             "source",
             "verifiedAt",
           ]
-        : [
-            "title",
-            "description",
-            ...(kind === "courses" ? ["price", "duration"] : []),
-            ...(kind === "branches" ? ["city", "address", "phone"] : []),
-            ...(kind === "instructors"
-              ? ["userId", "languages", "vehicle"]
-              : []),
-            ...(["media", "materials"].includes(kind) ? ["url"] : []),
-          ];
+        : kind === "packages"
+          ? [
+              "title",
+              "description",
+              "lessons",
+              "lessonMinutes",
+              "price",
+              "oldPrice",
+              "program",
+              "gearbox",
+              "features",
+              "order",
+            ]
+          : [
+              "title",
+              "description",
+              ...(kind === "courses" ? ["price", "duration"] : []),
+              ...(kind === "branches" ? ["city", "address", "phone"] : []),
+              ...(kind === "instructors"
+                ? ["userId", "languages", "vehicle"]
+                : []),
+              ...(["media", "materials"].includes(kind) ? ["url"] : []),
+            ];
   const update = (key: string, value: any) =>
     setRecord((r) => ({ ...r, [key]: value }));
   return (
@@ -978,13 +1189,14 @@ function RecordEditor({
             "description",
             "explanation",
             "options",
+            "features",
             "value",
           ].includes(key) ? (
             <textarea
               rows={key === "answer" ? 5 : 3}
               value={
-                key === "options"
-                  ? (record.options || []).join("\n")
+                ["options", "features"].includes(key)
+                  ? (record[key] || []).join("\n")
                   : record[key] || ""
               }
               required={
@@ -995,10 +1207,26 @@ function RecordEditor({
                   key,
                   key === "options"
                     ? e.target.value.split("\n")
-                    : e.target.value,
+                    : key === "features"
+                      ? e.target.value.split("\n").filter((x) => x.trim())
+                      : e.target.value,
                 )
               }
             />
+          ) : key === "program" || key === "gearbox" ? (
+            <select
+              value={record[key] || (key === "program" ? "practice" : "none")}
+              onChange={(e) => update(key, e.target.value)}
+            >
+              {(key === "program"
+                ? ["practice", "theory", "individual", "group", "exam"]
+                : ["none", "manual", "automatic"]
+              ).map((k) => (
+                <option key={k} value={k}>
+                  {t(k)}
+                </option>
+              ))}
+            </select>
           ) : key === "city" ? (
             <select
               value={record.city || "akhalkalaki"}
@@ -1012,12 +1240,19 @@ function RecordEditor({
               type={
                 key === "verifiedAt"
                   ? "date"
-                  : ["price", "correctIndex"].includes(key)
+                  : [
+                        "price",
+                        "oldPrice",
+                        "correctIndex",
+                        "lessons",
+                        "lessonMinutes",
+                        "order",
+                      ].includes(key)
                     ? "number"
                     : "text"
               }
               min={key === "correctIndex" ? 1 : 0}
-              step={key === "price" ? ".01" : undefined}
+              step={["price", "oldPrice"].includes(key) ? ".01" : undefined}
               value={
                 key === "correctIndex"
                   ? (record.correct ?? 0) + 1
@@ -1027,6 +1262,7 @@ function RecordEditor({
                 knowledge ||
                 kind === "questions" ||
                 key === "title" ||
+                (kind === "packages" && key === "lessons") ||
                 kind === "translations"
               }
               onChange={(e) =>
@@ -1034,7 +1270,13 @@ function RecordEditor({
                   key === "correctIndex" ? "correct" : key,
                   key === "correctIndex"
                     ? Number(e.target.value) - 1
-                    : key === "price"
+                    : [
+                          "price",
+                          "oldPrice",
+                          "lessons",
+                          "lessonMinutes",
+                          "order",
+                        ].includes(key)
                       ? e.target.value === ""
                         ? ""
                         : Number(e.target.value)
@@ -1085,6 +1327,16 @@ function RecordEditor({
             />
           </Field>
         </>
+      )}
+      {kind === "packages" && (
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={record.featured || false}
+            onChange={(e) => update("featured", e.target.checked)}
+          />
+          {t("featured")}
+        </label>
       )}
       {kind === "reviews" && (
         <label className="checkbox">
@@ -1144,4 +1396,137 @@ function RecordEditor({
       </div>
     </form>
   );
+}
+
+function ChangePassword({
+  t,
+  forced = false,
+  onDone,
+}: {
+  t: (k: string) => string;
+  forced?: boolean;
+  onDone: () => void;
+}) {
+  const [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="form-card password-card"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(e.currentTarget));
+        if (f.password !== f.repeat) return setError(t("passwordsDiffer"));
+        setBusy(true);
+        setError("");
+        try {
+          await api("auth/password", {
+            current: f.current,
+            password: f.password,
+          });
+          (e.target as HTMLFormElement).reset();
+          onDone();
+        } catch (e) {
+          setError(t((e as Error).message));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <h3>
+        <KeyRound size={20} /> {t("changePassword")}
+      </h3>
+      {forced && <Notice>{t("mustChangePassword")}</Notice>}
+      <Field label={t(forced ? "tempPassword" : "currentPassword")}>
+        <input
+          name="current"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
+      </Field>
+      <Field label={t("newPassword")}>
+        <input
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          minLength={6}
+          maxLength={128}
+          required
+        />
+      </Field>
+      <Field label={t("repeatPassword")}>
+        <input
+          name="repeat"
+          type="password"
+          autoComplete="new-password"
+          minLength={6}
+          maxLength={128}
+          required
+        />
+      </Field>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <button className="button" disabled={busy}>
+        {t(busy ? "loading" : "save")}
+        <Check size={18} />
+      </button>
+    </form>
+  );
+}
+/** Excel opens UTF-8 CSV correctly only with a BOM; `;` matches the Russian/Georgian Excel locale. */
+function exportCsv(
+  rows: Item[],
+  t: (k: string) => string,
+  fmt: (s: string) => string,
+) {
+  const head = [
+    "ID",
+    t("date"),
+    t("status"),
+    t("name"),
+    t("phone"),
+    t("city"),
+    t("package"),
+    t("program"),
+    t("gearbox"),
+    t("note"),
+    t("created"),
+  ];
+  const cell = (v: unknown) => {
+    const s = String(v ?? "");
+    // Neutralise spreadsheet formulas typed into free-text fields.
+    const safe = /^[=+\-@\t\r]/.test(s) && !/^\+\d/.test(s) ? "'" + s : s;
+    return '"' + safe.replace(/"/g, '""') + '"';
+  };
+  const lines = rows.map((b) =>
+    [
+      b.series_id || b.id,
+      b.slot_start ? fmt(b.slot_start) : "",
+      t(b.status),
+      b.name,
+      b.contact,
+      t(b.city === "akhalkalaki" ? "city1" : "city2"),
+      b.package_title,
+      t(b.program),
+      t(b.gearbox),
+      b.note,
+      fmt(b.created),
+    ]
+      .map(cell)
+      .join(";"),
+  );
+  const blob = new Blob(
+    ["\ufeff" + [head.map(cell).join(";"), ...lines].join("\r\n")],
+    {
+      type: "text/csv;charset=utf-8",
+    },
+  );
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `motion-drive-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }

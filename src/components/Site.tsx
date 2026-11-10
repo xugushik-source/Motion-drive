@@ -34,6 +34,7 @@ import dynamic from "next/dynamic";
 import BackgroundVideo from "./BackgroundVideo";
 const Workspace = dynamic(() => import("./Workspace"));
 import { Booking, Auth, Exam } from "./flows";
+import Packages from "./Packages";
 export type Item = Record<string, any>;
 export async function api(path: string, data?: any) {
   const res = await fetch(
@@ -166,6 +167,24 @@ export default function Site({
       </div>
     );
   };
+  const packagesSection = (compact = false) => (
+    <section className={"packages-section" + (compact ? "" : " section")}>
+      <div className="section-head">
+        <div>
+          <p className="eyebrow">
+            <span />
+            {t("packagesTag")}
+          </p>
+          <h2>{t("packagesTitle")}</h2>
+        </div>
+        <Link className="text-link" href={href("booking")}>
+          {t("book")}
+          <ArrowUpRight size={18} />
+        </Link>
+      </div>
+      <Packages packages={list("packages")} locale={locale} t={t} />
+    </section>
+  );
   const route = () => (
     <section className="route-section section">
       <div className="route-intro">
@@ -549,6 +568,7 @@ export default function Site({
               </div>
               {programs()}
             </section>
+            {packagesSection()}
             {route()}
             <section className="film-section">
               <div className="film-img">
@@ -653,6 +673,7 @@ export default function Site({
               )}
               {page === "courses" && (
                 <>
+                  {packagesSection(true)}
                   {programs()}
                   <div className="mini-programs">
                     {["manual", "automatic", "group", "exam"].map((k) => (
@@ -667,9 +688,8 @@ export default function Site({
               )}
               {page === "pricing" && (
                 <>
-                  <Notice>
-                    {t("currency")} · {t("pricePending")}
-                  </Notice>
+                  <Notice>{t("currency")}</Notice>
+                  {packagesSection(true)}
                   {programs()}
                 </>
               )}

@@ -18,6 +18,14 @@ DO $$ BEGIN
  ALTER TABLE motion_drive.bookings ADD CONSTRAINT bookings_slot_fk FOREIGN KEY(slot_id) REFERENCES motion_drive.slots(id);
  END IF;
 END $$;
+-- Phone sign-in, operator password reset and multi-lesson series (idempotent upgrades).
+ALTER TABLE motion_drive.users ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS must_change_password INTEGER NOT NULL DEFAULT 0;
+CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON motion_drive.users(phone) WHERE phone IS NOT NULL;
+ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS series_id TEXT;
+ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS package_title TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS bookings_series ON motion_drive.bookings(series_id);
 CREATE TABLE IF NOT EXISTS motion_drive.results(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),answers TEXT NOT NULL,score INTEGER NOT NULL,total INTEGER NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS motion_drive.attempts(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),questions TEXT NOT NULL,deadline BIGINT NOT NULL,finished INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS motion_drive.messages(id TEXT PRIMARY KEY,user_id TEXT REFERENCES motion_drive.users(id),guest_id TEXT,locale TEXT NOT NULL,text TEXT NOT NULL,answer TEXT NOT NULL,admin_reply TEXT NOT NULL DEFAULT '',escalated INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);

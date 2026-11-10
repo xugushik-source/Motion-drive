@@ -21,7 +21,7 @@ export async function currentUser() {
   if (!token) return null;
   return (
     (await one(
-      "SELECT u.id,u.email,u.name,u.role,u.locale FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.id=? AND s.expires>?",
+      "SELECT u.id,u.email,u.phone,u.name,u.role,u.locale,u.must_change_password FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.id=? AND s.expires>?",
       token,
       Date.now(),
     )) || null
@@ -42,4 +42,11 @@ export async function startSession(userId: string) {
     path: "/",
     maxAge: 604800,
   });
+}
+// Unambiguous characters only: the operator dictates this password over the phone.
+export function temporaryPassword() {
+  const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
+  return Array.from(randomBytes(8), (b) => alphabet[b % alphabet.length]).join(
+    "",
+  );
 }

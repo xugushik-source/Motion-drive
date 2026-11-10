@@ -22,9 +22,14 @@ import {
   startSession,
   hashPassword,
   checkPassword,
+  temporaryPassword,
 } from "../../../lib/auth";
+import { normalizePhone } from "../../../lib/phone";
 import {
   registerSchema,
+  loginSchema,
+  passwordSchema,
+  packageSchema,
   bookingSchema,
   questionSchema,
   localeSchema,
@@ -49,11 +54,14 @@ const safe = (u: Row) => ({
   id: u.id,
   name: u.name,
   email: u.email,
+  phone: u.phone,
   role: u.role,
   locale: u.locale,
+  must_change_password: u.must_change_password,
 });
 const kinds = [
   "courses",
+  "packages",
   "instructors",
   "branches",
   "media",
@@ -69,6 +77,7 @@ const kinds = [
 ];
 const publicKinds = [
   "courses",
+  "packages",
   "instructors",
   "branches",
   "media",
@@ -237,7 +246,7 @@ export async function GET(
               )
             : [],
         users: staff
-          ? await all("SELECT id,name,email,role FROM users")
+          ? await all("SELECT id,name,email,phone,role FROM users")
           : instructor
             ? await all(
                 "SELECT DISTINCT u.id,u.name FROM users u JOIN bookings b ON b.user_id=u.id WHERE b.instructor_id=?",
@@ -262,7 +271,17 @@ export async function GET(
 function error(e: unknown) {
   if (e instanceof ApiError) return json({ error: e.code }, e.status);
   if (e instanceof SyntaxError) return json({ error: "invalid" }, 400);
-  if (e instanceof z.ZodError) return json({ error: "invalid" }, 400);
+  if (e instanceof z.ZodError)
+    return json(
+      {
+        error: e.issues.some((i) => i.message === "badPhone")
+          ? "badPhone"
+          : e.issues.some((i) => i.path[0] === "password")
+            ? "passwordShort"
+            : "invalid",
+      },
+      400,
+    );
   if ((e as any)?.code === "23505")
     return json({ error: "accountExists" }, 409);
   console.error("Motion Drive API failure", (e as any)?.code || "internal");
@@ -388,34 +407,33 @@ export async function POST(
       }
       if (p[1] === "register") {
         const v = registerSchema.parse(body);
-        if (
-          await one("SELECT id FROM users WHERE email=?", v.email.toLowerCase())
-        )
-          return fail("accountExists");
+        if (await one("SELECT id FROM users WHERE phone=?", v.phone))
+          return fail("accountExists", 409);
         const id = randomUUID();
         await db
           .prepare(
-            "INSERT INTO users(id,email,name,password,locale) VALUES(?,?,?,?,?)",
+            "INSERT INTO users(id,phone,name,password,locale) VALUES(?,?,?,?,?)",
           )
-          .run(
-            id,
-            v.email.toLowerCase(),
-            v.name,
-            hashPassword(v.password),
-            v.locale,
-          );
+          .run(id, v.phone, v.name, hashPassword(v.password), v.locale);
         await startSession(id);
         return json({
           user: safe((await one("SELECT * FROM users WHERE id=?", id))!),
         });
       }
       if (p[1] === "login") {
-        const v = z
-          .object({ email: z.email(), password: z.string().max(128) })
-          .parse(body);
+        const v = loginSchema.parse(body);
+        // Staff may keep their email login; students sign in with a phone number.
+        const key = v.login.includes("@")
+          ? v.login.toLowerCase()
+          : normalizePhone(v.login);
+        if (!key) return fail("badPhone");
+        if (!(await limit("login:" + key, 10, 900)))
+          return fail("rateLimit", 429);
         const u = await one(
-          "SELECT * FROM users WHERE email=?",
-          v.email.toLowerCase(),
+          "SELECT * FROM users WHERE " +
+            (key.includes("@") ? "email" : "phone") +
+            "=?",
+          key,
         );
         if (!u || !checkPassword(v.password, u.password))
           return fail("badCredentials", 401);
@@ -425,6 +443,29 @@ export async function POST(
     }
     if (p[0] === "chat") return await chat(body, user, identity);
     if (!user) return fail("loginRequired", 401);
+    if (p[0] === "auth" && p[1] === "password") {
+      const v = z
+        .object({ current: z.string().max(128), password: passwordSchema })
+        .parse(body);
+      const u = (await one("SELECT * FROM users WHERE id=?", user.id))!;
+      if (!checkPassword(v.current, u.password))
+        return fail("badCredentials", 401);
+      const session = (await cookies()).get("md_session")?.value || "";
+      await transaction(async () => {
+        await db
+          .prepare(
+            "UPDATE users SET password=?,must_change_password=0 WHERE id=?",
+          )
+          .run(hashPassword(v.password), user.id);
+        await db
+          .prepare("DELETE FROM sessions WHERE user_id=? AND id<>?")
+          .run(user.id, session);
+        await db
+          .prepare("INSERT INTO audit(actor,action) VALUES(?,?)")
+          .run(user.id, "password:change:" + user.id);
+      });
+      return json({ ok: true });
+    }
     if (p[0] === "booking")
       return await transaction(async () => {
         if (p[1] === "create") {
@@ -438,7 +479,10 @@ export async function POST(
           )
             return fail("bookingsPaused");
           const v = bookingSchema.parse(body);
-          if (!v.slot_id) return fail("chooseTime", 400);
+          const slotIds = [
+            ...new Set(v.slot_ids || (v.slot_id ? [v.slot_id] : [])),
+          ];
+          if (!slotIds.length) return fail("chooseTime", 400);
           if (
             v.instructor_id &&
             !(await approved("instructors")).some(
@@ -446,11 +490,18 @@ export async function POST(
             )
           )
             return fail("invalid");
-          let slot: Row | undefined;
-          if (v.slot_id) {
-            slot = await one(
+          // The package is resolved on the server; the stored title is a snapshot
+          // so later edits of the public price list never rewrite old orders.
+          const pack = v.package_id
+            ? (await approved("packages")).find((x) => x.id === v.package_id)
+            : undefined;
+          if (v.package_id && !pack) return fail("invalid");
+          const seriesId = slotIds.length > 1 || pack ? randomUUID() : null;
+          const ids: string[] = [];
+          for (const slotId of slotIds) {
+            const slot = await one(
               "SELECT * FROM slots WHERE id=? AND available=1 FOR UPDATE",
-              v.slot_id,
+              slotId,
             );
             if (
               !slot ||
@@ -459,34 +510,41 @@ export async function POST(
               (v.instructor_id && v.instructor_id !== slot.instructor_id)
             )
               return fail("slotUnavailable", 409);
-          }
-          if (
-            await one(
-              "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
-              v.slot_id,
-            )
-          )
-            return fail("slotUnavailable", 409);
-          const id = randomUUID();
-          try {
-            await db
-              .prepare(
-                "INSERT INTO bookings(id,user_id,city,program,gearbox,instructor_id,slot_id,name,contact,note) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            if (
+              await one(
+                "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
+                slotId,
               )
-              .run(
-                id,
-                user.id,
-                v.city,
-                v.program,
-                v.gearbox,
-                slot?.instructor_id || v.instructor_id || null,
-                v.slot_id || null,
-                v.name,
-                v.contact,
-                v.note,
-              );
-          } catch {
-            return fail("slotUnavailable", 409);
+            )
+              return fail("slotUnavailable", 409);
+            const id = randomUUID();
+            try {
+              await db
+                .prepare(
+                  "INSERT INTO bookings(id,user_id,city,program,gearbox,instructor_id,slot_id,name,contact,note,series_id,package_title) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                )
+                .run(
+                  id,
+                  user.id,
+                  v.city,
+                  pack?.program || v.program,
+                  pack?.gearbox && pack.gearbox !== "none"
+                    ? pack.gearbox
+                    : v.gearbox,
+                  slot.instructor_id || v.instructor_id || null,
+                  slotId,
+                  v.name,
+                  v.contact,
+                  v.note,
+                  seriesId,
+                  pack
+                    ? `${pack.title} · ${pack.lessons}×${pack.lessonMinutes || 60}`
+                    : "",
+                );
+            } catch {
+              return fail("slotUnavailable", 409);
+            }
+            ids.push(id);
           }
           await db
             .prepare(
@@ -495,9 +553,59 @@ export async function POST(
             .run(
               user.id,
               "booking:create",
-              JSON.stringify({ id, slot_id: v.slot_id }),
+              JSON.stringify({ ids, series_id: seriesId, slot_ids: slotIds }),
             );
-          return json({ id, status: "pending" });
+          return json({
+            id: ids[0],
+            ids,
+            series_id: seriesId,
+            status: "pending",
+          });
+        }
+        if (p[1] === "series") {
+          const v = z
+            .object({
+              series_id: z.string().max(80),
+              status: z.enum(["cancelled", "confirmed"]),
+            })
+            .parse(body);
+          const staffMember = ["admin", "operator"].includes(user.role);
+          const lessons = await all(
+            "SELECT * FROM bookings WHERE series_id=? FOR UPDATE",
+            v.series_id,
+          );
+          if (!lessons.length) return fail("notFound", 404);
+          if (
+            !staffMember &&
+            (lessons[0].user_id !== user.id || v.status !== "cancelled")
+          )
+            return fail("forbidden", 403);
+          let changed = 0;
+          for (const b of lessons) {
+            if (
+              v.status === "cancelled" &&
+              !["pending", "confirmed"].includes(b.status)
+            )
+              continue;
+            if (v.status === "confirmed" && b.status !== "pending") continue;
+            if (v.status === "confirmed") {
+              const slot = await one(
+                "SELECT * FROM slots WHERE id=? FOR UPDATE",
+                b.slot_id,
+              );
+              if (!slot || !slot.available) continue;
+            }
+            await db
+              .prepare("UPDATE bookings SET status=? WHERE id=?")
+              .run(v.status, b.id);
+            changed++;
+          }
+          await db
+            .prepare(
+              "INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)",
+            )
+            .run(user.id, "booking:series", JSON.stringify({ ...v, changed }));
+          return json({ ok: true, changed });
         }
         if (p[1] === "reschedule") {
           const v = z
@@ -787,10 +895,41 @@ export async function POST(
     }
     if (
       user.role !== "admin" &&
-      !(user.role === "operator" && p[0] === "admin" && p[1] === "reply")
+      !(
+        user.role === "operator" &&
+        p[0] === "admin" &&
+        ["reply", "reset-password"].includes(p[1])
+      )
     )
       return fail("forbidden", 403);
     if (p[0] === "admin") {
+      if (p[1] === "reset-password") {
+        const v = z.object({ id: z.string().max(80) }).parse(body);
+        const target = await one("SELECT * FROM users WHERE id=?", v.id);
+        // Operators reset students only; nobody resets an administrator here.
+        if (
+          !target ||
+          target.role === "admin" ||
+          (user.role === "operator" && target.role !== "student")
+        )
+          return fail("forbidden", 403);
+        const password = temporaryPassword();
+        await transaction(async () => {
+          await db
+            .prepare(
+              "UPDATE users SET password=?,must_change_password=1 WHERE id=?",
+            )
+            .run(hashPassword(password), target.id);
+          await db
+            .prepare("DELETE FROM sessions WHERE user_id=?")
+            .run(target.id);
+          await db
+            .prepare("INSERT INTO audit(actor,action) VALUES(?,?)")
+            .run(user.id, "password:reset:" + target.id);
+        });
+        // Shown once to the operator, never stored in plain text or the audit log.
+        return json({ password });
+      }
       if (p[1] === "reply") {
         const v = z
           .object({
@@ -853,6 +992,7 @@ export async function POST(
             )
             .parse(data);
         if (v.kind === "questions") data = questionSchema.parse(data);
+        if (v.kind === "packages") data = packageSchema.parse(data);
         if (["faq", "knowledge"].includes(v.kind)) {
           data = z
             .object({

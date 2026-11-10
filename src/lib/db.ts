@@ -36,6 +36,32 @@ function localDb() {
       COMMIT;
       PRAGMA foreign_keys=ON;`);
     }
+    // Phone sign-in: email becomes optional, phone unique, operator-issued temporary passwords.
+    const userColumns = sqlite.prepare("PRAGMA table_info(users)").all() as {
+      name: string;
+    }[];
+    if (!userColumns.some((c) => c.name === "phone")) {
+      sqlite.exec(`PRAGMA foreign_keys=OFF;
+      BEGIN;
+      CREATE TABLE users_phone(id TEXT PRIMARY KEY,email TEXT UNIQUE,name TEXT NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'student',locale TEXT NOT NULL DEFAULT 'ru',phone TEXT,must_change_password INTEGER NOT NULL DEFAULT 0);
+      INSERT INTO users_phone(id,email,name,password,role,locale) SELECT id,email,name,password,role,locale FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_phone RENAME TO users;
+      COMMIT;
+      PRAGMA foreign_keys=ON;`);
+    }
+    const bookingColumns = sqlite
+      .prepare("PRAGMA table_info(bookings)")
+      .all() as { name: string }[];
+    if (!bookingColumns.some((c) => c.name === "series_id"))
+      sqlite.exec("ALTER TABLE bookings ADD COLUMN series_id TEXT");
+    if (!bookingColumns.some((c) => c.name === "package_title"))
+      sqlite.exec(
+        "ALTER TABLE bookings ADD COLUMN package_title TEXT NOT NULL DEFAULT ''",
+      );
+    sqlite.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON users(phone) WHERE phone IS NOT NULL; CREATE INDEX IF NOT EXISTS bookings_series ON bookings(series_id);",
+    );
     const columns = sqlite.prepare("PRAGMA table_info(messages)").all() as {
       name: string;
     }[];

@@ -90,11 +90,47 @@ test("PostgreSQL migration and booking/rate-limit constraints", async () => {
   console.log(
     "PostgreSQL migration, query bindings, slot uniqueness, cancellation/reuse, shared rate limit: PASS",
   );
+  // Upgrade path is idempotent and supports phone accounts and lesson series.
+  await pg.exec(readFileSync("db/postgres.sql", "utf8"));
+  await run(
+    "INSERT INTO users(id,phone,name,password) VALUES(?,?,?,?)",
+    "p1",
+    "+995597000001",
+    "Phone",
+    "!",
+  );
+  await assert.rejects(
+    run(
+      "INSERT INTO users(id,phone,name,password) VALUES(?,?,?,?)",
+      "p2",
+      "+995597000001",
+      "Dup",
+      "!",
+    ),
+  );
+  await run(
+    "INSERT INTO bookings(id,user_id,city,program,gearbox,slot_id,name,contact,series_id,package_title) VALUES(?,?,?,?,?,?,?,?,?,?)",
+    "series-1",
+    "p1",
+    "akhalkalaki",
+    "practice",
+    "none",
+    null,
+    "Phone",
+    "+995597000001",
+    "s1",
+    "Practice 10",
+  );
+  assert.equal(
+    (await run("SELECT id FROM bookings WHERE series_id=?", "s1")).rows.length,
+    1,
+  );
+  await run("UPDATE users SET must_change_password=1 WHERE id=?", "p1");
   await pg.exec(readFileSync("db/access.sql", "utf8"));
   await pg.exec("SET ROLE anon");
   await assert.rejects(pg.query("SELECT * FROM motion_drive.users"));
   await pg.exec("RESET ROLE; SET ROLE motion_drive_app");
-  assert.equal((await run("SELECT id FROM users")).rows.length, 2);
+  assert.equal((await run("SELECT id FROM users")).rows.length, 3);
   await assert.rejects(
     pg.exec("ALTER TABLE motion_drive.users ADD COLUMN forbidden text"),
   );
