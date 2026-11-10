@@ -14,7 +14,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "offer": "Теория и практика вождения",
       "whatsapp": "995597939327",
       "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.4020242,43.4943602"
+      "coords": "41.4067020,43.4865282"
     },
     {
       "id": "ninotsminda-ru",
@@ -44,7 +44,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "offer": "Theory and driving practice",
       "whatsapp": "995597939327",
       "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.4020242,43.4943602"
+      "coords": "41.4067020,43.4865282"
     },
     {
       "id": "ninotsminda-en",
@@ -74,7 +74,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "offer": "თეორია და მართვის პრაქტიკა",
       "whatsapp": "995597939327",
       "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.4020242,43.4943602"
+      "coords": "41.4067020,43.4865282"
     },
     {
       "id": "ninotsminda-ka",
@@ -104,7 +104,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "offer": "Տեսություն և վարման պրակտիկա",
       "whatsapp": "995597939327",
       "mapQuery": "თავისუფლების ქუჩა 36/1, ახალქალაქი 0700, ახალქალაქის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.4020242,43.4943602"
+      "coords": "41.4067020,43.4865282"
     },
     {
       "id": "ninotsminda-hy",
