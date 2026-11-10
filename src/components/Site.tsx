@@ -11,6 +11,7 @@ import {
 } from "motion/react";
 import {
   ArrowUpRight,
+  ArrowLeft,
   ArrowRight,
   ArrowDown,
   Menu,
@@ -432,6 +433,10 @@ export default function Site({
       </div>
       {menu && (
         <nav className="mobile-nav">
+          <Link href={href()} onClick={() => setMenu(false)}>
+            {t("home")}
+            <ArrowUpRight size={18} />
+          </Link>
           {[...nav, "pricing", "gallery", "faq", "account"].map((k) => (
             <Link key={k} href={href(k)} onClick={() => setMenu(false)}>
               {t(k)}
@@ -630,6 +635,10 @@ export default function Site({
                   : "")
               }
             >
+              <Link className="back-home" href={href()}>
+                <ArrowLeft size={16} />
+                {t("backHome")}
+              </Link>
               <div className="breadcrumbs">
                 <Link href={href()}>{t("home")}</Link>
                 <span>/</span>

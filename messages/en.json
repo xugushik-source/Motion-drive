@@ -305,5 +305,6 @@
   "lessonMinutesMax": "Lesson length up to, min (for a range)",
   "term": "Ready in",
   "routesWord": "routes",
-  "seePrices": "See prices →"
+  "seePrices": "See prices →",
+  "backHome": "Back to home"
 }

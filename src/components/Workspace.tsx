@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
+  ArrowLeft,
   Plus,
   Check,
   LogOut,
@@ -205,6 +206,10 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
           </button>
         ))}
         <div className="workspace-links">
+          <Link href={"/" + locale}>
+            <ArrowLeft size={16} />
+            {t("backHome")}
+          </Link>
           {user.role === "admin" && page !== "admin" && (
             <Link href={"/" + locale + "/admin"}>
               {t("admin")}

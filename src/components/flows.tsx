@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowUpRight,
+  ArrowLeft,
   ArrowRight,
   Check,
   Clock,
@@ -355,10 +356,16 @@ export function Booking({
             </motion.li>
           ))}
         </ul>
-        <Link className="button" href={"/" + locale + "/account"}>
-          {t("account")}
-          <ArrowUpRight />
-        </Link>
+        <div className="success-actions">
+          <Link className="button" href={"/" + locale + "/account"}>
+            {t("account")}
+            <ArrowUpRight />
+          </Link>
+          <Link className="button outline-dark" href={"/" + locale}>
+            <ArrowLeft />
+            {t("backHome")}
+          </Link>
+        </div>
       </motion.div>
     );
   return (
