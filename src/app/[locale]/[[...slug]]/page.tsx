@@ -97,6 +97,7 @@ export default async function Page({
       [
         "courses",
         "packages",
+        "services",
         "instructors",
         "branches",
         "media",

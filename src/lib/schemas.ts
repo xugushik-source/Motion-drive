@@ -67,14 +67,21 @@ const optionalPrice = z.preprocess(
   (v) => (v === null || v === undefined ? "" : v),
   z.union([z.literal(""), z.coerce.number().min(0).max(100000)]),
 );
+const optionalInt = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (v === null || v === undefined ? "" : v),
+    z.union([z.literal(""), z.coerce.number().int().min(min).max(max)]),
+  );
 export const packageSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().max(1500).default(""),
+  // theory courses are sold by duration, driving by the lesson, exams as a set
+  group: z.enum(["theory", "driving", "exam"]).default("driving"),
+  priceType: z.enum(["total", "perLesson"]).default("total"),
   lessons: z.coerce.number().int().min(1).max(30),
-  lessonMinutes: z.preprocess(
-    blankToUndefined,
-    z.coerce.number().int().min(15).max(240).default(60),
-  ),
+  weeks: optionalInt(1, 52),
+  lessonMinutes: optionalInt(15, 240),
+  lessonMinutesMax: optionalInt(15, 240),
   price: optionalPrice,
   oldPrice: optionalPrice,
   program: z
@@ -83,6 +90,21 @@ export const packageSchema = z.object({
   gearbox: z.enum(["manual", "automatic", "none"]).default("none"),
   features: z.array(z.string().trim().min(1).max(160)).max(12).default([]),
   featured: z.boolean().default(false),
+  // false = the school sets the schedule (e.g. group theory); sign-up by phone
+  bookable: z.boolean().default(true),
+  order: z.preprocess(
+    blankToUndefined,
+    z.coerce.number().int().min(0).max(999).default(0),
+  ),
+  locale: localeSchema,
+  status: z.enum(["draft", "published"]),
+});
+/** Documents and certificates: priced, not bookable in the calendar. */
+export const serviceSchema = z.object({
+  title: z.string().trim().min(2).max(200),
+  price: optionalPrice,
+  term: z.string().max(120).default(""),
+  description: z.string().max(600).default(""),
   order: z.preprocess(
     blankToUndefined,
     z.coerce.number().int().min(0).max(999).default(0),

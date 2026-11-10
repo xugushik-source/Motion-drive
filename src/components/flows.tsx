@@ -212,8 +212,9 @@ export function Booking({
   const packages = useMemo(
     () =>
       sortPackages(
+        // Only courses the student schedules personally are bookable online.
         (content.packages || []).filter(
-          (p) => !p.locale || p.locale === locale,
+          (p) => (!p.locale || p.locale === locale) && p.bookable !== false,
         ),
       ),
     [content.packages, locale],
@@ -265,7 +266,13 @@ export function Booking({
       window.removeEventListener("focus", refreshSlots);
     };
   }, []);
-  const count = pack ? Number(pack.lessons) || 1 : customCount;
+  const perLesson = pack?.priceType === "perLesson";
+  const count = pack && !perLesson ? Number(pack.lessons) || 1 : customCount;
+  const hasPrice = pack?.price !== undefined && pack?.price !== "";
+  const total = hasPrice
+    ? Number(pack!.price) *
+      (perLesson ? Math.max(1, picked.length || count) : 1)
+    : null;
   const available = slots.filter(
     (s) => s.city === city && (!instructor || s.instructor_id === instructor),
   );
@@ -287,6 +294,37 @@ export function Booking({
   const toggle = <T,>(list: T[], v: T) =>
     list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 
+  const stepper = (
+    <div className="stepper" aria-label={t("lessonsWord")}>
+      <button
+        type="button"
+        aria-label="−"
+        onClick={() => {
+          setCustomCount(Math.max(1, customCount - 1));
+          resetPick();
+        }}
+      >
+        <Minus size={16} />
+      </button>
+      <motion.output
+        key={customCount}
+        initial={{ scale: 1.3 }}
+        animate={{ scale: 1 }}
+      >
+        {customCount}
+      </motion.output>
+      <button
+        type="button"
+        aria-label="+"
+        onClick={() => {
+          setCustomCount(Math.min(20, customCount + 1));
+          resetPick();
+        }}
+      >
+        <Plus size={16} />
+      </button>
+    </div>
+  );
   if (user === undefined) return <Notice>{t("loading")}</Notice>;
   if (sent)
     return (
@@ -383,10 +421,20 @@ export function Booking({
                 ))}
               </AnimatePresence>
             </ul>
-            {pack?.price !== undefined && pack.price !== "" && (
+            {total !== null && (
               <div className="order-row total">
-                <small>{t("priceTotal")}</small>
-                <strong>{Number(pack.price).toLocaleString("ru-RU")} ₾</strong>
+                <small>
+                  {t("priceTotal")}
+                  {perLesson &&
+                    ` · ${Math.max(1, picked.length || count)} × ${Number(pack!.price)} ₾`}
+                </small>
+                <motion.strong
+                  key={total}
+                  initial={{ y: -6, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                >
+                  {total.toLocaleString("ru-RU")} ₾
+                </motion.strong>
               </div>
             )}
           </div>
@@ -469,6 +517,12 @@ export function Booking({
               }}
             />
           )}
+          {perLesson && (
+            <div className="per-lesson-count">
+              <span>{t("howManyLessons")}</span>
+              {stepper}
+            </div>
+          )}
           <div className={"custom-package" + (!pack ? " selected" : "")}>
             <button
               type="button"
@@ -492,37 +546,7 @@ export function Booking({
                 </small>
               </span>
             </button>
-            {!pack && (
-              <div className="stepper" aria-label={t("lessonsWord")}>
-                <button
-                  type="button"
-                  aria-label="−"
-                  onClick={() => {
-                    setCustomCount(Math.max(1, customCount - 1));
-                    resetPick();
-                  }}
-                >
-                  <Minus size={16} />
-                </button>
-                <motion.output
-                  key={customCount}
-                  initial={{ scale: 1.3 }}
-                  animate={{ scale: 1 }}
-                >
-                  {customCount}
-                </motion.output>
-                <button
-                  type="button"
-                  aria-label="+"
-                  onClick={() => {
-                    setCustomCount(Math.min(20, customCount + 1));
-                    resetPick();
-                  }}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            )}
+            {!pack && stepper}
           </div>
         </section>
 

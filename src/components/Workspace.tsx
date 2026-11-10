@@ -37,6 +37,7 @@ const modules = [
   "students",
   "instructors",
   "packages",
+  "services",
   "courses",
   "schedule",
   "lessons",
@@ -1124,8 +1125,12 @@ function RecordEditor({
           ? [
               "title",
               "description",
+              "group",
+              "priceType",
               "lessons",
+              "weeks",
               "lessonMinutes",
+              "lessonMinutesMax",
               "price",
               "oldPrice",
               "program",
@@ -1133,16 +1138,18 @@ function RecordEditor({
               "features",
               "order",
             ]
-          : [
-              "title",
-              "description",
-              ...(kind === "courses" ? ["price", "duration"] : []),
-              ...(kind === "branches" ? ["city", "address", "phone"] : []),
-              ...(kind === "instructors"
-                ? ["userId", "languages", "vehicle"]
-                : []),
-              ...(["media", "materials"].includes(kind) ? ["url"] : []),
-            ];
+          : kind === "services"
+            ? ["title", "price", "term", "description", "order"]
+            : [
+                "title",
+                "description",
+                ...(kind === "courses" ? ["price", "duration"] : []),
+                ...(kind === "branches" ? ["city", "address", "phone"] : []),
+                ...(kind === "instructors"
+                  ? ["userId", "languages", "vehicle"]
+                  : []),
+                ...(["media", "materials"].includes(kind) ? ["url"] : []),
+              ];
   const update = (key: string, value: any) =>
     setRecord((r) => ({ ...r, [key]: value }));
   return (
@@ -1183,7 +1190,7 @@ function RecordEditor({
         </Field>
       </div>
       {fields.map((key) => (
-        <Field key={key} label={t(key)}>
+        <Field key={key} label={t(key === "group" ? "packageGroup" : key)}>
           {[
             "answer",
             "description",
@@ -1213,17 +1220,41 @@ function RecordEditor({
                 )
               }
             />
-          ) : key === "program" || key === "gearbox" ? (
+          ) : ["program", "gearbox", "group", "priceType"].includes(key) ? (
             <select
-              value={record[key] || (key === "program" ? "practice" : "none")}
+              value={
+                record[key] ||
+                {
+                  program: "practice",
+                  gearbox: "none",
+                  group: "driving",
+                  priceType: "total",
+                }[key]
+              }
               onChange={(e) => update(key, e.target.value)}
             >
-              {(key === "program"
-                ? ["practice", "theory", "individual", "group", "exam"]
-                : ["none", "manual", "automatic"]
-              ).map((k) => (
+              {(
+                {
+                  program: [
+                    "practice",
+                    "theory",
+                    "individual",
+                    "group",
+                    "exam",
+                  ],
+                  gearbox: ["none", "manual", "automatic"],
+                  group: ["theory", "driving", "exam"],
+                  priceType: ["total", "perLesson"],
+                } as Record<string, string[]>
+              )[key].map((k) => (
                 <option key={k} value={k}>
-                  {t(k)}
+                  {t(
+                    key === "group"
+                      ? "group_" + k
+                      : key === "priceType"
+                        ? "priceType_" + k
+                        : k,
+                  )}
                 </option>
               ))}
             </select>
@@ -1245,7 +1276,9 @@ function RecordEditor({
                         "oldPrice",
                         "correctIndex",
                         "lessons",
+                        "weeks",
                         "lessonMinutes",
+                        "lessonMinutesMax",
                         "order",
                       ].includes(key)
                     ? "number"
@@ -1274,7 +1307,9 @@ function RecordEditor({
                           "price",
                           "oldPrice",
                           "lessons",
+                          "weeks",
                           "lessonMinutes",
+                          "lessonMinutesMax",
                           "order",
                         ].includes(key)
                       ? e.target.value === ""
@@ -1336,6 +1371,16 @@ function RecordEditor({
             onChange={(e) => update("featured", e.target.checked)}
           />
           {t("featured")}
+        </label>
+      )}
+      {kind === "packages" && (
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={record.bookable !== false}
+            onChange={(e) => update("bookable", e.target.checked)}
+          />
+          {t("bookableOnline")}
         </label>
       )}
       {kind === "reviews" && (

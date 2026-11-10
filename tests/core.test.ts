@@ -153,7 +153,40 @@ test("package prices stay empty instead of becoming 0 GEL", () => {
   assert.equal(p.price, "");
   assert.equal(p.oldPrice, "");
   assert.equal(p.lessons, 10);
-  assert.equal(p.lessonMinutes, 60);
+  assert.equal(p.lessonMinutes, "", "no invented lesson length");
   assert.equal(packageSchema.parse({ ...p, price: "450" }).price, 450);
   assert.equal(packageSchema.safeParse({ ...p, lessons: 0 }).success, false);
+});
+
+test("the published price list is valid and identical in every language", async () => {
+  const { publicRecords } = await import("../src/lib/public-content.ts");
+  const { serviceSchema } = await import("../src/lib/schemas.ts");
+  const byLocale = (kind: string) => {
+    const map: Record<string, string> = {};
+    for (const r of publicRecords[kind]) {
+      const parsed =
+        kind === "packages" ? packageSchema.parse(r) : serviceSchema.parse(r);
+      const key = r.id.replace(/-(ru|en|ka|hy)$/, "");
+      const facts = JSON.stringify([
+        parsed.price,
+        "lessons" in parsed
+          ? [parsed.lessons, parsed.weeks, parsed.priceType]
+          : 0,
+      ]);
+      map[r.locale + ":" + key] = facts;
+    }
+    for (const k of Object.keys(map)) {
+      const base = map["ru:" + k.split(":")[1]];
+      assert.equal(map[k], base, k + " differs from ru");
+    }
+    return Object.keys(map).length;
+  };
+  assert.equal(byLocale("packages"), 28);
+  assert.equal(byLocale("services"), 12);
+  const price = (id: string) =>
+    publicRecords.packages.find((p) => p.id === id)!.price;
+  assert.equal(price("city-automatic-ru"), 60);
+  assert.equal(price("city-manual-ru"), 80);
+  assert.equal(price("yard-ru"), 40);
+  assert.equal(price("theory-group-ru"), 150);
 });

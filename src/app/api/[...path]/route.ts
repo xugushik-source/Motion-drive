@@ -30,6 +30,7 @@ import {
   loginSchema,
   passwordSchema,
   packageSchema,
+  serviceSchema,
   bookingSchema,
   questionSchema,
   localeSchema,
@@ -59,9 +60,23 @@ const safe = (u: Row) => ({
   locale: u.locale,
   must_change_password: u.must_change_password,
 });
+// Readable order line for the operator and the Excel export, frozen at booking time.
+function packageSnapshot(pack: Row, booked: number) {
+  const perLesson = pack.priceType === "perLesson";
+  const lessons = perLesson ? booked : Number(pack.lessons || 1);
+  const minutes = pack.lessonMinutes ? `×${pack.lessonMinutes}` : "";
+  const hasPrice = pack.price !== "" && pack.price !== undefined;
+  const price = !hasPrice
+    ? ""
+    : perLesson
+      ? ` · ${lessons} × ${pack.price} ₾ = ${lessons * Number(pack.price)} ₾`
+      : ` · ${pack.price} ₾`;
+  return `${pack.title} · ${lessons}${minutes}${price}`;
+}
 const kinds = [
   "courses",
   "packages",
+  "services",
   "instructors",
   "branches",
   "media",
@@ -78,6 +93,7 @@ const kinds = [
 const publicKinds = [
   "courses",
   "packages",
+  "services",
   "instructors",
   "branches",
   "media",
@@ -496,6 +512,15 @@ export async function POST(
             ? (await approved("packages")).find((x) => x.id === v.package_id)
             : undefined;
           if (v.package_id && !pack) return fail("invalid");
+          // School-scheduled courses are signed up by phone; a fixed-price set
+          // cannot be stretched to more lessons than it contains.
+          if (pack && pack.bookable === false) return fail("invalid");
+          if (
+            pack &&
+            pack.priceType !== "perLesson" &&
+            slotIds.length > Number(pack.lessons || 1)
+          )
+            return fail("invalid");
           const seriesId = slotIds.length > 1 || pack ? randomUUID() : null;
           const ids: string[] = [];
           for (const slotId of slotIds) {
@@ -537,9 +562,7 @@ export async function POST(
                   v.contact,
                   v.note,
                   seriesId,
-                  pack
-                    ? `${pack.title} · ${pack.lessons}×${pack.lessonMinutes || 60}`
-                    : "",
+                  pack ? packageSnapshot(pack, slotIds.length) : "",
                 );
             } catch {
               return fail("slotUnavailable", 409);
@@ -993,6 +1016,7 @@ export async function POST(
             .parse(data);
         if (v.kind === "questions") data = questionSchema.parse(data);
         if (v.kind === "packages") data = packageSchema.parse(data);
+        if (v.kind === "services") data = serviceSchema.parse(data);
         if (["faq", "knowledge"].includes(v.kind)) {
           data = z
             .object({

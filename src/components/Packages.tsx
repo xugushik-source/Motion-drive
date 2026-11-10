@@ -1,7 +1,16 @@
 "use client";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowUpRight, Check, Clock, Sparkles, CarFront } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  Clock,
+  Sparkles,
+  CarFront,
+  BookOpen,
+  Route,
+  Phone,
+} from "lucide-react";
 import type { Item } from "./Site";
 
 export const sortPackages = (list: Item[]) =>
@@ -11,10 +20,25 @@ export const sortPackages = (list: Item[]) =>
       (Number(a.lessons) || 0) - (Number(b.lessons) || 0),
   );
 
-const price = (value: unknown) =>
+export const price = (value: unknown) =>
   value === undefined || value === null || value === ""
     ? null
     : `${Number(value).toLocaleString("ru-RU")} ₾`;
+const GROUPS = ["theory", "driving", "exam"] as const;
+const groupIcon = { theory: BookOpen, driving: CarFront, exam: Route };
+const has = (v: unknown) => v !== undefined && v !== null && v !== "";
+/** The headline number of a card: weeks for courses, minutes for single lessons, lessons for sets. */
+function headline(p: Item, t: (k: string) => string) {
+  if (has(p.weeks)) return [p.weeks, t("weeksWord")];
+  if (p.priceType === "perLesson" && has(p.lessonMinutes))
+    return [p.lessonMinutes, t("minutes")];
+  if (p.group === "exam") return [p.lessons, t("routesWord")];
+  return [p.lessons, t("lessonsWord")];
+}
+export const minutesText = (p: Item, t: (k: string) => string) =>
+  has(p.lessonMinutes)
+    ? `${p.lessonMinutes}${has(p.lessonMinutesMax) ? "–" + p.lessonMinutesMax : ""} ${t("minutes")}`
+    : "";
 
 /**
  * Lesson packages. `showcase` links to booking, `select` turns the cards into a
@@ -85,6 +109,31 @@ export default function Packages({
         <p className="package-soon-note">{t("packagesSoonText")}</p>
       </div>
     );
+  const groups = GROUPS.filter((g) =>
+    list.some((p) => (p.group || "driving") === g),
+  );
+  if (mode === "showcase" && groups.length > 1)
+    return (
+      <div className="package-groups">
+        {groups.map((g) => {
+          const Icon = groupIcon[g];
+          return (
+            <div key={g} className="package-group">
+              <h3 className="package-group-title">
+                <Icon size={20} strokeWidth={1.5} />
+                {t("group_" + g)}
+              </h3>
+              <Packages
+                packages={list.filter((p) => (p.group || "driving") === g)}
+                locale={locale}
+                t={t}
+                mode="showcase"
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
   return (
     <div
       className={"package-grid" + (mode === "select" ? " selectable" : "")}
@@ -92,6 +141,9 @@ export default function Packages({
       aria-label={t("packages")}
     >
       {list.map((p, i) => {
+        const [big, bigLabel] = headline(p, t);
+        const Icon =
+          groupIcon[(p.group || "driving") as keyof typeof groupIcon];
         const isSelected = selected === p.id;
         const body = (
           <>
@@ -109,16 +161,16 @@ export default function Packages({
                     delay: reduce ? 0 : 0.15 + i * 0.1,
                   }}
                 >
-                  {p.lessons}
+                  {big}
                 </motion.strong>
-                <small>{t("lessonsWord")}</small>
+                <small>{bigLabel}</small>
               </span>
               {mode === "select" ? (
                 <span className={"package-radio" + (isSelected ? " on" : "")}>
                   {isSelected && <Check size={16} />}
                 </span>
               ) : (
-                <CarFront size={28} strokeWidth={1.3} />
+                <Icon size={28} strokeWidth={1.3} />
               )}
             </div>
             <div>
@@ -130,11 +182,19 @@ export default function Packages({
               )}
               <h3>{p.title}</h3>
               {p.description && <p>{p.description}</p>}
-              <p className="package-meta">
-                <Clock size={14} />
-                {p.lessonMinutes || 60} {t("minutes")}
-                {p.gearbox && p.gearbox !== "none" && <> · {t(p.gearbox)}</>}
-              </p>
+              {((bigLabel !== t("minutes") && minutesText(p, t)) ||
+                (p.gearbox && p.gearbox !== "none")) && (
+                <p className="package-meta">
+                  <Clock size={14} />
+                  {[
+                    // the headline already shows single-lesson minutes
+                    bigLabel === t("minutes") ? "" : minutesText(p, t),
+                    p.gearbox && p.gearbox !== "none" ? t(p.gearbox) : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
               {!!p.features?.length && (
                 <ul className="package-features">
                   {p.features.map((f: string) => (
@@ -153,12 +213,22 @@ export default function Packages({
                 )}
                 <strong className={price(p.price) ? "" : "pending"}>
                   {price(p.price) || t("pricePending")}
+                  {price(p.price) && p.priceType === "perLesson" && (
+                    <small> / {t("perLessonWord")}</small>
+                  )}
                 </strong>
               </span>
               {mode === "showcase" ? (
-                <span className="round-link" aria-hidden="true">
-                  <ArrowUpRight size={20} />
-                </span>
+                p.bookable === false ? (
+                  <span className="package-phone">
+                    <Phone size={14} />
+                    {t("byPhone")}
+                  </span>
+                ) : (
+                  <span className="round-link" aria-hidden="true">
+                    <ArrowUpRight size={20} />
+                  </span>
+                )
               ) : (
                 <span className="package-choose">
                   {t(isSelected ? "selectedPackage" : "choosePackage")}
@@ -180,7 +250,11 @@ export default function Packages({
           >
             {mode === "showcase" ? (
               <Link
-                href={`/${locale}/booking?package=${encodeURIComponent(p.id)}`}
+                href={
+                  p.bookable === false
+                    ? `/${locale}/contacts`
+                    : `/${locale}/booking?package=${encodeURIComponent(p.id)}`
+                }
                 className={"package-card" + (p.featured ? " featured" : "")}
               >
                 {body}
@@ -204,5 +278,59 @@ export default function Packages({
         );
       })}
     </div>
+  );
+}
+
+/** Price list for documents and certificates. */
+export function Services({
+  services,
+  t,
+}: {
+  services: Item[];
+  t: (k: string) => string;
+}) {
+  const reduce = useReducedMotion();
+  if (!services.length) return null;
+  return (
+    <section className="services">
+      <div className="section-head">
+        <div>
+          <p className="eyebrow">
+            <span />
+            {t("servicesTag")}
+          </p>
+          <h2>{t("servicesTitle")}</h2>
+        </div>
+      </div>
+      <ul className="service-list">
+        {sortPackages(services).map((s, i) => (
+          <motion.li
+            key={s.id}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{
+              duration: reduce ? 0 : 0.4,
+              delay: reduce ? 0 : i * 0.06,
+            }}
+          >
+            <div>
+              <strong>{s.title}</strong>
+              {s.description && <p>{s.description}</p>}
+            </div>
+            {s.term && (
+              <span className="service-term">
+                <Clock size={14} />
+                {s.term}
+              </span>
+            )}
+            <span className="service-price">
+              {price(s.price) || t("priceOnRequest")}
+            </span>
+          </motion.li>
+        ))}
+      </ul>
+      <p className="service-note">{t("servicesNote")}</p>
+    </section>
   );
 }

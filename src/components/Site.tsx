@@ -34,7 +34,7 @@ import dynamic from "next/dynamic";
 import BackgroundVideo from "./BackgroundVideo";
 const Workspace = dynamic(() => import("./Workspace"));
 import { Booking, Auth, Exam } from "./flows";
-import Packages from "./Packages";
+import Packages, { Services } from "./Packages";
 export type Item = Record<string, any>;
 export async function api(path: string, data?: any) {
   const res = await fetch(
@@ -148,9 +148,13 @@ export default function Site({
               </div>
               <div className="card-bottom">
                 <span>
-                  {c.price !== undefined && c.price !== ""
-                    ? `${c.price} ₾`
-                    : t("pricePending")}
+                  {c.price !== undefined && c.price !== "" ? (
+                    `${c.price} ₾`
+                  ) : list("packages").length ? (
+                    <Link href={href("pricing")}>{t("seePrices")}</Link>
+                  ) : (
+                    t("pricePending")
+                  )}
                 </span>
                 <Link
                   aria-label={c.title || t(c.key)}
@@ -674,6 +678,7 @@ export default function Site({
               {page === "courses" && (
                 <>
                   {packagesSection(true)}
+                  <Services services={list("services")} t={t} />
                   {programs()}
                   <div className="mini-programs">
                     {["manual", "automatic", "group", "exam"].map((k) => (
@@ -690,7 +695,7 @@ export default function Site({
                 <>
                   <Notice>{t("currency")}</Notice>
                   {packagesSection(true)}
-                  {programs()}
+                  <Services services={list("services")} t={t} />
                 </>
               )}
               {page === "instructors" && instructors()}
