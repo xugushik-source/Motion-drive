@@ -80,6 +80,11 @@ export const packageSchema = z.object({
   priceType: z.enum(["total", "perLesson"]).default("total"),
   lessons: z.coerce.number().int().min(1).max(30),
   weeks: optionalInt(1, 52),
+  // exam sets: how many routes one lesson covers
+  routes: optionalInt(1, 20),
+  // recurring group courses: first start date and the interval between starts
+  startDate: z.union([z.literal(""), z.iso.date()]).default(""),
+  cycleDays: optionalInt(1, 120),
   lessonMinutes: optionalInt(15, 240),
   lessonMinutesMax: optionalInt(15, 240),
   price: optionalPrice,

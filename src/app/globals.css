@@ -2723,3 +2723,23 @@ h3 {
 .success-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 @media (max-width: 760px) { .back-home { margin-bottom: 14px; } }
 @media (prefers-reduced-motion: reduce) { .back-home, .back-home svg { transition: none; } }
+
+/* ===== Branch admins, WhatsApp, group starts, practice city ===== */
+.branch-offer { font-size: 12px; font-weight: 600; color: var(--ink) !important; margin-bottom: 6px; }
+.branch-admin { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 13px; }
+.branch-admin strong { color: var(--ink); font-weight: 600; }
+.whatsapp-button { display: inline-flex; align-items: center; gap: 9px; padding: 11px 16px; border-radius: 99px; background: #1f9d55; color: #fff; font-size: 12px; font-weight: 600; margin: 4px 0 14px; transition: transform .2s, background .2s; }
+.whatsapp-button:hover { transform: translateY(-2px); background: #17874a; }
+.whatsapp-button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.next-starts { display: grid; gap: 6px; margin: 10px 0 4px; }
+.next-starts small { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.next-starts div { display: flex; flex-wrap: wrap; gap: 6px; }
+.next-starts span { padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); font-size: 12px; }
+.next-starts span.first { background: var(--lime); border-color: var(--lime); color: var(--ink); font-weight: 600; }
+.practice-city { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; margin: 0; padding: 12px 14px; border-radius: 10px; background: #fff4ef; border: 1px solid #ffd2c6; color: var(--ink); font-size: 13px; }
+.wa-handoff { display: grid; gap: 10px; justify-items: center; margin: 0 auto 22px; max-width: 420px; }
+.wa-handoff p { font-size: 13px; margin: 0; }
+@media (prefers-reduced-motion: reduce) { .whatsapp-button { transition: none; } }
+.contact-card .whatsapp-button { display: flex; width: fit-content; }
+.package-card { justify-content: flex-start; }
+.package-card .package-foot { margin-top: auto; }

@@ -190,3 +190,42 @@ test("the published price list is valid and identical in every language", async 
   assert.equal(price("yard-ru"), 40);
   assert.equal(price("theory-group-ru"), 150);
 });
+
+test("group starts repeat every 15 days from the school's first date", async () => {
+  const { nextStarts } = await import("../src/lib/schedule.ts");
+  const g = { startDate: "2026-11-22", cycleDays: 15 };
+  const day = (d: Date) => d.toISOString().slice(0, 10);
+  assert.deepEqual(
+    nextStarts(g, 3, new Date("2026-11-10T12:00:00Z")).map(day),
+    ["2026-11-22", "2026-12-07", "2026-12-22"],
+  );
+  // 19:59 UTC is 23:59 in Georgia (still the start day); 20:00 UTC is already the next day there
+  assert.equal(
+    day(nextStarts(g, 1, new Date("2026-12-07T19:59:00Z"))[0]),
+    "2026-12-07",
+  );
+  assert.equal(
+    day(nextStarts(g, 1, new Date("2026-12-07T20:00:00Z"))[0]),
+    "2026-12-22",
+  );
+  assert.deepEqual(nextStarts({ startDate: "" }), []);
+});
+
+test("the chatbot finds inflected questions in all four languages", async () => {
+  const { findKnowledge } = await import("../src/lib/knowledge.ts");
+  const { publicRecords } = await import("../src/lib/public-content.ts");
+  const ask = (q: string, l: string) =>
+    findKnowledge(
+      q,
+      publicRecords.faq.filter((f) => f.locale === l),
+    )?.id;
+  assert.equal(ask("С какого возраста можно учиться?", "ru"), "faq-ru-5");
+  assert.equal(ask("Как оплатить занятия?", "ru"), "faq-ru-6");
+  assert.equal(ask("Когда начинается новая группа?", "ru"), "faq-ru-7");
+  assert.equal(ask("რა ასაკიდან შეიძლება?", "ka"), "faq-ka-5");
+  assert.equal(ask("Քանի՞ տարեկանից կարելի է", "hy"), "faq-hy-5");
+  assert.equal(ask("What is the minimum age?", "en"), "faq-en-5");
+  assert.equal(ask("Сколько стоит обучение?", "ru"), "faq-ru-4");
+  // short words never match as stems
+  assert.equal(ask("абв", "ru"), undefined);
+});

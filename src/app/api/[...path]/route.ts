@@ -60,6 +60,14 @@ const safe = (u: Row) => ({
   locale: u.locale,
   must_change_password: u.must_change_password,
 });
+// School rule: a student may cancel or move a lesson online up to 24 hours
+// before it starts; later changes go through an administrator by phone.
+const FREE_CHANGE_MS = 24 * 3600000;
+async function tooLate(b: Row) {
+  if (!b.slot_id) return false;
+  const slot = await one("SELECT start FROM slots WHERE id=?", b.slot_id);
+  return !!slot && Date.parse(slot.start) - Date.now() < FREE_CHANGE_MS;
+}
 // Readable order line for the operator and the Excel export, frozen at booking time.
 function packageSnapshot(pack: Row, booked: number) {
   const perLesson = pack.priceType === "perLesson";
@@ -603,8 +611,17 @@ export async function POST(
             (lessons[0].user_id !== user.id || v.status !== "cancelled")
           )
             return fail("forbidden", 403);
-          let changed = 0;
+          let changed = 0,
+            late = 0;
           for (const b of lessons) {
+            if (
+              !staffMember &&
+              ["pending", "confirmed"].includes(b.status) &&
+              (await tooLate(b))
+            ) {
+              late++;
+              continue;
+            }
             if (
               v.status === "cancelled" &&
               !["pending", "confirmed"].includes(b.status)
@@ -628,7 +645,8 @@ export async function POST(
               "INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)",
             )
             .run(user.id, "booking:series", JSON.stringify({ ...v, changed }));
-          return json({ ok: true, changed });
+          if (!changed && late) return fail("lateChange", 409);
+          return json({ ok: true, changed, late });
         }
         if (p[1] === "reschedule") {
           const v = z
@@ -646,6 +664,8 @@ export async function POST(
             return fail("forbidden", 403);
           if (!["pending", "confirmed"].includes(b.status))
             return fail("invalid");
+          const staffMove = ["admin", "operator"].includes(user.role);
+          if (!staffMove && (await tooLate(b))) return fail("lateChange", 409);
           const slot = await one(
             "SELECT * FROM slots WHERE id=? AND available=1 FOR UPDATE",
             v.slot_id,
@@ -694,6 +714,8 @@ export async function POST(
           return fail("forbidden", 403);
         if (!["pending", "confirmed"].includes(b.status))
           return fail("invalid");
+        if (!["admin", "operator"].includes(user.role) && (await tooLate(b)))
+          return fail("lateChange", 409);
         if (v.status === "confirmed" && !b.slot_id) return fail("slotRequired");
         if (v.status !== "cancelled") {
           const slot = await one(

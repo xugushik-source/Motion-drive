@@ -12,6 +12,7 @@ import {
   Phone,
 } from "lucide-react";
 import type { Item } from "./Site";
+import { nextStarts } from "../lib/schedule";
 
 export const sortPackages = (list: Item[]) =>
   [...list].sort(
@@ -32,7 +33,8 @@ function headline(p: Item, t: (k: string) => string) {
   if (has(p.weeks)) return [p.weeks, t("weeksWord")];
   if (p.priceType === "perLesson" && has(p.lessonMinutes))
     return [p.lessonMinutes, t("minutes")];
-  if (p.group === "exam") return [p.lessons, t("routesWord")];
+  if (p.group === "exam")
+    return [has(p.routes) ? p.routes : p.lessons, t("routesWord")];
   return [p.lessons, t("lessonsWord")];
 }
 export const minutesText = (p: Item, t: (k: string) => string) =>
@@ -194,6 +196,22 @@ export default function Packages({
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
+              )}
+              {nextStarts(p).length > 0 && (
+                <div className="next-starts">
+                  <small>{t("nextStarts")}</small>
+                  <div>
+                    {nextStarts(p).map((d, k) => (
+                      <span key={k} className={k === 0 ? "first" : ""}>
+                        {d.toLocaleDateString(locale, {
+                          day: "numeric",
+                          month: "long",
+                          timeZone: "UTC",
+                        })}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
               {!!p.features?.length && (
                 <ul className="package-features">

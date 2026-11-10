@@ -80,3 +80,21 @@ export function autoPick(slots: FreeSlot[], prefs: Preferences) {
   }
   return { picked, missing: count - picked.length };
 }
+
+/** The next `count` start dates of a group that restarts every `cycleDays` from `startDate`. */
+export function nextStarts(
+  p: { startDate?: string; cycleDays?: unknown },
+  count = 3,
+  today = new Date(),
+) {
+  if (!p.startDate || !Number(p.cycleDays)) return [];
+  const step = Number(p.cycleDays) * 86400000;
+  const first = Date.parse(p.startDate + "T00:00:00Z");
+  // "today" is the calendar day in Georgia (UTC+4), not in UTC
+  const now = Date.parse(georgiaDay(today.toISOString()) + "T00:00:00Z");
+  const skip = now > first ? Math.ceil((now - first) / step) : 0;
+  return Array.from(
+    { length: count },
+    (_, i) => new Date(first + (skip + i) * step),
+  );
+}

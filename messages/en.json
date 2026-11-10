@@ -42,7 +42,7 @@
   "individualDesc": "Lessons around your goals. Format and availability are confirmed by the school.",
   "confirm": "Group and individual lessons. Contact the school for details.",
   "pricePending": "Tuition on request",
-  "currency": "Tuition in Georgian lari · GEL",
+  "currency": "Prices in Georgian lari · GEL. Cash, card or bank transfer; prepayment required.",
   "routeTag": "YOUR ROAD TO FREEDOM",
   "routeTitle": "Every turn\nis a step forward.",
   "step1": "Let’s meet",
@@ -267,7 +267,7 @@
   "oldPrice": "Old price GEL · shown crossed out",
   "features": "What's included · one per line",
   "order": "Display order",
-  "operatorConfirms": "No payment on the website. An operator will call you and confirm every lesson.",
+  "operatorConfirms": "No payment on the website. A prepayment in cash, by card or bank transfer is required — an administrator will explain how. You can cancel or move a lesson free of charge up to 24 hours before it starts.",
   "ordersCount": "Orders",
   "package": "Package",
   "packages": "Lesson packages",
@@ -306,5 +306,14 @@
   "term": "Ready in",
   "routesWord": "routes",
   "seePrices": "See prices →",
-  "backHome": "Back to home"
+  "backHome": "Back to home",
+  "practiceAkhalkalaki": "Driving practice and exam routes start only from the Akhalkalaki branch",
+  "whatsapp": "Message on WhatsApp",
+  "adminLabel": "Administrator",
+  "waHello": "Hello! I'm writing from the Motion Drive website.",
+  "waBooking": "Hello! I booked on the Motion Drive website:",
+  "waHandoffText": "So the administrator sees your request right away, send it on WhatsApp — the text is ready.",
+  "waSend": "Send the request on WhatsApp",
+  "nextStarts": "Next starts",
+  "lateChange": "The lesson starts in less than 24 hours: it can only be cancelled or moved through an administrator by phone."
 }

@@ -235,7 +235,14 @@ export default function Site({
           <article className="contact-card" key={city}>
             <MapPin size={25} />
             <h3>{t("city" + (i + 1))}</h3>
+            {b?.offer && <p className="branch-offer">{b.offer}</p>}
             <p>{b?.address || t("addressPending")}</p>
+            {b?.admin && (
+              <p className="branch-admin">
+                <UserRound size={15} />
+                {t("adminLabel")}: <strong>{b.admin}</strong>
+              </p>
+            )}
             {b?.phone && (
               <a
                 className="phone"
@@ -245,6 +252,17 @@ export default function Site({
               </a>
             )}
             <p>{b?.hours}</p>
+            {b?.whatsapp && (
+              <a
+                className="whatsapp-button"
+                href={`https://wa.me/${b.whatsapp}?text=${encodeURIComponent(t("waHello"))}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle size={17} />
+                {t("whatsapp")}
+              </a>
+            )}
             <a
               className="text-link"
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((b?.address || "") + ", " + city + ", Georgia")}`}

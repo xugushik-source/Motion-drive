@@ -9,7 +9,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "Пн–Сб · 10:00–18:00",
       "phone": "+995 597 93 93 27",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "Елена Барбарян",
+      "offer": "Теория и практика вождения",
+      "whatsapp": "995597939327"
     },
     {
       "id": "ninotsminda-ru",
@@ -19,7 +22,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "Пн–Сб · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "Аревик Гамбарян",
+      "offer": "Теория. Практика вождения — в Ахалкалаки",
+      "whatsapp": "995597927492"
     },
     {
       "id": "akhalkalaki-en",
@@ -29,7 +35,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "Mon–Sat · 10:00–18:00",
       "phone": "+995 597 93 93 27",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "Elena Barbaryan",
+      "offer": "Theory and driving practice",
+      "whatsapp": "995597939327"
     },
     {
       "id": "ninotsminda-en",
@@ -39,7 +48,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "Mon–Sat · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "Arevik Gambaryan",
+      "offer": "Theory. Driving practice is in Akhalkalaki",
+      "whatsapp": "995597927492"
     },
     {
       "id": "akhalkalaki-ka",
@@ -49,7 +61,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "ორშ–შაბ · 10:00–18:00",
       "phone": "+995 597 93 93 27",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "ელენა ბარბარიანი",
+      "offer": "თეორია და მართვის პრაქტიკა",
+      "whatsapp": "995597939327"
     },
     {
       "id": "ninotsminda-ka",
@@ -59,7 +74,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "ორშ–შაბ · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "არევიკ გამბარიანი",
+      "offer": "თეორია. მართვის პრაქტიკა — ახალქალაქში",
+      "whatsapp": "995597927492"
     },
     {
       "id": "akhalkalaki-hy",
@@ -69,7 +87,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "Երկ–շաբ · 10:00–18:00",
       "phone": "+995 597 93 93 27",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "Ելենա Բարբարյան",
+      "offer": "Տեսություն և վարման պրակտիկա",
+      "whatsapp": "995597939327"
     },
     {
       "id": "ninotsminda-hy",
@@ -79,7 +100,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "hours": "Երկ–շաբ · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/"
+      "source": "https://jnews.ge/162061/",
+      "admin": "Արևիկ Գամբարյան",
+      "offer": "Տեսություն։ Վարման պրակտիկան՝ Ախալքալաքում",
+      "whatsapp": "995597927492"
     }
   ],
   "faq": [
@@ -156,7 +180,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ru-4",
       "question": "Сколько стоит обучение?",
-      "answer": "Теория: группа — 150 ₾ (4 недели, новые дневная и вечерняя группы каждые 15 дней, занятия проходят даже при 3 учениках), индивидуально — 300 ₾ (2 недели), лекции 60–90 минут с 10:00 до 21:00. Вождение по городу: автомат — 60 ₾ за час, механика — 80 ₾ за час. Площадка: 40 ₾ за занятие 25 минут. Экзаменационные маршруты в Ахалцихе (3 маршрута): автомат — 100 ₾, механика — 120 ₾. Справка об обучении: категории A–E — 70 ₾, T и S — 120 ₾, срок 12 рабочих дней.",
+      "answer": "Теория: группа — 150 ₾ (4 недели, пн/ср/пт, новые группы каждые 15 дней, ближайший старт 22 ноября), индивидуально — 300 ₾ (10 лекций за 2 недели). Вождение по городу: автомат — 60 ₾ за час, механика — 80 ₾ за час. Площадка: 40 ₾ за 25 минут, цена одна для автомата и механики. Экзаменационные маршруты в Ахалцихе: урок из 3 маршрутов — автомат 100 ₾, механика 120 ₾. Справка об обучении: категории A–E — 70 ₾, T и S — 120 ₾, срок 12 рабочих дней. Скидок за количество часов нет.",
       "aliases": [
         "цена",
         "стоимость",
@@ -241,7 +265,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-en-4",
       "question": "How much does tuition cost?",
-      "answer": "Theory: group — 150 ₾ (4 weeks; new daytime and evening groups every 15 days, classes run even with 3 students), individual — 300 ₾ (2 weeks), lectures of 60–90 minutes between 10:00 and 21:00. City driving: automatic — 60 ₾ per hour, manual — 80 ₾ per hour. Training ground: 40 ₾ per 25-minute lesson. Exam routes in Akhaltsikhe (3 routes): automatic — 100 ₾, manual — 120 ₾. Training certificate: categories A–E — 70 ₾, T and S — 120 ₾, ready in 12 working days.",
+      "answer": "Theory: group — 150 ₾ (4 weeks, Mon/Wed/Fri, new groups every 15 days, next start 22 November), individual — 300 ₾ (10 lectures over 2 weeks). City driving: automatic — 60 ₾ per hour, manual — 80 ₾ per hour. Training ground: 40 ₾ per 25 minutes, same for automatic and manual. Exam routes in Akhaltsikhe: a lesson of 3 routes — automatic 100 ₾, manual 120 ₾. Training certificate: categories A–E — 70 ₾, T and S — 120 ₾, ready in 12 working days. There are no volume discounts.",
       "aliases": [
         "price",
         "cost",
@@ -324,7 +348,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ka-4",
       "question": "რა ღირს სწავლა?",
-      "answer": "თეორია: ჯგუფური — 150 ₾ (4 კვირა; ახალი დღის და საღამოს ჯგუფები ყოველ 15 დღეში, მეცადინეობა ტარდება 3 მოსწავლის შემთხვევაშიც), ინდივიდუალური — 300 ₾ (2 კვირა), ლექციები 60–90 წუთი, 10:00-დან 21:00-მდე. ქალაქში მართვა: ავტომატიკა — 60 ₾ საათში, მექანიკა — 80 ₾ საათში. მოედანი: 40 ₾ 25-წუთიან გაკვეთილზე. საგამოცდო მარშრუტები ახალციხეში (3 მარშრუტი): ავტომატიკა — 100 ₾, მექანიკა — 120 ₾. სწავლების ცნობა: კატეგორიები A–E — 70 ₾, T და S — 120 ₾, მზადდება 12 სამუშაო დღეში.",
+      "answer": "თეორია: ჯგუფური — 150 ₾ (4 კვირა, ორშ/ოთხ/პარ, ახალი ჯგუფები ყოველ 15 დღეში, უახლოესი დაწყება 22 ნოემბერს), ინდივიდუალური — 300 ₾ (10 ლექცია 2 კვირაში). ქალაქში მართვა: ავტომატიკა — 60 ₾ საათში, მექანიკა — 80 ₾ საათში. მოედანი: 40 ₾ 25 წუთზე, ფასი ერთია ავტომატიკისა და მექანიკისთვის. საგამოცდო მარშრუტები ახალციხეში: გაკვეთილი 3 მარშრუტით — ავტომატიკა 100 ₾, მექანიკა 120 ₾. სწავლების ცნობა: A–E — 70 ₾, T და S — 120 ₾, 12 სამუშაო დღეში. რაოდენობაზე ფასდაკლება არ არის.",
       "aliases": [
         "ფასი",
         "ღირს",
@@ -406,11 +430,233 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-hy-4",
       "question": "Որքա՞ն արժե ուսուցումը։",
-      "answer": "Տեսություն՝ խմբային — 150 ₾ (4 շաբաթ, նոր ցերեկային և երեկոյան խմբեր 15 օրը մեկ, պարապմունքներն անցկացվում են նույնիսկ 3 աշակերտի դեպքում), անհատական — 300 ₾ (2 շաբաթ), դասախոսություններ 60–90 րոպե՝ 10:00-ից 21:00։ Վարում քաղաքում՝ ավտոմատ — 60 ₾ ժամը, մեխանիկա — 80 ₾ ժամը։ Ուսումնական հրապարակ՝ 40 ₾ 25 րոպեանոց դասի համար։ Քննական երթուղիներ Ախալցիխեում (3 երթուղի)՝ ավտոմատ — 100 ₾, մեխանիկա — 120 ₾։ Ուսման տեղեկանք՝ A–E կարգեր — 70 ₾, T և S — 120 ₾, պատրաստվում է 12 աշխատանքային օրում։",
+      "answer": "Տեսություն՝ խմբային — 150 ₾ (4 շաբաթ, երկ/չրք/ուրբ, նոր խմբեր 15 օրը մեկ, մոտակա մեկնարկը՝ նոյեմբերի 22), անհատական — 300 ₾ (10 դասախոսություն 2 շաբաթում)։ Վարում քաղաքում՝ ավտոմատ — 60 ₾ ժամը, մեխանիկա — 80 ₾ ժամը։ Հրապարակ՝ 40 ₾ 25 րոպեի համար, գինը նույնն է ավտոմատի և մեխանիկայի համար։ Քննական երթուղիներ Ախալցիխեում՝ 3 երթուղիով դաս — ավտոմատ 100 ₾, մեխանիկա 120 ₾։ Ուսման տեղեկանք՝ A–E — 70 ₾, T և S — 120 ₾, 12 աշխատանքային օրում։ Քանակի համար զեղչ չկա։",
       "aliases": [
         "գին",
         "արժե",
         "որքան"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-5",
+      "question": "С какого возраста можно учиться и какие документы нужны?",
+      "answer": "Теория и площадка — с 12 лет, вождение по городу — с 16 лет. Для записи нужен паспорт или ID, для несовершеннолетних — согласие родителей.",
+      "aliases": [
+        "возраст",
+        "лет",
+        "документы",
+        "паспорт",
+        "ребенок",
+        "ребёнок"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-5",
+      "question": "What is the minimum age and which documents do I need?",
+      "answer": "Theory and the training ground from age 12, city driving from age 16. Bring a passport or ID; minors also need parental consent.",
+      "aliases": [
+        "age",
+        "old",
+        "documents",
+        "passport",
+        "child"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-5",
+      "question": "რა ასაკიდან შეიძლება სწავლა და რა დოკუმენტებია საჭირო?",
+      "answer": "თეორია და მოედანი — 12 წლიდან, ქალაქში მართვა — 16 წლიდან. საჭიროა პასპორტი ან ID, არასრულწლოვანებისთვის — მშობლის თანხმობა.",
+      "aliases": [
+        "ასაკ",
+        "წლის",
+        "დოკუმენტ",
+        "პასპორტ",
+        "ბავშვ"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-5",
+      "question": "Քանի՞ տարեկանից կարելի է սովորել և ի՞նչ փաստաթղթեր են պետք։",
+      "answer": "Տեսություն և հրապարակ՝ 12 տարեկանից, վարում քաղաքում՝ 16 տարեկանից։ Անհրաժեշտ է անձնագիր կամ ID, անչափահասների համար՝ ծնողների համաձայնություն։",
+      "aliases": [
+        "տարեկան",
+        "տարիք",
+        "փաստաթուղթ",
+        "անձնագիր",
+        "երեխա"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-6",
+      "question": "Как оплатить и можно ли перенести занятие?",
+      "answer": "Оплата наличными, картой или банковским переводом, нужна предоплата — администратор подскажет, как её внести. Бесплатно отменить или перенести занятие можно не позднее чем за 24 часа.",
+      "aliases": [
+        "оплата",
+        "оплатить",
+        "предоплата",
+        "карта",
+        "перенести",
+        "отменить",
+        "отмена"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-6",
+      "question": "How do I pay, and can I move a lesson?",
+      "answer": "Pay in cash, by card or bank transfer; a prepayment is required — an administrator will explain how to make it. You can cancel or move a lesson free of charge up to 24 hours before it starts.",
+      "aliases": [
+        "pay",
+        "payment",
+        "prepayment",
+        "card",
+        "cancel",
+        "reschedule",
+        "move"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-6",
+      "question": "როგორ გადავიხადო და შეიძლება თუ არა გაკვეთილის გადატანა?",
+      "answer": "გადახდა ნაღდით, ბარათით ან საბანკო გადარიცხვით, საჭიროა წინასწარი გადახდა — ადმინისტრატორი აგიხსნით, როგორ. გაკვეთილის უფასოდ გაუქმება ან გადატანა შეიძლება არაუგვიანეს 24 საათით ადრე.",
+      "aliases": [
+        "გადახდ",
+        "ბარათ",
+        "წინასწარ",
+        "გაუქმ",
+        "გადატან"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-6",
+      "question": "Ինչպե՞ս վճարել և կարելի՞ է տեղափոխել դասը։",
+      "answer": "Վճարումը՝ կանխիկ, քարտով կամ բանկային փոխանցումով, անհրաժեշտ է կանխավճար՝ ադմինիստրատորը կբացատրի։ Դասը անվճար չեղարկել կամ տեղափոխել կարելի է ոչ ուշ, քան 24 ժամ առաջ։",
+      "aliases": [
+        "վճար",
+        "քարտ",
+        "կանխավճար",
+        "չեղարկ",
+        "տեղափոխ"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-7",
+      "question": "Когда начинается следующая группа по теории?",
+      "answer": "Новые группы стартуют каждые 15 дней, ближайшая — 22 ноября. Лекции в понедельник, среду и пятницу: днём в 10:00 или 11:30, вечером в 16:00, 17:30 или 19:00. Группа занимается, даже если в ней 3 человека. Языки — русский и армянский, в обоих филиалах.",
+      "aliases": [
+        "группа",
+        "старт",
+        "начало",
+        "расписание",
+        "лекции",
+        "теория"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-7",
+      "question": "When does the next theory group start?",
+      "answer": "New groups start every 15 days; the next one starts on 22 November. Lectures are on Monday, Wednesday and Friday: daytime at 10:00 or 11:30, evening at 16:00, 17:30 or 19:00. A group runs even with 3 students. In Russian and Armenian, at both branches.",
+      "aliases": [
+        "group",
+        "start",
+        "schedule",
+        "lectures",
+        "theory"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-7",
+      "question": "როდის იწყება თეორიის შემდეგი ჯგუფი?",
+      "answer": "ახალი ჯგუფები იწყება ყოველ 15 დღეში, უახლოესი — 22 ნოემბერს. ლექციები ორშაბათს, ოთხშაბათს და პარასკევს: დღისით 10:00 ან 11:30, საღამოს 16:00, 17:30 ან 19:00. ჯგუფი მეცადინეობს 3 მოსწავლითაც. ენები — რუსული და სომხური, ორივე ფილიალში.",
+      "aliases": [
+        "ჯგუფ",
+        "დაწყებ",
+        "განრიგ",
+        "ლექცი",
+        "თეორი"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-7",
+      "question": "Ե՞րբ է սկսվում տեսության հաջորդ խումբը։",
+      "answer": "Նոր խմբերը մեկնարկում են 15 օրը մեկ, մոտական՝ նոյեմբերի 22-ին։ Դասախոսությունները երկուշաբթի, չորեքշաբթի և ուրբաթ՝ ցերեկը 10:00 կամ 11:30, երեկոյան 16:00, 17:30 կամ 19:00։ Խումբը պարապում է նույնիսկ 3 աշակերտով։ Լեզուները՝ ռուսերեն և հայերեն, երկու մասնաճյուղում։",
+      "aliases": [
+        "խումբ",
+        "մեկնարկ",
+        "ժամանակացույց",
+        "դասախոսություն",
+        "տեսություն"
       ],
       "locale": "hy",
       "status": "published",
@@ -437,14 +683,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "Теория · группа",
       "description": "Лекции по расписанию школы с 10:00 до 21:00. Старт гарантирован — группа занимается, даже если в ней 3 человека.",
       "features": [
-        "Новые группы каждые 15 дней",
-        "Дневная и вечерняя группа"
+        "Пн, ср, пт — 3 лекции в неделю",
+        "Днём: 10:00 или 11:30",
+        "Вечером: 16:00, 17:30 или 19:00",
+        "Русский и армянский язык",
+        "Оба филиала · с 12 лет"
       ],
       "featured": false,
       "oldPrice": "",
       "locale": "ru",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "startDate": "2026-11-22",
+      "cycleDays": 15
     },
     {
       "id": "theory-individual-ru",
@@ -461,7 +712,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "Теория · индивидуально",
       "description": "Время лекций выбираете сами — с 10:00 до 21:00.",
-      "features": [],
+      "features": [
+        "10 лекций",
+        "Русский и армянский язык",
+        "Оба филиала · с 12 лет"
+      ],
       "featured": false,
       "oldPrice": "",
       "locale": "ru",
@@ -481,7 +736,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 3,
       "title": "Вождение по городу · автомат",
       "description": "Практика в городе на автомобиле с автоматической коробкой.",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "С 16 лет",
+        "Ахалкалаки · 9:00–19:00, летом до 21:00"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -503,7 +762,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 4,
       "title": "Вождение по городу · механика",
       "description": "Практика в городе на автомобиле с механической коробкой.",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "С 16 лет",
+        "Ахалкалаки · 9:00–19:00, летом до 21:00"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -525,7 +788,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 5,
       "title": "Площадка",
       "description": "Отработка упражнений на учебной площадке.",
-      "features": [],
+      "features": [
+        "Автомат или механика — цена одна",
+        "С 12 лет",
+        "Ахалкалаки · 9:00–19:00, летом до 21:00"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -538,15 +805,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "exam-automatic-ru",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 100,
       "program": "exam",
       "gearbox": "automatic",
       "bookable": true,
       "order": 6,
       "title": "Экзаменационные маршруты · автомат",
-      "description": "3 экзаменационных маршрута в Ахалцихе.",
-      "features": [],
+      "description": "Тренировка на настоящих экзаменационных маршрутах в Ахалцихе.",
+      "features": [
+        "3 маршрута за урок — всего их 6",
+        "Каждый маршрут 20–25 минут",
+        "До Ахалцихе ученик добирается сам"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -554,21 +825,26 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "ru",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     },
     {
       "id": "exam-manual-ru",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 120,
       "program": "exam",
       "gearbox": "manual",
       "bookable": true,
       "order": 7,
       "title": "Экзаменационные маршруты · механика",
-      "description": "3 экзаменационных маршрута в Ахалцихе.",
-      "features": [],
+      "description": "Тренировка на настоящих экзаменационных маршрутах в Ахалцихе.",
+      "features": [
+        "3 маршрута за урок — всего их 6",
+        "Каждый маршрут 20–25 минут",
+        "До Ахалцихе ученик добирается сам"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -576,7 +852,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "ru",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     },
     {
       "id": "theory-group-en",
@@ -594,14 +871,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "Theory · group",
       "description": "Lectures on the school schedule between 10:00 and 21:00. The start is guaranteed — a group runs even with 3 students.",
       "features": [
-        "New groups every 15 days",
-        "Daytime and evening group"
+        "Mon, Wed, Fri — 3 lectures a week",
+        "Daytime: 10:00 or 11:30",
+        "Evening: 16:00, 17:30 or 19:00",
+        "Russian and Armenian",
+        "Both branches · from age 12"
       ],
       "featured": false,
       "oldPrice": "",
       "locale": "en",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "startDate": "2026-11-22",
+      "cycleDays": 15
     },
     {
       "id": "theory-individual-en",
@@ -618,7 +900,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "Theory · individual",
       "description": "You choose the lecture times yourself — from 10:00 to 21:00.",
-      "features": [],
+      "features": [
+        "10 lectures",
+        "Russian and Armenian",
+        "Both branches · from age 12"
+      ],
       "featured": false,
       "oldPrice": "",
       "locale": "en",
@@ -638,7 +924,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 3,
       "title": "City driving · automatic",
       "description": "Practice in town in a car with an automatic gearbox.",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "From age 16",
+        "Akhalkalaki · 9:00–19:00, until 21:00 in summer"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -660,7 +950,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 4,
       "title": "City driving · manual",
       "description": "Practice in town in a car with a manual gearbox.",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "From age 16",
+        "Akhalkalaki · 9:00–19:00, until 21:00 in summer"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -682,7 +976,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 5,
       "title": "Training ground",
       "description": "Practising manoeuvres on the training ground.",
-      "features": [],
+      "features": [
+        "Automatic or manual — same price",
+        "From age 12",
+        "Akhalkalaki · 9:00–19:00, until 21:00 in summer"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -695,15 +993,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "exam-automatic-en",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 100,
       "program": "exam",
       "gearbox": "automatic",
       "bookable": true,
       "order": 6,
       "title": "Exam routes · automatic",
-      "description": "3 exam routes in Akhaltsikhe.",
-      "features": [],
+      "description": "Practice on the real exam routes in Akhaltsikhe.",
+      "features": [
+        "3 routes per lesson — 6 in total",
+        "Each route takes 20–25 minutes",
+        "Students travel to Akhaltsikhe on their own"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -711,21 +1013,26 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "en",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     },
     {
       "id": "exam-manual-en",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 120,
       "program": "exam",
       "gearbox": "manual",
       "bookable": true,
       "order": 7,
       "title": "Exam routes · manual",
-      "description": "3 exam routes in Akhaltsikhe.",
-      "features": [],
+      "description": "Practice on the real exam routes in Akhaltsikhe.",
+      "features": [
+        "3 routes per lesson — 6 in total",
+        "Each route takes 20–25 minutes",
+        "Students travel to Akhaltsikhe on their own"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -733,7 +1040,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "en",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     },
     {
       "id": "theory-group-ka",
@@ -751,14 +1059,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "თეორია · ჯგუფური",
       "description": "ლექციები სკოლის განრიგით, 10:00-დან 21:00-მდე. დაწყება გარანტირებულია — ჯგუფი მეცადინეობს, თუნდაც მასში 3 ადამიანი იყოს.",
       "features": [
-        "ახალი ჯგუფები ყოველ 15 დღეში",
-        "დღის და საღამოს ჯგუფი"
+        "ორშ, ოთხ, პარ — კვირაში 3 ლექცია",
+        "დღისით: 10:00 ან 11:30",
+        "საღამოს: 16:00, 17:30 ან 19:00",
+        "რუსული და სომხური ენა",
+        "ორივე ფილიალი · 12 წლიდან"
       ],
       "featured": false,
       "oldPrice": "",
       "locale": "ka",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "startDate": "2026-11-22",
+      "cycleDays": 15
     },
     {
       "id": "theory-individual-ka",
@@ -775,7 +1088,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "თეორია · ინდივიდუალური",
       "description": "ლექციების დროს თავად ირჩევთ — 10:00-დან 21:00-მდე.",
-      "features": [],
+      "features": [
+        "10 ლექცია",
+        "რუსული და სომხური ენა",
+        "ორივე ფილიალი · 12 წლიდან"
+      ],
       "featured": false,
       "oldPrice": "",
       "locale": "ka",
@@ -795,7 +1112,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 3,
       "title": "ქალაქში მართვა · ავტომატიკა",
       "description": "პრაქტიკა ქალაქში ავტომატური გადაცემათა კოლოფით.",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "16 წლიდან",
+        "ახალქალაქი · 9:00–19:00, ზაფხულში 21:00-მდე"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -817,7 +1138,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 4,
       "title": "ქალაქში მართვა · მექანიკა",
       "description": "პრაქტიკა ქალაქში მექანიკური გადაცემათა კოლოფით.",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "16 წლიდან",
+        "ახალქალაქი · 9:00–19:00, ზაფხულში 21:00-მდე"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -839,7 +1164,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 5,
       "title": "მოედანი",
       "description": "სავარჯიშოების დამუშავება სასწავლო მოედანზე.",
-      "features": [],
+      "features": [
+        "ავტომატიკა ან მექანიკა — ფასი ერთია",
+        "12 წლიდან",
+        "ახალქალაქი · 9:00–19:00, ზაფხულში 21:00-მდე"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -852,15 +1181,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "exam-automatic-ka",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 100,
       "program": "exam",
       "gearbox": "automatic",
       "bookable": true,
       "order": 6,
       "title": "საგამოცდო მარშრუტები · ავტომატიკა",
-      "description": "3 საგამოცდო მარშრუტი ახალციხეში.",
-      "features": [],
+      "description": "ვარჯიში რეალურ საგამოცდო მარშრუტებზე ახალციხეში.",
+      "features": [
+        "3 მარშრუტი ერთ გაკვეთილზე — სულ 6",
+        "თითო მარშრუტი 20–25 წუთი",
+        "ახალციხემდე მოსწავლე თავად მიდის"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -868,21 +1201,26 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "ka",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     },
     {
       "id": "exam-manual-ka",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 120,
       "program": "exam",
       "gearbox": "manual",
       "bookable": true,
       "order": 7,
       "title": "საგამოცდო მარშრუტები · მექანიკა",
-      "description": "3 საგამოცდო მარშრუტი ახალციხეში.",
-      "features": [],
+      "description": "ვარჯიში რეალურ საგამოცდო მარშრუტებზე ახალციხეში.",
+      "features": [
+        "3 მარშრუტი ერთ გაკვეთილზე — სულ 6",
+        "თითო მარშრუტი 20–25 წუთი",
+        "ახალციხემდე მოსწავლე თავად მიდის"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -890,7 +1228,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "ka",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     },
     {
       "id": "theory-group-hy",
@@ -908,14 +1247,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "Տեսություն · խմբային",
       "description": "Դասախոսություններ դպրոցի ժամանակացույցով՝ 10:00-ից 21:00։ Մեկնարկը երաշխավորված է՝ խումբը պարապում է, նույնիսկ եթե այնտեղ 3 հոգի է։",
       "features": [
-        "Նոր խմբեր 15 օրը մեկ",
-        "Ցերեկային և երեկոյան խումբ"
+        "Երկ, չրք, ուրբ — շաբաթական 3 դասախոսություն",
+        "Ցերեկը՝ 10:00 կամ 11:30",
+        "Երեկոյան՝ 16:00, 17:30 կամ 19:00",
+        "Ռուսերեն և հայերեն",
+        "Երկու մասնաճյուղ · 12 տարեկանից"
       ],
       "featured": false,
       "oldPrice": "",
       "locale": "hy",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "startDate": "2026-11-22",
+      "cycleDays": 15
     },
     {
       "id": "theory-individual-hy",
@@ -932,7 +1276,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "Տեսություն · անհատական",
       "description": "Դասախոսությունների ժամը ընտրում եք ինքներդ՝ 10:00-ից 21:00։",
-      "features": [],
+      "features": [
+        "10 դասախոսություն",
+        "Ռուսերեն և հայերեն",
+        "Երկու մասնաճյուղ · 12 տարեկանից"
+      ],
       "featured": false,
       "oldPrice": "",
       "locale": "hy",
@@ -952,7 +1300,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 3,
       "title": "Վարում քաղաքում · ավտոմատ",
       "description": "Պրակտիկա քաղաքում ավտոմատ փոխանցման տուփով մեքենայով։",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "16 տարեկանից",
+        "Ախալքալաք · 9:00–19:00, ամռանը մինչև 21:00"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -974,7 +1326,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 4,
       "title": "Վարում քաղաքում · մեխանիկա",
       "description": "Պրակտիկա քաղաքում մեխանիկական փոխանցման տուփով մեքենայով։",
-      "features": [],
+      "features": [
+        "Hyundai Elantra",
+        "16 տարեկանից",
+        "Ախալքալաք · 9:00–19:00, ամռանը մինչև 21:00"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -996,7 +1352,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 5,
       "title": "Ուսումնական հրապարակ",
       "description": "Վարժությունների մշակում ուսումնական հրապարակում։",
-      "features": [],
+      "features": [
+        "Ավտոմատ կամ մեխանիկա — գինը նույնն է",
+        "12 տարեկանից",
+        "Ախալքալաք · 9:00–19:00, ամռանը մինչև 21:00"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -1009,15 +1369,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "exam-automatic-hy",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 100,
       "program": "exam",
       "gearbox": "automatic",
       "bookable": true,
       "order": 6,
       "title": "Քննական երթուղիներ · ավտոմատ",
-      "description": "3 քննական երթուղի Ախալցիխեում։",
-      "features": [],
+      "description": "Պարապմունք իրական քննական երթուղիներով Ախալցիխեում։",
+      "features": [
+        "3 երթուղի մեկ դասում — ընդհանուր 6",
+        "Յուրաքանչյուր երթուղի՝ 20–25 րոպե",
+        "Աշակերտը Ախալցիխե հասնում է ինքնուրույն"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -1025,21 +1389,26 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "hy",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     },
     {
       "id": "exam-manual-hy",
       "group": "exam",
       "priceType": "total",
-      "lessons": 3,
+      "lessons": 1,
       "price": 120,
       "program": "exam",
       "gearbox": "manual",
       "bookable": true,
       "order": 7,
       "title": "Քննական երթուղիներ · մեխանիկա",
-      "description": "3 քննական երթուղի Ախալցիխեում։",
-      "features": [],
+      "description": "Պարապմունք իրական քննական երթուղիներով Ախալցիխեում։",
+      "features": [
+        "3 երթուղի մեկ դասում — ընդհանուր 6",
+        "Յուրաքանչյուր երթուղի՝ 20–25 րոպե",
+        "Աշակերտը Ախալցիխե հասնում է ինքնուրույն"
+      ],
       "featured": false,
       "oldPrice": "",
       "weeks": "",
@@ -1047,7 +1416,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "lessonMinutesMax": "",
       "locale": "hy",
       "status": "published",
-      "source": "Прайс школы, сообщён владельцем 2026-11-10"
+      "source": "Прайс школы, сообщён владельцем 2026-11-10",
+      "routes": 3
     }
   ],
   "services": [
@@ -1057,7 +1427,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 1,
       "title": "Справка об обучении · категории A, B, C, D, E",
       "term": "12 рабочих дней",
-      "description": "",
+      "description": "Нужны паспорт, контактный номер и юридический адрес.",
       "locale": "ru",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1068,7 +1438,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "Справка об обучении · категории T, S",
       "term": "12 рабочих дней",
-      "description": "",
+      "description": "Нужны паспорт, контактный номер и юридический адрес.",
       "locale": "ru",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1077,9 +1447,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "cert-international-ru",
       "price": "",
       "order": 3,
-      "title": "Международные сертификаты для вождения спецтехники и тяжёлой техники",
+      "title": "Международные сертификаты на спецтехнику и тяжёлую технику: трайлеры, экскаваторы и другая",
       "term": "",
-      "description": "Стоимость и сроки — по запросу.",
+      "description": "Цена индивидуальная — уточните у администратора.",
       "locale": "ru",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1090,7 +1460,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 1,
       "title": "Training certificate · categories A, B, C, D, E",
       "term": "12 working days",
-      "description": "",
+      "description": "Bring your passport, a contact number and your registered address.",
       "locale": "en",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1101,7 +1471,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "Training certificate · categories T, S",
       "term": "12 working days",
-      "description": "",
+      "description": "Bring your passport, a contact number and your registered address.",
       "locale": "en",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1110,9 +1480,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "cert-international-en",
       "price": "",
       "order": 3,
-      "title": "International certificates for operating special and heavy machinery",
+      "title": "International certificates for special and heavy machinery: trailers, excavators and more",
       "term": "",
-      "description": "Price and timing on request.",
+      "description": "Priced individually — ask an administrator.",
       "locale": "en",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1123,7 +1493,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 1,
       "title": "სწავლების ცნობა · კატეგორიები A, B, C, D, E",
       "term": "12 სამუშაო დღე",
-      "description": "",
+      "description": "საჭიროა პასპორტი, საკონტაქტო ნომერი და იურიდიული მისამართი.",
       "locale": "ka",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1134,7 +1504,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "სწავლების ცნობა · კატეგორიები T, S",
       "term": "12 სამუშაო დღე",
-      "description": "",
+      "description": "საჭიროა პასპორტი, საკონტაქტო ნომერი და იურიდიული მისამართი.",
       "locale": "ka",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1143,9 +1513,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "cert-international-ka",
       "price": "",
       "order": 3,
-      "title": "საერთაშორისო სერტიფიკატები სპეცტექნიკისა და მძიმე ტექნიკის მართვისთვის",
+      "title": "საერთაშორისო სერტიფიკატები სპეცტექნიკასა და მძიმე ტექნიკაზე: ტრეილერები, ექსკავატორები და სხვა",
       "term": "",
-      "description": "ღირებულება და ვადები — მოთხოვნით.",
+      "description": "ფასი ინდივიდუალურია — დააზუსტეთ ადმინისტრატორთან.",
       "locale": "ka",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1156,7 +1526,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 1,
       "title": "Ուսման տեղեկանք · A, B, C, D, E կարգեր",
       "term": "12 աշխատանքային օր",
-      "description": "",
+      "description": "Անհրաժեշտ են անձնագիր, կոնտակտային համար և իրավաբանական հասցե։",
       "locale": "hy",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1167,7 +1537,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "order": 2,
       "title": "Ուսման տեղեկանք · T, S կարգեր",
       "term": "12 աշխատանքային օր",
-      "description": "",
+      "description": "Անհրաժեշտ են անձնագիր, կոնտակտային համար և իրավաբանական հասցե։",
       "locale": "hy",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"
@@ -1176,9 +1546,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "cert-international-hy",
       "price": "",
       "order": 3,
-      "title": "Միջազգային վկայականներ հատուկ և ծանր տեխնիկա վարելու համար",
+      "title": "Միջազգային վկայականներ հատուկ և ծանր տեխնիկայի համար՝ տրեյլերներ, էքսկավատորներ և այլն",
       "term": "",
-      "description": "Արժեքը և ժամկետները՝ ըստ հարցման։",
+      "description": "Գինը անհատական է՝ ճշտեք ադմինիստրատորի մոտ։",
       "locale": "hy",
       "status": "published",
       "source": "Прайс школы, сообщён владельцем 2026-11-10"

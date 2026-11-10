@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowUpRight,
   ArrowLeft,
+  MapPin,
+  MessageCircle,
   ArrowRight,
   Check,
   Clock,
@@ -236,6 +238,7 @@ export function Booking({
     [registerMode, setRegisterMode] = useState(true),
     [error, setError] = useState(""),
     [sent, setSent] = useState<Item[] | null>(null),
+    [sentBy, setSentBy] = useState<Item | null | undefined>(null),
     [busy, setBusy] = useState(false);
   useEffect(() => setLocalUser(user), [user]);
   useEffect(() => {
@@ -268,6 +271,9 @@ export function Booking({
     };
   }, []);
   const perLesson = pack?.priceType === "perLesson";
+  // Driving practice and exam routes run only from Akhalkalaki; theory in both branches.
+  const practiceOnly = pack?.group !== "theory";
+  const bookCity = practiceOnly ? "akhalkalaki" : city;
   const count = pack && !perLesson ? Number(pack.lessons) || 1 : customCount;
   const hasPrice = pack?.price !== undefined && pack?.price !== "";
   const total = hasPrice
@@ -275,7 +281,8 @@ export function Booking({
       (perLesson ? Math.max(1, picked.length || count) : 1)
     : null;
   const available = slots.filter(
-    (s) => s.city === city && (!instructor || s.instructor_id === instructor),
+    (s) =>
+      s.city === bookCity && (!instructor || s.instructor_id === instructor),
   );
   const pickedSlots = picked
     .map((id) => slots.find((s) => s.id === id))
@@ -356,6 +363,32 @@ export function Booking({
             </motion.li>
           ))}
         </ul>
+        {(() => {
+          const branch = (content.branches || []).find(
+            (b) => b.city === bookCity && b.whatsapp,
+          );
+          if (!branch) return null;
+          const text = [
+            t("waBooking"),
+            `${sentBy?.name || ""} · ${sentBy?.phone || sentBy?.email || ""}`,
+            pack ? pack.title : t("customPackage"),
+            ...sent.map((s) => "• " + slotLabel(locale, s.start)),
+          ].join("\n");
+          return (
+            <div className="wa-handoff">
+              <p>{t("waHandoffText")}</p>
+              <a
+                className="whatsapp-button"
+                href={`https://wa.me/${branch.whatsapp}?text=${encodeURIComponent(text)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle size={17} />
+                {t("waSend")}
+              </a>
+            </div>
+          );
+        })()}
         <div className="success-actions">
           <Link className="button" href={"/" + locale + "/account"}>
             {t("account")}
@@ -472,7 +505,7 @@ export function Booking({
               setLocalUser(me);
             }
             await api("booking/create", {
-              city,
+              city: bookCity,
               program: pack?.program || f.program || "practice",
               gearbox: f.gearbox || pack?.gearbox || "none",
               instructor_id: instructor || null,
@@ -490,6 +523,7 @@ export function Booking({
               consent: true,
               website: f.website || "",
             });
+            setSentBy(me);
             setSent(pickedSlots);
           } catch (e) {
             const code = (e as Error).message;
@@ -563,19 +597,26 @@ export function Booking({
             <h3>{t("chooseDatesTitle")}</h3>
           </header>
           <div className="form-grid">
-            <Field label={t("city")}>
-              <select
-                value={city}
-                onChange={(e) => {
-                  setCity(e.target.value);
-                  setInstructor("");
-                  resetPick();
-                }}
-              >
-                <option value="akhalkalaki">{t("city1")}</option>
-                <option value="ninotsminda">{t("city2")}</option>
-              </select>
-            </Field>
+            {practiceOnly ? (
+              <p className="practice-city">
+                <MapPin size={15} />
+                {t("practiceAkhalkalaki")}
+              </p>
+            ) : (
+              <Field label={t("city")}>
+                <select
+                  value={city}
+                  onChange={(e) => {
+                    setCity(e.target.value);
+                    setInstructor("");
+                    resetPick();
+                  }}
+                >
+                  <option value="akhalkalaki">{t("city1")}</option>
+                  <option value="ninotsminda">{t("city2")}</option>
+                </select>
+              </Field>
+            )}
             <Field label={t("instructors")}>
               <select
                 value={instructor}
