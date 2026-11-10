@@ -193,20 +193,20 @@ test("the published price list is valid and identical in every language", async 
 
 test("group starts repeat every 15 days from the school's first date", async () => {
   const { nextStarts } = await import("../src/lib/schedule.ts");
-  const g = { startDate: "2026-11-22", cycleDays: 15 };
+  const g = { startDate: "2026-11-23", cycleDays: 15 };
   const day = (d: Date) => d.toISOString().slice(0, 10);
   assert.deepEqual(
     nextStarts(g, 3, new Date("2026-11-10T12:00:00Z")).map(day),
-    ["2026-11-22", "2026-12-07", "2026-12-22"],
+    ["2026-11-23", "2026-12-08", "2026-12-23"],
   );
   // 19:59 UTC is 23:59 in Georgia (still the start day); 20:00 UTC is already the next day there
   assert.equal(
-    day(nextStarts(g, 1, new Date("2026-12-07T19:59:00Z"))[0]),
-    "2026-12-07",
+    day(nextStarts(g, 1, new Date("2026-12-08T19:59:00Z"))[0]),
+    "2026-12-08",
   );
   assert.equal(
-    day(nextStarts(g, 1, new Date("2026-12-07T20:00:00Z"))[0]),
-    "2026-12-22",
+    day(nextStarts(g, 1, new Date("2026-12-08T20:00:00Z"))[0]),
+    "2026-12-23",
   );
   assert.deepEqual(nextStarts({ startDate: "" }), []);
 });
