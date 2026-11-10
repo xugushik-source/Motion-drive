@@ -49,7 +49,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "phone": "+995 597 92 74 92",
       "status": "published",
       "source": "https://jnews.ge/162061/",
-      "admin": "Arevik Gambaryan",
+      "admin": "Arevik Hambaryan",
       "offer": "Theory. Driving practice is in Akhalkalaki",
       "whatsapp": "995597927492"
     },
@@ -75,7 +75,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "phone": "+995 597 92 74 92",
       "status": "published",
       "source": "https://jnews.ge/162061/",
-      "admin": "არევიკ გამბარიანი",
+      "admin": "არევიკ ჰამბარიანი",
       "offer": "თეორია. მართვის პრაქტიკა — ახალქალაქში",
       "whatsapp": "995597927492"
     },
