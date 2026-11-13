@@ -36,3 +36,78 @@ export function findKnowledge(message: string, knowledge: Row[]) {
   }
   return best;
 }
+
+// Armenian typed with Latin letters ("Barev dzez arjeqy inchqan e?") is how most
+// clients write in chat. A few words that exist in no other language of the site
+// are enough to recognise it; neutral words such as "lari" are left out on purpose.
+const ARMENIAN_LATIN = new Set([
+  "barev",
+  "dzez",
+  "cez",
+  "inchqan",
+  "arje",
+  "arjeq",
+  "arjeqy",
+  "grancvel",
+  "grancvem",
+  "grancvelu",
+  "krancvel",
+  "krancvem",
+  "krancvelu",
+  "uzum",
+  "kuzem",
+  "guzeq",
+  "kuzeq",
+  "qaxaq",
+  "urtex",
+  "shnorhakalutyun",
+  "shat",
+  "hayeren",
+  "ruseren",
+  "vraceren",
+  "xumb",
+  "xmb",
+  "xmbin",
+  "qnnutyun",
+  "qnnutyuny",
+  "qani",
+  "sorvel",
+  "sorvesnel",
+  "sorvecnel",
+  "sorvim",
+  "amis",
+  "amsi",
+  "arden",
+  "ksksvi",
+  "sksvi",
+  "sksvum",
+  "greceq",
+  "azganun",
+  "heraxosi",
+  "heraxos",
+  "erkushabti",
+  "choreqshabti",
+  "urbat",
+  "ynker",
+  "petq",
+  "hemi",
+  "aravot",
+  "zangeceq",
+  "motavorapes",
+  "teveky",
+  "tevoxutyuny",
+  "grancvac",
+]);
+export const looksLikeArmenianLatin = (message: string) =>
+  !/[^\p{Script=Latin}\p{N}\p{P}\p{S}\s]/u.test(message) &&
+  normalizeQuestion(message)
+    .split(" ")
+    .some((word) => ARMENIAN_LATIN.has(word));
+/** Language of a chat message: its script, else Armenian-in-Latin, else the page language. */
+type Lang = "ka" | "hy" | "ru" | "en";
+export function detectLanguage(message: string, fallback: Lang): Lang {
+  if (/[ა-ჰ]/.test(message)) return "ka";
+  if (/[Ա-ֆ]/.test(message)) return "hy";
+  if (/[а-яё]/i.test(message)) return "ru";
+  return looksLikeArmenianLatin(message) ? "hy" : fallback;
+}

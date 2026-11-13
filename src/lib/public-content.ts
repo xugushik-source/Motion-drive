@@ -20,16 +20,16 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "ninotsminda-ru",
       "city": "ninotsminda",
       "locale": "ru",
-      "address": "ул. Свободы, 19",
+      "address": "ул. Спандаряна, 2, 2 этаж",
       "hours": "Пн–Сб · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/",
+      "source": "Школа, 2026-11-13",
       "admin": "Аревик Гамбарян",
       "offer": "Теория. Практика вождения — в Ахалкалаки",
       "whatsapp": "995597927492",
-      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.2652929,43.5936013"
+      "mapQuery": "სურენ სპანდარიანის ქუჩა 2, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
+      "coords": "41.2625579,43.5899200"
     },
     {
       "id": "akhalkalaki-en",
@@ -50,16 +50,16 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "ninotsminda-en",
       "city": "ninotsminda",
       "locale": "en",
-      "address": "19 Freedom Street",
+      "address": "2 Spandaryan Street, 2nd floor",
       "hours": "Mon–Sat · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/",
+      "source": "Школа, 2026-11-13",
       "admin": "Arevik Hambaryan",
       "offer": "Theory. Driving practice is in Akhalkalaki",
       "whatsapp": "995597927492",
-      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.2652929,43.5936013"
+      "mapQuery": "სურენ სპანდარიანის ქუჩა 2, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
+      "coords": "41.2625579,43.5899200"
     },
     {
       "id": "akhalkalaki-ka",
@@ -80,16 +80,16 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "ninotsminda-ka",
       "city": "ninotsminda",
       "locale": "ka",
-      "address": "თავისუფლების ქ. 19",
+      "address": "სურენ სპანდარიანის ქ. 2, მე-2 სართული",
       "hours": "ორშ–შაბ · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/",
+      "source": "Школа, 2026-11-13",
       "admin": "არევიკ ჰამბარიანი",
       "offer": "თეორია. მართვის პრაქტიკა — ახალქალაქში",
       "whatsapp": "995597927492",
-      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.2652929,43.5936013"
+      "mapQuery": "სურენ სპანდარიანის ქუჩა 2, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
+      "coords": "41.2625579,43.5899200"
     },
     {
       "id": "akhalkalaki-hy",
@@ -110,23 +110,23 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "id": "ninotsminda-hy",
       "city": "ninotsminda",
       "locale": "hy",
-      "address": "Ազատության փողոց, 19",
+      "address": "Սպանդարյան փողոց, 2, 2-րդ հարկ",
       "hours": "Երկ–շաբ · 10:00–18:00",
       "phone": "+995 597 92 74 92",
       "status": "published",
-      "source": "https://jnews.ge/162061/",
+      "source": "Школа, 2026-11-13",
       "admin": "Արևիկ Համբարյան",
       "offer": "Տեսություն։ Վարման պրակտիկան՝ Ախալքալաքում",
       "whatsapp": "995597927492",
-      "mapQuery": "თავისუფლების ქუჩა 19, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
-      "coords": "41.2652929,43.5936013"
+      "mapQuery": "სურენ სპანდარიანის ქუჩა 2, ნინოწმინდა 3400, ნინოწმინდის მუნიციპალიტეტი, საქართველო",
+      "coords": "41.2625579,43.5899200"
     }
   ],
   "faq": [
     {
       "id": "faq-ru-0",
       "question": "Где находится Motion Drive?",
-      "answer": "Ахалкалаки: ул. Свободы, 36/1, +995 597 93 93 27. Ниноцминда: ул. Свободы, 19, +995 597 92 74 92.",
+      "answer": "Ахалкалаки: ул. Свободы, 36/1, +995 597 93 93 27. Ниноцминда: ул. Спандаряна, 2, 2 этаж, +995 597 92 74 92.",
       "aliases": [
         "адрес",
         "контакты",
@@ -196,7 +196,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ru-4",
       "question": "Сколько стоит обучение?",
-      "answer": "Теория: группа — 150 ₾ (4 недели, пн/ср/пт, новые группы каждые 15 дней, ближайший старт 23 ноября), индивидуально — 300 ₾ (10 лекций за 2 недели). Вождение по городу: автомат — 60 ₾ за час, механика — 80 ₾ за час. Площадка: 40 ₾ за 25 минут, цена одна для автомата и механики. Экзаменационные маршруты в Ахалцихе: урок из 3 маршрутов — автомат 100 ₾, механика 120 ₾. Справка об обучении: категории A–E — 70 ₾, T и S — 120 ₾, срок 12 рабочих дней. Скидок за количество часов нет.",
+      "answer": "Теория: группа — 150 ₾ (4 недели, пн/ср/пт в Ахалкалаки, вт/чт/сб в Ниноцминде, новые группы каждые 15 дней, ближайший старт 23 ноября), индивидуально — 300 ₾ (10 лекций за 2 недели). Вождение по городу: автомат — 60 ₾ за час, механика — 80 ₾ за час. Площадка: 40 ₾ за 25 минут, цена одна для автомата и механики. Экзаменационные маршруты в Ахалцихе: урок из 3 маршрутов — автомат 100 ₾, механика 120 ₾. Справка об обучении: категории A–E — 70 ₾, T и S — 120 ₾, срок 12 рабочих дней. Скидок за количество часов нет.",
       "aliases": [
         "цена",
         "стоимость",
@@ -213,7 +213,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-en-0",
       "question": "Where is Motion Drive?",
-      "answer": "Akhalkalaki: 36/1 Freedom Street, +995 597 93 93 27. Ninotsminda: 19 Freedom Street, +995 597 92 74 92.",
+      "answer": "Akhalkalaki: 36/1 Freedom Street, +995 597 93 93 27. Ninotsminda: 2 Spandaryan Street, 2nd floor, +995 597 92 74 92.",
       "aliases": [
         "address",
         "location",
@@ -281,7 +281,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-en-4",
       "question": "How much does tuition cost?",
-      "answer": "Theory: group — 150 ₾ (4 weeks, Mon/Wed/Fri, new groups every 15 days, next start 23 November), individual — 300 ₾ (10 lectures over 2 weeks). City driving: automatic — 60 ₾ per hour, manual — 80 ₾ per hour. Training ground: 40 ₾ per 25 minutes, same for automatic and manual. Exam routes in Akhaltsikhe: a lesson of 3 routes — automatic 100 ₾, manual 120 ₾. Training certificate: categories A–E — 70 ₾, T and S — 120 ₾, ready in 12 working days. There are no volume discounts.",
+      "answer": "Theory: group — 150 ₾ (4 weeks, Mon/Wed/Fri in Akhalkalaki, Tue/Thu/Sat in Ninotsminda, new groups every 15 days, next start 23 November), individual — 300 ₾ (10 lectures over 2 weeks). City driving: automatic — 60 ₾ per hour, manual — 80 ₾ per hour. Training ground: 40 ₾ per 25 minutes, same for automatic and manual. Exam routes in Akhaltsikhe: a lesson of 3 routes — automatic 100 ₾, manual 120 ₾. Training certificate: categories A–E — 70 ₾, T and S — 120 ₾, ready in 12 working days. There are no volume discounts.",
       "aliases": [
         "price",
         "cost",
@@ -298,7 +298,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ka-0",
       "question": "სად მდებარეობს სკოლა?",
-      "answer": "ახალქალაქი: თავისუფლების ქ. 36/1, +995 597 93 93 27. ნინოწმინდა: თავისუფლების ქ. 19, +995 597 92 74 92.",
+      "answer": "ახალქალაქი: თავისუფლების ქ. 36/1, +995 597 93 93 27. ნინოწმინდა: სურენ სპანდარიანის ქ. 2, მე-2 სართული, +995 597 92 74 92.",
       "aliases": [
         "მისამართი",
         "სად",
@@ -364,7 +364,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ka-4",
       "question": "რა ღირს სწავლა?",
-      "answer": "თეორია: ჯგუფური — 150 ₾ (4 კვირა, ორშ/ოთხ/პარ, ახალი ჯგუფები ყოველ 15 დღეში, უახლოესი დაწყება 23 ნოემბერს), ინდივიდუალური — 300 ₾ (10 ლექცია 2 კვირაში). ქალაქში მართვა: ავტომატიკა — 60 ₾ საათში, მექანიკა — 80 ₾ საათში. მოედანი: 40 ₾ 25 წუთზე, ფასი ერთია ავტომატიკისა და მექანიკისთვის. საგამოცდო მარშრუტები ახალციხეში: გაკვეთილი 3 მარშრუტით — ავტომატიკა 100 ₾, მექანიკა 120 ₾. სწავლების ცნობა: A–E — 70 ₾, T და S — 120 ₾, 12 სამუშაო დღეში. რაოდენობაზე ფასდაკლება არ არის.",
+      "answer": "თეორია: ჯგუფური — 150 ₾ (4 კვირა, ახალქალაქში ორშ/ოთხ/პარ, ნინოწმინდაში სამ/ხუთ/შაბ, ახალი ჯგუფები ყოველ 15 დღეში, უახლოესი დაწყება 23 ნოემბერს), ინდივიდუალური — 300 ₾ (10 ლექცია 2 კვირაში). ქალაქში მართვა: ავტომატიკა — 60 ₾ საათში, მექანიკა — 80 ₾ საათში. მოედანი: 40 ₾ 25 წუთზე, ფასი ერთია ავტომატიკისა და მექანიკისთვის. საგამოცდო მარშრუტები ახალციხეში: გაკვეთილი 3 მარშრუტით — ავტომატიკა 100 ₾, მექანიკა 120 ₾. სწავლების ცნობა: A–E — 70 ₾, T და S — 120 ₾, 12 სამუშაო დღეში. რაოდენობაზე ფასდაკლება არ არის.",
       "aliases": [
         "ფასი",
         "ღირს",
@@ -380,12 +380,18 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-hy-0",
       "question": "Որտե՞ղ է գտնվում դպրոցը։",
-      "answer": "Ախալքալաք՝ Ազատության փողոց, 36/1, +995 597 93 93 27։ Նինոծմինդա՝ Ազատության փողոց, 19, +995 597 92 74 92։",
+      "answer": "Ախալքալաք՝ Ազատության փողոց, 36/1, +995 597 93 93 27։ Նինոծմինդա՝ Սպանդարյան փողոց, 2, 2-րդ հարկ, +995 597 92 74 92։",
       "aliases": [
         "հասցե",
         "որտեղ",
         "հեռախոս",
-        "կապ"
+        "կապ",
+        "ur",
+        "urtex",
+        "hasce",
+        "tex",
+        "heraxos",
+        "zang"
       ],
       "locale": "hy",
       "status": "published",
@@ -401,7 +407,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "ժամեր",
         "աշխատում",
-        "աշխատանքային"
+        "աշխատանքային",
+        "jam",
+        "jamer",
+        "jamery",
+        "ashxatanq"
       ],
       "locale": "hy",
       "status": "published",
@@ -417,7 +427,12 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "դասեր",
         "դասընթաց",
-        "ուսուցում"
+        "ուսուցում",
+        "das",
+        "dasy",
+        "dasery",
+        "sorvel",
+        "sorvecnel"
       ],
       "locale": "hy",
       "status": "published",
@@ -434,7 +449,15 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "գրանցվել",
         "գրանցում",
         "ժամանակացույց",
-        "ամրագրում"
+        "ամրագրում",
+        "grancvel",
+        "grancvem",
+        "grancvelu",
+        "krancvel",
+        "krancvem",
+        "krancvelu",
+        "dex",
+        "azat"
       ],
       "locale": "hy",
       "status": "published",
@@ -446,11 +469,18 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-hy-4",
       "question": "Որքա՞ն արժե ուսուցումը։",
-      "answer": "Տեսություն՝ խմբային — 150 ₾ (4 շաբաթ, երկ/չրք/ուրբ, նոր խմբեր 15 օրը մեկ, մոտակա մեկնարկը՝ նոյեմբերի 23), անհատական — 300 ₾ (10 դասախոսություն 2 շաբաթում)։ Վարում քաղաքում՝ ավտոմատ — 60 ₾ ժամը, մեխանիկա — 80 ₾ ժամը։ Հրապարակ՝ 40 ₾ 25 րոպեի համար, գինը նույնն է ավտոմատի և մեխանիկայի համար։ Քննական երթուղիներ Ախալցիխեում՝ 3 երթուղիով դաս — ավտոմատ 100 ₾, մեխանիկա 120 ₾։ Ուսման տեղեկանք՝ A–E — 70 ₾, T և S — 120 ₾, 12 աշխատանքային օրում։ Քանակի համար զեղչ չկա։",
+      "answer": "Տեսություն՝ խմբային — 150 ₾ (4 շաբաթ, Ախալքալաքում երկ/չրք/ուրբ, Նինոծմինդայում երք/հնգ/շաբ, նոր խմբեր 15 օրը մեկ, մոտակա մեկնարկը՝ նոյեմբերի 23), անհատական — 300 ₾ (10 դասախոսություն 2 շաբաթում)։ Վարում քաղաքում՝ ավտոմատ — 60 ₾ ժամը, մեխանիկա — 80 ₾ ժամը։ Հրապարակ՝ 40 ₾ 25 րոպեի համար, գինը նույնն է ավտոմատի և մեխանիկայի համար։ Քննական երթուղիներ Ախալցիխեում՝ 3 երթուղիով դաս — ավտոմատ 100 ₾, մեխանիկա 120 ₾։ Ուսման տեղեկանք՝ A–E — 70 ₾, T և S — 120 ₾, 12 աշխատանքային օրում։ Քանակի համար զեղչ չկա։",
       "aliases": [
         "գին",
         "արժե",
-        "որքան"
+        "որքան",
+        "arje",
+        "arjeq",
+        "arjeqy",
+        "gin",
+        "inchqan",
+        "qani",
+        "lari"
       ],
       "locale": "hy",
       "status": "published",
@@ -462,14 +492,17 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ru-5",
       "question": "С какого возраста можно учиться и какие документы нужны?",
-      "answer": "Теория и площадка — с 12 лет, вождение по городу — с 16 лет. Для записи нужен паспорт или ID, для несовершеннолетних — согласие родителей.",
+      "answer": "Теория и площадка — с 12 лет, вождение по городу — с 16 лет. Для записи нужны имя, фамилия, телефон и город, а также паспорт или ID: его фото отправьте администратору в WhatsApp (на сайте паспорт не загружается). Для несовершеннолетних нужно согласие родителей.",
       "aliases": [
         "возраст",
         "лет",
         "документы",
         "паспорт",
         "ребенок",
-        "ребёнок"
+        "ребёнок",
+        "нужно",
+        "нужны",
+        "фото"
       ],
       "locale": "ru",
       "status": "published",
@@ -481,13 +514,16 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-en-5",
       "question": "What is the minimum age and which documents do I need?",
-      "answer": "Theory and the training ground from age 12, city driving from age 16. Bring a passport or ID; minors also need parental consent.",
+      "answer": "Theory and the training ground from age 12, city driving from age 16. To sign up you need your first and last name, phone number and city, plus a passport or ID: send a photo of it to the administrator on WhatsApp (the website does not collect passports). Minors also need parental consent.",
       "aliases": [
         "age",
         "old",
         "documents",
         "passport",
-        "child"
+        "child",
+        "need",
+        "required",
+        "photo"
       ],
       "locale": "en",
       "status": "published",
@@ -499,13 +535,15 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ka-5",
       "question": "რა ასაკიდან შეიძლება სწავლა და რა დოკუმენტებია საჭირო?",
-      "answer": "თეორია და მოედანი — 12 წლიდან, ქალაქში მართვა — 16 წლიდან. საჭიროა პასპორტი ან ID, არასრულწლოვანებისთვის — მშობლის თანხმობა.",
+      "answer": "თეორია და მოედანი — 12 წლიდან, ქალაქში მართვა — 16 წლიდან. ჩასაწერად საჭიროა სახელი, გვარი, ტელეფონი და ქალაქი, ასევე პასპორტი ან ID (ფოტო გაუგზავნეთ ადმინისტრატორს WhatsApp-ში; საიტზე პასპორტი არ იტვირთება). არასრულწლოვანებისთვის საჭიროა მშობლის თანხმობა.",
       "aliases": [
         "ასაკ",
         "წლის",
         "დოკუმენტ",
         "პასპორტ",
-        "ბავშვ"
+        "ბავშვ",
+        "საჭირო",
+        "ფოტო"
       ],
       "locale": "ka",
       "status": "published",
@@ -517,13 +555,19 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-hy-5",
       "question": "Քանի՞ տարեկանից կարելի է սովորել և ի՞նչ փաստաթղթեր են պետք։",
-      "answer": "Տեսություն և հրապարակ՝ 12 տարեկանից, վարում քաղաքում՝ 16 տարեկանից։ Անհրաժեշտ է անձնագիր կամ ID, անչափահասների համար՝ ծնողների համաձայնություն։",
+      "answer": "Տեսություն և հրապարակ՝ 12 տարեկանից, վարում քաղաքում՝ 16 տարեկանից։ Գրանցման համար անհրաժեշտ են անուն, ազգանուն, հեռախոսահամար և քաղաք, նաև անձնագիր կամ ID (նկարը ուղարկեք ադմինիստրատորին WhatsApp-ով, կայքում անձնագիր չի բեռնվում)։ Անչափահասների համար անհրաժեշտ է ծնողների համաձայնություն։",
       "aliases": [
         "տարեկան",
         "տարիք",
         "փաստաթուղթ",
         "անձնագիր",
-        "երեխա"
+        "երեխա",
+        "պետք",
+        "նկար",
+        "tari",
+        "tarekan",
+        "pasport",
+        "pastatux"
       ],
       "locale": "hy",
       "status": "published",
@@ -599,7 +643,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "քարտ",
         "կանխավճար",
         "չեղարկ",
-        "տեղափոխ"
+        "տեղափոխ",
+        "vcar",
+        "vcarel",
+        "kanxavcar",
+        "qart"
       ],
       "locale": "hy",
       "status": "published",
@@ -611,7 +659,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ru-7",
       "question": "Когда начинается следующая группа по теории?",
-      "answer": "Новые группы стартуют каждые 15 дней, ближайшая — 23 ноября. Лекции в понедельник, среду и пятницу: днём в 10:00 или 11:30, вечером в 16:00, 17:30 или 19:00. Группа занимается, даже если в ней 3 человека. Языки — русский и армянский, в обоих филиалах.",
+      "answer": "Новые группы стартуют каждые 15 дней, ближайшая — 23 ноября. Лекции три раза в неделю: в Ахалкалаки по понедельникам, средам и пятницам, в Ниноцминде по вторникам, четвергам и субботам. Днём в 10:00 или 11:30, вечером в 16:00, 17:30 или 19:00. Группа занимается, даже если в ней 3 человека. Языки — русский и армянский. Пропущенное занятие можно пройти с другой группой по уважительной причине.",
       "aliases": [
         "группа",
         "старт",
@@ -630,7 +678,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-en-7",
       "question": "When does the next theory group start?",
-      "answer": "New groups start every 15 days; the next one starts on 23 November. Lectures are on Monday, Wednesday and Friday: daytime at 10:00 or 11:30, evening at 16:00, 17:30 or 19:00. A group runs even with 3 students. In Russian and Armenian, at both branches.",
+      "answer": "New groups start every 15 days; the next one starts on 23 November. Lectures are three times a week: in Akhalkalaki on Monday, Wednesday and Friday, in Ninotsminda on Tuesday, Thursday and Saturday. Daytime at 10:00 or 11:30, evening at 16:00, 17:30 or 19:00. A group runs even with 3 students. Russian and Armenian. A missed lesson can be made up with another group for a valid reason.",
       "aliases": [
         "group",
         "start",
@@ -648,7 +696,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-ka-7",
       "question": "როდის იწყება თეორიის შემდეგი ჯგუფი?",
-      "answer": "ახალი ჯგუფები იწყება ყოველ 15 დღეში, უახლოესი — 23 ნოემბერს. ლექციები ორშაბათს, ოთხშაბათს და პარასკევს: დღისით 10:00 ან 11:30, საღამოს 16:00, 17:30 ან 19:00. ჯგუფი მეცადინეობს 3 მოსწავლითაც. ენები — რუსული და სომხური, ორივე ფილიალში.",
+      "answer": "ახალი ჯგუფები იწყება ყოველ 15 დღეში, უახლოესი — 23 ნოემბერს. ლექციები კვირაში სამჯერ: ახალქალაქში ორშაბათს, ოთხშაბათს და პარასკევს, ნინოწმინდაში სამშაბათს, ხუთშაბათს და შაბათს. დღისით 10:00 ან 11:30, საღამოს 16:00, 17:30 ან 19:00. ჯგუფი მეცადინეობს 3 მოსწავლითაც. ენები — რუსული და სომხური. გაცდენილი გაკვეთილი შეიძლება სხვა ჯგუფთან გაიარო საპატიო მიზეზით.",
       "aliases": [
         "ჯგუფ",
         "დაწყებ",
@@ -666,18 +714,300 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       "id": "faq-hy-7",
       "question": "Ե՞րբ է սկսվում տեսության հաջորդ խումբը։",
-      "answer": "Նոր խմբերը մեկնարկում են 15 օրը մեկ, մոտական՝ նոյեմբերի 23-ին։ Դասախոսությունները երկուշաբթի, չորեքշաբթի և ուրբաթ՝ ցերեկը 10:00 կամ 11:30, երեկոյան 16:00, 17:30 կամ 19:00։ Խումբը պարապում է նույնիսկ 3 աշակերտով։ Լեզուները՝ ռուսերեն և հայերեն, երկու մասնաճյուղում։",
+      "answer": "Նոր խմբերը մեկնարկում են 15 օրը մեկ, մոտական՝ նոյեմբերի 23-ին։ Դասախոսությունները շաբաթական երեք անգամ՝ Ախալքալաքում երկուշաբթի, չորեքշաբթի և ուրբաթ, Նինոծմինդայում երեքշաբթի, հինգշաբթի և շաբաթ։ Ցերեկը 10:00 կամ 11:30, երեկոյան 16:00, 17:30 կամ 19:00։ Խումբը պարապում է նույնիսկ 3 աշակերտով։ Ռուսերեն և հայերեն։ Բաց թողած դասը կարելի է անցնել մեկ այլ խմբի հետ հարգելի պատճառով։",
       "aliases": [
         "խումբ",
         "մեկնարկ",
         "ժամանակացույց",
         "դասախոսություն",
-        "տեսություն"
+        "տեսություն",
+        "xumb",
+        "xumby",
+        "xmb",
+        "xmbin",
+        "sksvum",
+        "sksvi",
+        "ksksvi",
+        "skizb"
       ],
       "locale": "hy",
       "status": "published",
       "source": "https://motion-drive.vercel.app/hy/pricing",
       "verifiedAt": "2026-11-10",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-8",
+      "question": "Что, если я пропущу занятие?",
+      "answer": "Пропущенное занятие теории можно пройти с другой группой, но только по уважительной причине. Занятие практики можно бесплатно отменить или перенести не позднее чем за 24 часа.",
+      "aliases": [
+        "пропустил",
+        "пропустила",
+        "пропуск",
+        "пропущу",
+        "пропустить",
+        "пропущенное",
+        "отработать"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-9",
+      "question": "Сколько занятий на площадке нужно?",
+      "answer": "Мы советуем 5–7 занятий на площадке, а в первый день сразу 2 занятия подряд (50 минут, 80 ₾). Чаще всего на экзамене не сдают упражнение «гараж»: машина встаёт чуть снаружи, поэтому лучше потренироваться заранее. Приходите на 10–15 минут раньше.",
+      "aliases": [
+        "площадк",
+        "гараж",
+        "упражнен"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-10",
+      "question": "Есть ли свободные места?",
+      "answer": "Места в группах есть всегда. Запишитесь на сайте или напишите администратору в WhatsApp, и мы подтвердим удобное время.",
+      "aliases": [
+        "мест",
+        "места"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-11",
+      "question": "Где сдают экзамены и на каком языке?",
+      "answer": "Экзамен по теории и по площадке сдают в Ахалкалаки, итоговый экзамен на права — в Ахалцихе. Вопросы можно сдавать на армянском, русском и грузинском. Три экзаменационных маршрута в Ахалцихе (100 ₾ автомат, 120 ₾ механика) — подготовка перед итоговым экзаменом; до Ахалцихе ученик добирается сам.",
+      "aliases": [
+        "экзамен",
+        "сдать",
+        "сдают",
+        "сдача"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-8",
+      "question": "What if I miss a lesson?",
+      "answer": "A missed theory lesson can be made up with another group, but only for a valid reason. A practice lesson can be cancelled or moved free of charge up to 24 hours before it starts.",
+      "aliases": [
+        "miss",
+        "missed",
+        "skip",
+        "skipped"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-9",
+      "question": "How many training-ground lessons do I need?",
+      "answer": "We recommend 5–7 lessons on the training ground, and 2 lessons in a row on the first day (50 minutes, 80 ₾). The exercise most often failed in the exam is the “garage”: the car stops slightly outside, so it helps to practise beforehand. Please arrive 10–15 minutes early.",
+      "aliases": [
+        "yard",
+        "platform",
+        "ground",
+        "garage"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-10",
+      "question": "Are there free seats?",
+      "answer": "There are always seats in the groups. Sign up on the website or message an administrator on WhatsApp and we will confirm a convenient time.",
+      "aliases": [
+        "seats",
+        "places",
+        "spots",
+        "vacancy"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-11",
+      "question": "Where are the exams and in which language?",
+      "answer": "The theory and training-ground exams are held in Akhalkalaki; the final driving exam is in Akhaltsikhe. Questions can be answered in Armenian, Russian or Georgian. The 3 exam routes in Akhaltsikhe (100 ₾ automatic, 120 ₾ manual) are practice before the final exam; students travel to Akhaltsikhe on their own.",
+      "aliases": [
+        "exam",
+        "exams",
+        "test"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-8",
+      "question": "რა მოხდება, თუ გაკვეთილს გავაცდენ?",
+      "answer": "გაცდენილი თეორიის გაკვეთილი შეიძლება სხვა ჯგუფთან გაიარო, მაგრამ მხოლოდ საპატიო მიზეზით. პრაქტიკის გაკვეთილის უფასოდ გაუქმება ან გადატანა შეიძლება არაუგვიანეს 24 საათით ადრე.",
+      "aliases": [
+        "გაცდენ",
+        "გავაცდენ",
+        "გააცდენ",
+        "გაცდენილი"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-9",
+      "question": "რამდენი გაკვეთილია საჭირო მოედანზე?",
+      "answer": "გირჩევთ მოედანზე 5–7 გაკვეთილს, პირველ დღეს კი ზედიზედ 2 გაკვეთილს (50 წუთი, 80 ₾). გამოცდაზე ყველაზე ხშირად „გარაჟის“ სავარჯიშოს ვერ აბარებენ: მანქანა ოდნავ გარეთ რჩება, ამიტომ უმჯობესია წინასწარ ივარჯიშოთ. მობრძანდით 10–15 წუთით ადრე.",
+      "aliases": [
+        "მოედან",
+        "გარაჟ"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-10",
+      "question": "არის თავისუფალი ადგილები?",
+      "answer": "ჯგუფებში ადგილები ყოველთვის არის. ჩაეწერეთ საიტზე ან მისწერეთ ადმინისტრატორს WhatsApp-ში, და მოსახერხებელ დროს დაგიდასტურებთ.",
+      "aliases": [
+        "ადგილ"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-11",
+      "question": "სად ტარდება გამოცდები და რომელ ენაზე?",
+      "answer": "თეორიისა და მოედნის გამოცდა ტარდება ახალქალაქში, მართვის საბოლოო გამოცდა — ახალციხეში. კითხვებზე პასუხი შეიძლება სომხურად, რუსულად ან ქართულად. ახალციხეში 3 საგამოცდო მარშრუტი (100 ₾ ავტომატიკა, 120 ₾ მექანიკა) საბოლოო გამოცდამდე მომზადებაა; ახალციხემდე მოსწავლე თავად მიდის.",
+      "aliases": [
+        "გამოცდ"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-8",
+      "question": "Ի՞նչ անել, եթե դասը բաց թողնեմ",
+      "answer": "Բաց թողած տեսության դասը կարելի է անցնել մեկ այլ խմբի հետ, բայց միայն հարգելի պատճառով։ Պրակտիկայի դասը անվճար չեղարկել կամ տեղափոխել կարելի է ոչ ուշ, քան 24 ժամ առաջ։",
+      "aliases": [
+        "թողն",
+        "թողած",
+        "բացթող",
+        "toxac",
+        "toxnel",
+        "toxnem",
+        "chtoxneq"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-9",
+      "question": "Քանի՞ դաս է պետք հրապարակում",
+      "answer": "Խորհուրդ ենք տալիս հրապարակում 5–7 դաս, իսկ առաջին օրը՝ անմիջապես 2 դաս անընդմեջ (50 րոպե, 80 ₾)։ Քննության ժամանակ ամենից հաճախ չեն հանձնում «գարաժ» վարժությունը՝ մեքենան մի փոքր դուրս է մնում, ուստի լավ է նախապես վարժվել։ Եկեք 10–15 րոպե շուտ։",
+      "aliases": [
+        "հրապարակ",
+        "գարաժ",
+        "վարժություն",
+        "ploshadka",
+        "plashadka",
+        "ploshadki",
+        "garaj",
+        "garajin"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-10",
+      "question": "Ազատ տեղեր կա՞ն",
+      "answer": "Խմբերում տեղեր միշտ կան։ Գրանցվեք կայքում կամ գրեք ադմինիստրատորին WhatsApp-ով, և մենք կհաստատենք հարմար ժամը։",
+      "aliases": [
+        "տեղ",
+        "տեղեր",
+        "dex",
+        "dexer",
+        "azat"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-11",
+      "question": "Որտե՞ղ են հանձնվում քննությունները և ո՞ր լեզվով",
+      "answer": "Տեսության և հրապարակի քննությունը հանձնվում է Ախալքալաքում, իսկ վարման վերջնական քննությունը՝ Ախալցիխեում։ Հարցերին կարելի է պատասխանել հայերեն, ռուսերեն կամ վրացերեն։ Ախալցիխեում 3 քննական երթուղին (100 ₾ ավտոմատ, 120 ₾ մեխանիկա) նախապատրաստություն է վերջնական քննությունից առաջ, Ախալցիխե աշակերտը հասնում է ինքնուրույն։",
+      "aliases": [
+        "քննություն",
+        "qnnutyun",
+        "qnnutyuny",
+        "qnnutyunner",
+        "qnnutyunnere",
+        "prava",
+        "brava"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-13",
       "responsible": "Motion Drive website",
       "category": "school"
     }
@@ -699,11 +1029,12 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "Теория · группа",
       "description": "Лекции по расписанию школы с 10:00 до 21:00. Старт гарантирован — группа занимается, даже если в ней 3 человека.",
       "features": [
-        "Пн, ср, пт — 3 лекции в неделю",
+        "3 лекции в неделю: Ахалкалаки — пн, ср, пт; Ниноцминда — вт, чт, сб",
         "Днём: 10:00 или 11:30",
         "Вечером: 16:00, 17:30 или 19:00",
         "Русский и армянский язык",
-        "Оба филиала · с 12 лет"
+        "Оба филиала · с 12 лет",
+        "Пропуск — отработка с другой группой (по уважительной причине)"
       ],
       "featured": false,
       "oldPrice": "",
@@ -807,7 +1138,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "features": [
         "Автомат или механика — цена одна",
         "С 12 лет",
-        "Ахалкалаки · 9:00–19:00, летом до 21:00"
+        "Ахалкалаки · 9:00–19:00, летом до 21:00",
+        "Советуем 5–7 занятий",
+        "В первый день лучше 2 занятия подряд (50 мин, 80 ₾)"
       ],
       "featured": false,
       "oldPrice": "",
@@ -887,11 +1220,12 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "Theory · group",
       "description": "Lectures on the school schedule between 10:00 and 21:00. The start is guaranteed — a group runs even with 3 students.",
       "features": [
-        "Mon, Wed, Fri — 3 lectures a week",
+        "3 lectures a week: Akhalkalaki — Mon, Wed, Fri; Ninotsminda — Tue, Thu, Sat",
         "Daytime: 10:00 or 11:30",
         "Evening: 16:00, 17:30 or 19:00",
         "Russian and Armenian",
-        "Both branches · from age 12"
+        "Both branches · from age 12",
+        "A missed lesson can be made up with another group (valid reason)"
       ],
       "featured": false,
       "oldPrice": "",
@@ -995,7 +1329,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "features": [
         "Automatic or manual — same price",
         "From age 12",
-        "Akhalkalaki · 9:00–19:00, until 21:00 in summer"
+        "Akhalkalaki · 9:00–19:00, until 21:00 in summer",
+        "We recommend 5–7 lessons",
+        "On day one, 2 lessons in a row (50 min, 80 ₾)"
       ],
       "featured": false,
       "oldPrice": "",
@@ -1075,11 +1411,12 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "თეორია · ჯგუფური",
       "description": "ლექციები სკოლის განრიგით, 10:00-დან 21:00-მდე. დაწყება გარანტირებულია — ჯგუფი მეცადინეობს, თუნდაც მასში 3 ადამიანი იყოს.",
       "features": [
-        "ორშ, ოთხ, პარ — კვირაში 3 ლექცია",
+        "კვირაში 3 ლექცია: ახალქალაქი — ორშ, ოთხ, პარ; ნინოწმინდა — სამ, ხუთ, შაბ",
         "დღისით: 10:00 ან 11:30",
         "საღამოს: 16:00, 17:30 ან 19:00",
         "რუსული და სომხური ენა",
-        "ორივე ფილიალი · 12 წლიდან"
+        "ორივე ფილიალი · 12 წლიდან",
+        "გაცდენილი გაკვეთილი — სხვა ჯგუფთან (საპატიო მიზეზით)"
       ],
       "featured": false,
       "oldPrice": "",
@@ -1183,7 +1520,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "features": [
         "ავტომატიკა ან მექანიკა — ფასი ერთია",
         "12 წლიდან",
-        "ახალქალაქი · 9:00–19:00, ზაფხულში 21:00-მდე"
+        "ახალქალაქი · 9:00–19:00, ზაფხულში 21:00-მდე",
+        "გირჩევთ 5–7 გაკვეთილს",
+        "პირველ დღეს უმჯობესია 2 გაკვეთილი ზედიზედ (50 წთ, 80 ₾)"
       ],
       "featured": false,
       "oldPrice": "",
@@ -1263,11 +1602,12 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "title": "Տեսություն · խմբային",
       "description": "Դասախոսություններ դպրոցի ժամանակացույցով՝ 10:00-ից 21:00։ Մեկնարկը երաշխավորված է՝ խումբը պարապում է, նույնիսկ եթե այնտեղ 3 հոգի է։",
       "features": [
-        "Երկ, չրք, ուրբ — շաբաթական 3 դասախոսություն",
+        "Շաբաթական 3 դասախոսություն՝ Ախալքալաք — Երկ, Չրք, Ուրբ; Նինոծմինդա — Երք, Հնգ, Շաբ",
         "Ցերեկը՝ 10:00 կամ 11:30",
         "Երեկոյան՝ 16:00, 17:30 կամ 19:00",
         "Ռուսերեն և հայերեն",
-        "Երկու մասնաճյուղ · 12 տարեկանից"
+        "Երկու մասնաճյուղ · 12 տարեկանից",
+        "Բաց թողած դասը՝ մեկ այլ խմբի հետ (հարգելի պատճառով)"
       ],
       "featured": false,
       "oldPrice": "",
@@ -1371,7 +1711,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "features": [
         "Ավտոմատ կամ մեխանիկա — գինը նույնն է",
         "12 տարեկանից",
-        "Ախալքալաք · 9:00–19:00, ամռանը մինչև 21:00"
+        "Ախալքալաք · 9:00–19:00, ամռանը մինչև 21:00",
+        "Խորհուրդ ենք տալիս 5–7 դաս",
+        "Առաջին օրը ավելի լավ է 2 դաս անընդմեջ (50 րոպե, 80 ₾)"
       ],
       "featured": false,
       "oldPrice": "",

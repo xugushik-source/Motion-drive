@@ -229,3 +229,51 @@ test("the chatbot finds inflected questions in all four languages", async () => 
   // short words never match as stems
   assert.equal(ask("абв", "ru"), undefined);
 });
+
+test("the chatbot understands Armenian typed in Latin letters, as clients write it", async () => {
+  const { findKnowledge, detectLanguage } =
+    await import("../src/lib/knowledge.ts");
+  const { publicRecords } = await import("../src/lib/public-content.ts");
+  const answer = (message: string, page: "ru" | "en" = "ru") => {
+    const lang = detectLanguage(message, page);
+    return findKnowledge(
+      message,
+      publicRecords.faq.filter((f) => f.locale === lang),
+    )?.id;
+  };
+  // real client phrases from the school's Instagram chats
+  assert.equal(answer("Barev dzez arjeqy inchqan e?"), "faq-hy-4");
+  assert.equal(answer("Sorvesnel qani amis e / U qani lari e"), "faq-hy-4");
+  assert.equal(answer("Dex ka krancvelu"), "faq-hy-3");
+  assert.equal(answer("Amsi 9 arden ksksvi?"), "faq-hy-7");
+  assert.equal(answer("Ploshadka arje inchqan"), "faq-hy-4");
+  assert.equal(answer("Inch qnnutyun uni"), "faq-hy-11");
+  // the language is recognised, ordinary text is not hijacked
+  assert.equal(detectLanguage("Barev dzez", "ru"), "hy");
+  assert.equal(detectLanguage("How much is 50 lari?", "en"), "en");
+  assert.equal(detectLanguage("Сколько стоит", "en"), "ru");
+  assert.equal(detectLanguage("Barev, kuzem grancvel", "en"), "hy");
+});
+
+test("answers from the school: documents, missed lessons, seats, exams, new address", async () => {
+  const { findKnowledge } = await import("../src/lib/knowledge.ts");
+  const { publicRecords } = await import("../src/lib/public-content.ts");
+  const ask = (q: string) =>
+    findKnowledge(
+      q,
+      publicRecords.faq.filter((f) => f.locale === "ru"),
+    );
+  assert.equal(ask("Что, если я пропущу занятие?")?.id, "faq-ru-8");
+  assert.equal(ask("Сколько занятий на площадке нужно?")?.id, "faq-ru-9");
+  assert.equal(ask("Есть ли свободные места?")?.id, "faq-ru-10");
+  assert.equal(ask("Где сдают экзамены?")?.id, "faq-ru-11");
+  assert.match(ask("Какие нужны документы?")!.answer, /фото/);
+  const nin = publicRecords.branches.filter((b) => b.city === "ninotsminda");
+  assert.equal(nin.length, 4);
+  for (const b of nin) {
+    assert.ok(!/19|Свобод|Freedom|თავისუფლ|Ազատ/.test(b.address), b.address);
+    assert.equal(b.coords, "41.2625579,43.5899200");
+  }
+  const all = JSON.stringify(publicRecords);
+  assert.ok(!/Свободы, 19|19 Freedom/.test(all), "old address left somewhere");
+});

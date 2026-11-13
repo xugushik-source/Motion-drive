@@ -1,5 +1,5 @@
 import { get as getBlob, put as putBlob } from "@vercel/blob";
-import { findKnowledge } from "../../../lib/knowledge";
+import { findKnowledge, detectLanguage } from "../../../lib/knowledge";
 import { contactOnly } from "../../../lib/deployment";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -335,13 +335,7 @@ export async function POST(
         .digest("hex");
       if (!(await limit("public-chat:" + ip, 30, 600)))
         return json({ error: "rateLimit" }, 429);
-      const language = /[ა-ჰ]/.test(v.message)
-        ? "ka"
-        : /[Ա-ֆ]/.test(v.message)
-          ? "hy"
-          : /[а-яё]/i.test(v.message)
-            ? "ru"
-            : v.locale;
+      const language = detectLanguage(v.message, v.locale);
       const match = v.handoff
         ? undefined
         : findKnowledge(
@@ -1199,13 +1193,7 @@ async function chat(body: any, user: Row | null, identity: string) {
     .parse(body);
   if (!(await limit("chat:" + identity, 20, 3600)))
     return fail("rateLimit", 429);
-  const locale = /[ა-ჰ]/.test(v.message)
-    ? "ka"
-    : /[Ա-ֆ]/.test(v.message)
-      ? "hy"
-      : /[а-яё]/i.test(v.message)
-        ? "ru"
-        : v.locale;
+  const locale = detectLanguage(v.message, v.locale);
   const knowledge = [
     ...(await approved("faq")),
     ...(await approved("knowledge")),
