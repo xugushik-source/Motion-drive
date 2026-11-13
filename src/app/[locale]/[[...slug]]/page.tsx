@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { contactOnly, siteUrl } from "../../../lib/deployment";
+import { contactOnly, demoMode, siteUrl } from "../../../lib/deployment";
 import Site from "../../../components/Site";
 import { records } from "../../../lib/db";
 import { locales } from "../../../lib/schemas";
@@ -137,6 +137,7 @@ export default async function Page({
         page={path}
         initialContent={content}
         contactOnly={contactOnly}
+        demo={demoMode}
       />
     </>
   );

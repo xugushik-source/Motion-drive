@@ -61,3 +61,27 @@ No tables, accounts or data in either existing Supabase project were changed.
 After approval, provision the private schema and role, place DATABASE_URL in
 Vercel Production Secrets, verify the pooler connection, then redeploy and test
 production registration/booking persistence before reporting activation.
+
+## Запуск онлайн-записи: 3 шага (2026-11-13)
+
+Сайт сам создаёт таблицы и первого администратора, командная строка не нужна.
+
+1. **База.** Vercel → проект `motion-drive` → Storage → Create Database → Neon (или Supabase) → Connect.
+   Интеграция сама добавляет `DATABASE_URL` (или `POSTGRES_URL`) в проект. Подходит любой PostgreSQL:
+   TLS проверяется по публичным сертификатам, для Supabase используется его корневой.
+2. **Первый админ.** Vercel → Settings → Environment Variables → Production: `BOOTSTRAP_ADMIN_EMAIL`
+   и `BOOTSTRAP_ADMIN_PASSWORD` (12+ символов).
+3. **Redeploy** (Deployments → последний → Redeploy). Откройте сайт: при первом обращении к базе
+   создаются 13 таблиц и админ. После входа в `/ru/admin` **удалите обе переменные** из Vercel.
+
+Дальше: в `/ru/admin` вкладка «Расписание» (открыть часы на несколько недель одной формой, по выбранным дням),
+вкладка «Ученики» (назначить роль `operator` администраторам школы после их регистрации по телефону).
+
+### Режимы работы (`src/lib/deployment.ts`)
+- есть база → всё работает;
+- Vercel **Preview** без базы → **демо**: временная память, готовое расписание на 2 недели, тестовые входы
+  (баннер внизу слева). Не для реальных клиентов;
+- Vercel **Production** без базы → только контакты (защита: данные клиентов никуда не пишутся).
+
+Проверено на настоящем PostgreSQL 16: создание схемы с нуля, запись, серия, кабинет оператора, сброс пароля,
+правило 24 часов, экспорт, расписание на недели.

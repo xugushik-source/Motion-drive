@@ -36,6 +36,7 @@ import BackgroundVideo from "./BackgroundVideo";
 const Workspace = dynamic(() => import("./Workspace"));
 import { Booking, Auth, Exam } from "./flows";
 import Packages, { Services } from "./Packages";
+import { DEMO } from "../lib/demo";
 export type Item = Record<string, any>;
 export async function api(path: string, data?: any) {
   const res = await fetch(
@@ -74,11 +75,13 @@ export default function Site({
   page,
   initialContent,
   contactOnly = false,
+  demo = false,
 }: {
   locale: string;
   page: string;
   initialContent: Record<string, Item[]>;
   contactOnly?: boolean;
+  demo?: boolean;
 }) {
   const translate = useTranslations();
   const content = initialContent;
@@ -495,6 +498,29 @@ export default function Site({
   );
   return (
     <MotionConfig reducedMotion="user">
+      {demo && (
+        <details className="demo-banner">
+          <summary>ДЕМО · данные временные</summary>
+          <p>
+            Пробная версия: записи и аккаунты хранятся во временной памяти и
+            пропадают при перезапуске. Входы для проверки:
+          </p>
+          <ul>
+            <li>
+              <Link href={href("admin")}>Админ</Link>:{" "}
+              <code>{DEMO.adminEmail}</code> / <code>{DEMO.adminPassword}</code>
+            </li>
+            <li>
+              <Link href={href("operator")}>Оператор</Link>:{" "}
+              <code>{DEMO.operatorPhone}</code> / <code>{DEMO.password}</code>
+            </li>
+            <li>
+              <Link href={href("account")}>Ученик</Link>:{" "}
+              <code>{DEMO.studentPhone}</code> / <code>{DEMO.password}</code>
+            </li>
+          </ul>
+        </details>
+      )}
       {header}
       <main id="main">
         {!page ? (

@@ -137,3 +137,34 @@ test("PostgreSQL migration and booking/rate-limit constraints", async () => {
   await pg.exec("RESET ROLE");
   await pg.close();
 });
+
+test("a bare parameter in IS NULL gets an explicit type for PostgreSQL", () => {
+  assert.equal(
+    postgresQuery(
+      "SELECT 1 FROM slots WHERE (a=? OR (a IS NULL AND ? IS NULL AND city=?))",
+    ),
+    "SELECT 1 FROM motion_drive.slots WHERE (a=$1 OR (a IS NULL AND $2::text IS NULL AND city=$3))",
+  );
+});
+
+test("the embedded schema equals db/postgres.sql and works on a host without Supabase roles", async () => {
+  const { postgresSchema } = await import("../src/lib/postgres-schema.ts");
+  assert.equal(
+    postgresSchema,
+    readFileSync("db/postgres.sql", "utf8"),
+    "run `npm run sync:schema`",
+  );
+  // a plain PostgreSQL (Neon and others): no anon/authenticated roles, applied twice
+  const pg = new PGlite();
+  await pg.exec(postgresSchema);
+  await pg.exec(postgresSchema);
+  assert.equal(
+    (
+      await pg.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema='motion_drive'",
+      )
+    ).rows[0].n,
+    12,
+  );
+  await pg.close();
+});

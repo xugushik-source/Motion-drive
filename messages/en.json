@@ -315,5 +315,9 @@
   "waHandoffText": "So the administrator sees your request right away, send it on WhatsApp — the text is ready.",
   "waSend": "Send the request on WhatsApp",
   "nextStarts": "Next starts",
-  "lateChange": "The lesson starts in less than 24 hours: it can only be cancelled or moved through an administrator by phone."
+  "lateChange": "The lesson starts in less than 24 hours: it can only be cancelled or moved through an administrator by phone.",
+  "services": "Certificates",
+  "repeatWeeks": "Repeat for weeks",
+  "repeatDays": "Tick the weekdays: the same hours open on those days for the chosen number of weeks. With nothing ticked, the weekday of the start date is used.",
+  "skipped": "skipped"
 }

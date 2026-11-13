@@ -742,15 +742,60 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               className="form-card"
               onSubmit={async (e) => {
                 e.preventDefault();
-                const f = Object.fromEntries(new FormData(e.currentTarget));
-                const r = await act("slot/create", {
-                  ...f,
+                const form = e.currentTarget;
+                const fd = new FormData(form);
+                const f = Object.fromEntries(fd);
+                const base = {
+                  city: f.city,
                   instructor_id: instructor ? user.id : f.instructor_id || null,
                   intervalMinutes: Number(f.intervalMinutes),
-                  start: new Date(String(f.start) + "+04:00").toISOString(),
-                  end: new Date(String(f.end) + "+04:00").toISOString(),
-                });
-                if (r) (e.target as HTMLFormElement).reset();
+                };
+                const weeks = Number(f.weeks || 1);
+                const days = fd.getAll("wd").map(Number);
+                if (weeks === 1 && !days.length) {
+                  const r = await act("slot/create", {
+                    ...base,
+                    start: new Date(String(f.start) + "+04:00").toISOString(),
+                    end: new Date(String(f.end) + "+04:00").toISOString(),
+                  });
+                  if (r) form.reset();
+                  return;
+                }
+                // Repeat the same hours on the chosen weekdays for N weeks.
+                const [first, from] = String(f.start).split("T");
+                const to = String(f.end).split("T")[1];
+                const startDay = new Date(first + "T12:00:00Z").getUTCDay();
+                let created = 0,
+                  skipped = 0;
+                setError("");
+                setNotice("");
+                for (let i = 0; i < weeks * 7; i++) {
+                  const day = new Date(
+                    Date.parse(first + "T12:00:00Z") + i * 86400000,
+                  );
+                  if (
+                    !(days.length ? days : [startDay]).includes(day.getUTCDay())
+                  )
+                    continue;
+                  const date = day.toISOString().slice(0, 10);
+                  try {
+                    await api("slot/create", {
+                      ...base,
+                      start: new Date(`${date}T${from}+04:00`).toISOString(),
+                      end: new Date(`${date}T${to}+04:00`).toISOString(),
+                    });
+                    created++;
+                  } catch {
+                    skipped++; // already open or in the past
+                  }
+                }
+                if (created)
+                  setNotice(
+                    `${t("saved")}: ${created}` +
+                      (skipped ? ` · ${t("skipped")}: ${skipped}` : ""),
+                  );
+                else setError(t("slotUnavailable"));
+                await refresh();
               }}
             >
               {staff && (
@@ -790,6 +835,37 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                   ))}
                 </select>
               </Field>
+              <div className="repeat-box">
+                <Field label={t("repeatWeeks")}>
+                  <select name="weeks" defaultValue="1">
+                    {[1, 2, 4, 8].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <div
+                  className="chips"
+                  role="group"
+                  aria-label={t("repeatDays")}
+                >
+                  {[1, 2, 3, 4, 5, 6, 0].map((wd) => (
+                    <label key={wd} className="chip-check">
+                      <input type="checkbox" name="wd" value={wd} />
+                      <span>
+                        {new Date(
+                          Date.UTC(2026, 10, 1 + wd),
+                        ).toLocaleDateString(locale, {
+                          weekday: "short",
+                          timeZone: "UTC",
+                        })}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <small>{t("repeatDays")}</small>
+              </div>
               <p>{t("splitHours")}</p>
               <button className="button small">
                 {t("add")}

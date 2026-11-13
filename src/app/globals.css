@@ -2743,3 +2743,20 @@ h3 {
 .contact-card .whatsapp-button { display: flex; width: fit-content; }
 .package-card { justify-content: flex-start; }
 .package-card .package-foot { margin-top: auto; }
+
+/* ===== Demo banner (preview deployments only) ===== */
+.demo-banner { position: fixed; left: 12px; bottom: 12px; z-index: 60; max-width: min(430px, calc(100vw - 96px)); background: #fff4ef; border: 1px solid #ffb59f; border-radius: 12px; padding: 10px 14px; font-size: 12px; box-shadow: 0 10px 30px #00000026; }
+.demo-banner summary { cursor: pointer; font-weight: 700; letter-spacing: .04em; color: #a13c32; }
+.demo-banner p { margin: 8px 0; color: var(--ink); line-height: 1.5; }
+.demo-banner ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.demo-banner code { background: #fff; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+.demo-banner a { text-decoration: underline; font-weight: 600; }
+
+/* ===== Schedule: repeat for several weeks ===== */
+.repeat-box { display: grid; gap: 10px; padding: 14px; border: 1px dashed var(--line); border-radius: 12px; background: #fbfbf8; }
+.repeat-box .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-check { position: relative; }
+.chip-check input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.chip-check span { display: inline-grid; place-items: center; min-width: 48px; min-height: 40px; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line); background: white; font-size: 12px; text-transform: capitalize; }
+.chip-check input:checked + span { background: var(--ink); color: white; border-color: var(--ink); }
+.chip-check input:focus-visible + span { outline: 2px solid var(--lime); outline-offset: 2px; }

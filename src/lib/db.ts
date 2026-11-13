@@ -1,10 +1,14 @@
 import { supabaseRootCa } from "./certificates/supabase-root-2021";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Pool, type PoolClient } from "pg";
-import { contactOnly } from "./deployment";
+import { contactOnly, databaseUrl, demoMode } from "./deployment";
+import { DEMO } from "./demo";
+import { hashPassword } from "./password";
+import { postgresSchema } from "./postgres-schema";
 import { publicRecords } from "./public-content";
 import { sqliteSchema } from "./sqlite-schema";
 
@@ -15,10 +19,11 @@ const context = new AsyncLocalStorage<{ client?: PoolClient; local?: true }>();
 let localQueue = Promise.resolve();
 function localDb() {
   if (!sqlite) {
-    const path = contactOnly
-      ? ":memory:"
-      : resolve(process.env.DATABASE_PATH || "./data/motion-drive.sqlite");
-    if (!contactOnly)
+    const path =
+      contactOnly || demoMode
+        ? ":memory:"
+        : resolve(process.env.DATABASE_PATH || "./data/motion-drive.sqlite");
+    if (!contactOnly && !demoMode)
       mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     sqlite = new DatabaseSync(path);
     sqlite.exec(sqliteSchema);
@@ -71,17 +76,178 @@ function localDb() {
       sqlite.exec(
         "ALTER TABLE messages ADD COLUMN admin_reply TEXT NOT NULL DEFAULT ''",
       );
+    if (demoMode) seedDemo(sqlite);
   }
   return sqlite;
 }
-function getPool() {
-  if (!process.env.DATABASE_URL) throw Error("Database is not configured");
-  return (pool ||= new Pool({
-    connectionString: process.env.DATABASE_URL,
+// Demo only: sample accounts, a two-week timetable in both branches and one
+// pending course, so every screen shows something real straight away.
+function seedDemo(d: DatabaseSync) {
+  const user = d.prepare(
+    "INSERT INTO users(id,email,phone,name,password,role,locale) VALUES(?,?,?,?,?,?,'ru')",
+  );
+  const hash = hashPassword(DEMO.password);
+  user.run(
+    "demo-admin",
+    DEMO.adminEmail,
+    null,
+    "Демо Админ",
+    hashPassword(DEMO.adminPassword),
+    "admin",
+  );
+  user.run(
+    "demo-operator",
+    null,
+    DEMO.operatorPhone,
+    "Демо Оператор",
+    hash,
+    "operator",
+  );
+  user.run(
+    "demo-student",
+    null,
+    DEMO.studentPhone,
+    "Демо Ученик",
+    hash,
+    "student",
+  );
+  const slot = d.prepare(
+    "INSERT INTO slots(id,instructor_id,city,start,end,available) VALUES(?,NULL,?,?,?,1)",
+  );
+  const first: string[] = [];
+  for (let day = 1; day <= 14; day++) {
+    // Georgia is UTC+4 all year; skip Sundays there
+    const local = new Date(Date.now() + 4 * 3600000 + day * 86400000);
+    if (local.getUTCDay() === 0) continue;
+    for (const city of ["akhalkalaki", "ninotsminda"])
+      for (let h = 10; h < 18; h++) {
+        const start = Date.UTC(
+          local.getUTCFullYear(),
+          local.getUTCMonth(),
+          local.getUTCDate(),
+          h - 4,
+        );
+        const id = randomUUID();
+        slot.run(
+          id,
+          city,
+          new Date(start).toISOString(),
+          new Date(start + 3600000).toISOString(),
+        );
+        if (city === "akhalkalaki" && h === 10 && first.length < 4)
+          first.push(id);
+      }
+  }
+  const booking = d.prepare(
+    "INSERT INTO bookings(id,user_id,city,program,gearbox,slot_id,name,contact,note,series_id,package_title) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+  );
+  const series = randomUUID();
+  for (const slotId of first)
+    booking.run(
+      randomUUID(),
+      "demo-student",
+      "akhalkalaki",
+      "practice",
+      "manual",
+      slotId,
+      "Демо Ученик",
+      DEMO.studentPhone,
+      "",
+      series,
+      "Вождение по городу · механика · 4×60 · 4 × 80 ₾ = 320 ₾",
+    );
+}
+function poolConfig() {
+  const url = new URL(databaseUrl);
+  const local =
+    ["localhost", "127.0.0.1", "::1"].includes(url.hostname) ||
+    url.searchParams.get("sslmode") === "disable";
+  // The ssl option below decides about TLS; URL flags would silently override it.
+  url.searchParams.delete("sslmode");
+  url.searchParams.delete("channel_binding");
+  const supabase = /(^|\.)supabase\.(co|com)$/.test(url.hostname);
+  return {
+    connectionString: url.toString(),
     max: 3,
     idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 10000,
-    ssl: { rejectUnauthorized: true, ca: supabaseRootCa },
+    connectionTimeoutMillis: 15000,
+    // Supabase signs with its own root; every other host (Neon, ...) uses public CAs.
+    ssl: local
+      ? false
+      : supabase
+        ? { rejectUnauthorized: true, ca: supabaseRootCa }
+        : { rejectUnauthorized: true },
+  };
+}
+function getPool() {
+  if (!databaseUrl) throw Error("Database is not configured");
+  return (pool ||= new Pool(poolConfig()));
+}
+// First start on a fresh database: create the tables, then the first administrator
+// from BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD (set them in Vercel, delete after).
+// Idempotent; guarded by a transaction-level lock so parallel cold starts do not collide.
+let schemaReady: Promise<void> | undefined;
+async function bootstrapAdmin(client: PoolClient) {
+  const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+  if (!email || !password) return;
+  if (password.length < 12) {
+    console.error(
+      "BOOTSTRAP_ADMIN_PASSWORD needs 12+ characters; no admin created",
+    );
+    return;
+  }
+  if (
+    (
+      await client.query(
+        "SELECT 1 FROM motion_drive.users WHERE role='admin' LIMIT 1",
+      )
+    ).rowCount
+  )
+    return;
+  await client.query(
+    "INSERT INTO motion_drive.users(id,email,name,password,role,locale) VALUES($1,$2,'Motion Drive',$3,'admin','ru') ON CONFLICT (email) DO NOTHING",
+    [randomUUID(), email, hashPassword(password)],
+  );
+  await client.query(
+    "INSERT INTO motion_drive.audit(actor,action) VALUES('bootstrap','admin:create')",
+  );
+}
+export function ensureSchema() {
+  if (!databaseUrl) return Promise.resolve();
+  return (schemaReady ||= (async () => {
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(727274)");
+      await client.query("CREATE SCHEMA IF NOT EXISTS motion_drive");
+      await client.query(
+        "CREATE TABLE IF NOT EXISTS motion_drive.meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+      );
+      const version = createHash("sha256").update(postgresSchema).digest("hex");
+      const known = await client.query(
+        "SELECT value FROM motion_drive.meta WHERE key='schema'",
+      );
+      if (known.rows[0]?.value !== version) {
+        await client.query(postgresSchema);
+        await client.query(
+          "INSERT INTO motion_drive.meta(key,value) VALUES('schema',$1) ON CONFLICT (key) DO UPDATE SET value=excluded.value",
+          [version],
+        );
+      }
+      await bootstrapAdmin(client);
+      await client.query("COMMIT");
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      throw error;
+    } finally {
+      client.release();
+    }
+  })().catch((error) => {
+    schemaReady = undefined;
+    throw error;
   }));
 }
 const tables = new Set([
@@ -101,24 +267,31 @@ const tables = new Set([
 // Queries are internal literals; values always travel as separate bound parameters.
 export function postgresQuery(sql: string) {
   let index = 0;
-  return sql
-    .replace(
-      /date\('now','start of month'\)/g,
-      "to_char(date_trunc('month',now()), 'YYYY-MM-DD')",
-    )
-    .replace(/date\('now'\)/g, "to_char(now(), 'YYYY-MM-DD')")
-    .replace(/\bend(?=\s*[<>=,)]|\s+TEXT)/g, '"end"')
-    .replace(
-      /\b(?:FROM|JOIN|INTO|UPDATE|DELETE FROM)\s+([a-z_]+)/gi,
-      (match, table) =>
-        tables.has(table)
-          ? match.slice(0, -table.length) + "motion_drive." + table
-          : match,
-    )
-    .replace(/\?/g, () => "$" + ++index);
+  return (
+    sql
+      .replace(
+        /date\('now','start of month'\)/g,
+        "to_char(date_trunc('month',now()), 'YYYY-MM-DD')",
+      )
+      .replace(/date\('now'\)/g, "to_char(now(), 'YYYY-MM-DD')")
+      .replace(/\bend(?=\s*[<>=,)]|\s+TEXT)/g, '"end"')
+      .replace(
+        /\b(?:FROM|JOIN|INTO|UPDATE|DELETE FROM)\s+([a-z_]+)/gi,
+        (match, table) =>
+          tables.has(table)
+            ? match.slice(0, -table.length) + "motion_drive." + table
+            : match,
+      )
+      // PostgreSQL cannot guess the type of a bare parameter in "? IS NULL".
+      .replace(
+        /\?(\s+IS\s+NULL)?/g,
+        (_m, isNull) => "$" + ++index + (isNull ? "::text" + isNull : ""),
+      )
+  );
 }
 async function query(sql: string, args: any[] = []) {
-  if (process.env.DATABASE_URL) {
+  if (databaseUrl) {
+    if (!context.getStore()?.client) await ensureSchema();
     const client = context.getStore()?.client || getPool();
     const result = await client.query(postgresQuery(sql), args);
     return { rows: result.rows as Row[], changes: result.rowCount || 0 };
@@ -156,7 +329,8 @@ export const db = {
 };
 export async function transaction<T>(work: () => Promise<T>): Promise<T> {
   if (context.getStore()) return work();
-  if (process.env.DATABASE_URL) {
+  if (databaseUrl) {
+    await ensureSchema();
     const client = await getPool().connect();
     try {
       await client.query("BEGIN");

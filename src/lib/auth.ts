@@ -1,21 +1,8 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { db, one } from "./db";
-export function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  return salt + ":" + scryptSync(password, salt, 64).toString("hex");
-}
-export function checkPassword(password: string, stored: string) {
-  try {
-    const [salt, h] = stored.split(":");
-    return timingSafeEqual(
-      Buffer.from(h, "hex"),
-      scryptSync(password, salt, 64),
-    );
-  } catch {
-    return false;
-  }
-}
+import { hashPassword, checkPassword } from "./password";
+export { hashPassword, checkPassword };
 export async function currentUser() {
   const token = (await cookies()).get("md_session")?.value;
   if (!token) return null;

@@ -1,6 +1,11 @@
 -- A private schema: browser/Data API roles have no access.
 CREATE SCHEMA IF NOT EXISTS motion_drive;
-REVOKE ALL ON SCHEMA motion_drive FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON SCHEMA motion_drive FROM PUBLIC;
+-- Supabase API roles exist only on Supabase; other PostgreSQL hosts (Neon, ...) lack them.
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN REVOKE ALL ON SCHEMA motion_drive FROM anon; END IF;
+ IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN REVOKE ALL ON SCHEMA motion_drive FROM authenticated; END IF;
+END $$;
 CREATE TABLE IF NOT EXISTS motion_drive.users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'student' CHECK(role IN ('student','operator','instructor','admin')),locale TEXT NOT NULL DEFAULT 'ru');
 CREATE TABLE IF NOT EXISTS motion_drive.sessions(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id) ON DELETE CASCADE,expires BIGINT NOT NULL);
 CREATE INDEX IF NOT EXISTS sessions_user ON motion_drive.sessions(user_id);

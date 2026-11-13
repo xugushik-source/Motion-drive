@@ -918,7 +918,9 @@ export async function POST(
         const answers = qs.map((q) => ({
           ...q,
           selected:
-            Date.now() > a.deadline + 5000 ? -1 : (v.answers[q.id] ?? -1),
+            Date.now() > Number(a.deadline) + 5000
+              ? -1
+              : (v.answers[q.id] ?? -1),
         }));
         const score = answers.filter(
           (q: Row) => q.selected === q.correct,
