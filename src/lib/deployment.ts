@@ -5,11 +5,18 @@
 //  - contact-only: PRODUCTION on Vercel without a database: no visitor data is ever
 //    accepted into an ephemeral database; clients are sent to the branch phones.
 // Integrations name the variable differently, so the usual names are accepted.
-export const databaseUrl =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  "";
+/** The database address from the environment, whatever the integration called it. */
+export function pickDatabaseUrl(env: Record<string, string | undefined>) {
+  const plain = env.DATABASE_URL || env.POSTGRES_URL || env.POSTGRES_PRISMA_URL;
+  if (plain) return plain;
+  // Vercel integrations can add a prefix chosen at connect time (STORAGE_DATABASE_URL, ...).
+  // Names such as *_URL_UNPOOLED / *_URL_NON_POOLING end differently and are not matched.
+  const key = Object.keys(env).find(
+    (k) => /_(DATABASE_URL|POSTGRES_URL)$/.test(k) && env[k],
+  );
+  return key ? (env[key] as string) : "";
+}
+export const databaseUrl = pickDatabaseUrl(process.env);
 export const demoMode =
   process.env.VERCEL === "1" &&
   process.env.VERCEL_ENV !== "production" &&

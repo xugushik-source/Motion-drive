@@ -277,3 +277,31 @@ test("answers from the school: documents, missed lessons, seats, exams, new addr
   const all = JSON.stringify(publicRecords);
   assert.ok(!/Свободы, 19|19 Freedom/.test(all), "old address left somewhere");
 });
+
+test("the database address is found under any integration prefix", async () => {
+  const { pickDatabaseUrl } = await import("../src/lib/deployment.ts");
+  assert.equal(
+    pickDatabaseUrl({ DATABASE_URL: "postgres://a" }),
+    "postgres://a",
+  );
+  assert.equal(
+    pickDatabaseUrl({ POSTGRES_URL: "postgres://b" }),
+    "postgres://b",
+  );
+  assert.equal(
+    pickDatabaseUrl({
+      STORAGE_DATABASE_URL_UNPOOLED: "postgres://direct",
+      STORAGE_DATABASE_URL: "postgres://pooled",
+    }),
+    "postgres://pooled",
+  );
+  assert.equal(
+    pickDatabaseUrl({ NEON_POSTGRES_URL: "postgres://c" }),
+    "postgres://c",
+  );
+  assert.equal(
+    pickDatabaseUrl({ STORAGE_DATABASE_URL_UNPOOLED: "postgres://x" }),
+    "",
+  );
+  assert.equal(pickDatabaseUrl({ BLOB_READ_WRITE_TOKEN: "t" }), "");
+});
