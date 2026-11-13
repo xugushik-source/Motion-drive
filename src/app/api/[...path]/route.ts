@@ -142,6 +142,25 @@ export async function GET(
     }
     const p = (await ctx.params).path;
     const user = await currentUser();
+    // Launch check: answers only yes/no. Once an administrator exists it says nothing more.
+    if (p[0] === "health") {
+      const admins = Number(
+        (await one("SELECT count(*) AS n FROM users WHERE role='admin'"))?.n ||
+          0,
+      );
+      return json(
+        admins
+          ? { database: true, admin: true }
+          : {
+              database: true,
+              admin: false,
+              bootstrapEmailSet: !!process.env.BOOTSTRAP_ADMIN_EMAIL?.trim(),
+              bootstrapPasswordSet: !!process.env.BOOTSTRAP_ADMIN_PASSWORD,
+              bootstrapPasswordLongEnough:
+                (process.env.BOOTSTRAP_ADMIN_PASSWORD || "").length >= 12,
+            },
+      );
+    }
     if (p[0] === "public")
       return json(
         Object.fromEntries(
