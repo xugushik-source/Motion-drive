@@ -130,9 +130,14 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "адрес",
         "контакты",
-        "где",
+        "~где",
         "телефон",
-        "позвонить"
+        "позвонить",
+        "находитесь",
+        "находится",
+        "добраться",
+        "найти",
+        "улица"
       ],
       "locale": "ru",
       "status": "published",
@@ -149,7 +154,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "график",
         "работаете",
         "работы",
-        "открыты"
+        "открыты",
+        "режим",
+        "часы",
+        "скольки"
       ],
       "locale": "ru",
       "status": "published",
@@ -165,8 +173,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "курсы",
         "программы",
-        "занятия",
-        "обучение"
+        "~занятия",
+        "обучение",
+        "~уроки",
+        "услуги",
+        "предлагаете"
       ],
       "locale": "ru",
       "status": "published",
@@ -184,7 +195,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "запись",
         "время",
         "расписание",
-        "свободные"
+        "свободные",
+        "регистрация",
+        "зарегистрироваться"
       ],
       "locale": "ru",
       "status": "published",
@@ -201,7 +214,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "цена",
         "стоимость",
         "стоит",
-        "сколько"
+        "~сколько",
+        "цены",
+        "прайс",
+        "тариф"
       ],
       "locale": "ru",
       "status": "published",
@@ -217,9 +233,15 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "address",
         "location",
-        "where",
+        "~where",
         "phone",
-        "contact"
+        "contact",
+        "find",
+        "located",
+        "directions",
+        "map",
+        "street",
+        "branch"
       ],
       "locale": "en",
       "status": "published",
@@ -235,7 +257,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "hours",
         "open",
-        "opening"
+        "opening",
+        "close",
+        "closing",
+        "working",
+        "times"
       ],
       "locale": "en",
       "status": "published",
@@ -250,9 +276,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "answer": "Theory and practical driving on the training ground and in the city. Group and individual tuition are available; confirm the format with the school.",
       "aliases": [
         "courses",
-        "lessons",
+        "~~lessons",
         "programs",
-        "training"
+        "training",
+        "offer",
+        "classes"
       ],
       "locale": "en",
       "status": "published",
@@ -269,7 +297,14 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "book",
         "booking",
         "availability",
-        "schedule"
+        "schedule",
+        "sign",
+        "register",
+        "registration",
+        "enroll",
+        "join",
+        "apply",
+        "reserve"
       ],
       "locale": "en",
       "status": "published",
@@ -286,7 +321,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "price",
         "cost",
         "fees",
-        "much"
+        "~much",
+        "prices",
+        "tuition",
+        "rate"
       ],
       "locale": "en",
       "status": "published",
@@ -301,9 +339,13 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "answer": "ახალქალაქი: თავისუფლების ქ. 36/1, +995 597 93 93 27. ნინოწმინდა: სურენ სპანდარიანის ქ. 2, მე-2 სართული, +995 597 92 74 92.",
       "aliases": [
         "მისამართი",
-        "სად",
+        "~სად",
         "ტელეფონი",
-        "კონტაქტი"
+        "კონტაქტი",
+        "მდებარეობ",
+        "მდებარე",
+        "მისამართ",
+        "მისვლა"
       ],
       "locale": "ka",
       "status": "published",
@@ -319,7 +361,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "სამუშაო",
         "საათები",
-        "მუშაობთ"
+        "მუშაობთ",
+        "საათ",
+        "მუშაობ",
+        "იხსნება",
+        "იკეტება"
       ],
       "locale": "ka",
       "status": "published",
@@ -335,7 +381,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "კურსები",
         "გაკვეთილები",
-        "სწავლება"
+        "სწავლება",
+        "კურს",
+        "~გაკვეთილ",
+        "სასწავლო",
+        "გთავაზობთ"
       ],
       "locale": "ka",
       "status": "published",
@@ -352,7 +402,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "ჩაწერა",
         "ჩავეწერო",
         "განრიგი",
-        "ჯავშანი"
+        "ჯავშანი",
+        "ჩაწერ",
+        "ჩავეწერ",
+        "რეგისტრაცი",
+        "დარეგისტრირ"
       ],
       "locale": "ka",
       "status": "published",
@@ -368,7 +422,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "ფასი",
         "ღირს",
-        "საფასური"
+        "საფასური",
+        "ფასები",
+        "ღირებულება"
       ],
       "locale": "ka",
       "status": "published",
@@ -383,15 +439,18 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "answer": "Ախալքալաք՝ Ազատության փողոց, 36/1, +995 597 93 93 27։ Նինոծմինդա՝ Սպանդարյան փողոց, 2, 2-րդ հարկ, +995 597 92 74 92։",
       "aliases": [
         "հասցե",
-        "որտեղ",
+        "~որտեղ",
         "հեռախոս",
         "կապ",
-        "ur",
-        "urtex",
+        "~ur",
+        "~urtex",
         "hasce",
-        "tex",
+        "~tex",
         "heraxos",
-        "zang"
+        "zang",
+        "գտնվ",
+        "գտնվում",
+        "դպրոց"
       ],
       "locale": "hy",
       "status": "published",
@@ -411,7 +470,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "jam",
         "jamer",
         "jamery",
-        "ashxatanq"
+        "ashxatanq",
+        "ժամը",
+        "ժամերը",
+        "աշխատ",
+        "փակ"
       ],
       "locale": "hy",
       "status": "published",
@@ -425,14 +488,16 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "question": "Ի՞նչ դասեր կան։",
       "answer": "Տեսություն և գործնական վարում՝ հրապարակում և քաղաքում։ Կան խմբային և անհատական դասեր։ Պայմանները ճշտեք դպրոցում։",
       "aliases": [
-        "դասեր",
+        "~դասեր",
         "դասընթաց",
         "ուսուցում",
         "das",
         "dasy",
         "dasery",
         "sorvel",
-        "sorvecnel"
+        "sorvecnel",
+        "ուսուց",
+        "առաջարկ"
       ],
       "locale": "hy",
       "status": "published",
@@ -457,7 +522,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "krancvem",
         "krancvelu",
         "dex",
-        "azat"
+        "azat",
+        "գրանց"
       ],
       "locale": "hy",
       "status": "published",
@@ -473,14 +539,17 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "aliases": [
         "գին",
         "արժե",
-        "որքան",
+        "~որքան",
         "arje",
         "arjeq",
         "arjeqy",
         "gin",
-        "inchqan",
-        "qani",
-        "lari"
+        "~inchqan",
+        "~qani",
+        "~lari",
+        "գինը",
+        "գներ",
+        "arju"
       ],
       "locale": "hy",
       "status": "published",
@@ -502,7 +571,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "ребёнок",
         "нужно",
         "нужны",
-        "фото"
+        "фото",
+        "года",
+        "год"
       ],
       "locale": "ru",
       "status": "published",
@@ -521,9 +592,14 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "documents",
         "passport",
         "child",
-        "need",
+        "~need",
         "required",
-        "photo"
+        "photo",
+        "years",
+        "minimum",
+        "id",
+        "consent",
+        "parents"
       ],
       "locale": "en",
       "status": "published",
@@ -543,7 +619,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "პასპორტ",
         "ბავშვ",
         "საჭირო",
-        "ფოტო"
+        "ფოტო",
+        "საბუთ",
+        "წლიდან"
       ],
       "locale": "ka",
       "status": "published",
@@ -567,7 +645,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "tari",
         "tarekan",
         "pasport",
-        "pastatux"
+        "pastatux",
+        "փաստաթղթ",
+        "անձնագր"
       ],
       "locale": "hy",
       "status": "published",
@@ -587,7 +667,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "карта",
         "перенести",
         "отменить",
-        "отмена"
+        "отмена",
+        "платить",
+        "наличные",
+        "картой"
       ],
       "locale": "ru",
       "status": "published",
@@ -625,7 +708,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "ბარათ",
         "წინასწარ",
         "გაუქმ",
-        "გადატან"
+        "გადატან",
+        "ნაღდი",
+        "გადარიცხ"
       ],
       "locale": "ka",
       "status": "published",
@@ -666,7 +751,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "начало",
         "расписание",
         "лекции",
-        "теория"
+        "~~теория",
+        "набор",
+        "~~следующий",
+        "~~когда"
       ],
       "locale": "ru",
       "status": "published",
@@ -680,11 +768,13 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "question": "When does the next theory group start?",
       "answer": "New groups start every 15 days; the next one starts on 23 November. Lectures are three times a week: in Akhalkalaki on Monday, Wednesday and Friday, in Ninotsminda on Tuesday, Thursday and Saturday. Daytime at 10:00 or 11:30, evening at 16:00, 17:30 or 19:00. A group runs even with 3 students. Russian and Armenian. A missed lesson can be made up with another group for a valid reason.",
       "aliases": [
-        "group",
-        "start",
+        "~~group",
+        "~~start",
         "schedule",
         "lectures",
-        "theory"
+        "~~theory",
+        "~~next",
+        "~~when"
       ],
       "locale": "en",
       "status": "published",
@@ -702,7 +792,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "დაწყებ",
         "განრიგ",
         "ლექცი",
-        "თეორი"
+        "~~თეორი",
+        "~~როდის",
+        "~~შემდეგი"
       ],
       "locale": "ka",
       "status": "published",
@@ -720,7 +812,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "մեկնարկ",
         "ժամանակացույց",
         "դասախոսություն",
-        "տեսություն",
+        "~~տեսություն",
         "xumb",
         "xumby",
         "xmb",
@@ -728,7 +820,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "sksvum",
         "sksvi",
         "ksksvi",
-        "skizb"
+        "skizb",
+        "~~ե՞րբ",
+        "~~հաջորդ",
+        "~~նոր"
       ],
       "locale": "hy",
       "status": "published",
@@ -779,7 +874,8 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "answer": "Места в группах есть всегда. Запишитесь на сайте или напишите администратору в WhatsApp, и мы подтвердим удобное время.",
       "aliases": [
         "мест",
-        "места"
+        "места",
+        "свободные места"
       ],
       "locale": "ru",
       "status": "published",
@@ -847,7 +943,11 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "seats",
         "places",
         "spots",
-        "vacancy"
+        "vacancy",
+        "free",
+        "available",
+        "spaces",
+        "space"
       ],
       "locale": "en",
       "status": "published",
@@ -880,7 +980,13 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "გაცდენ",
         "გავაცდენ",
         "გააცდენ",
-        "გაცდენილი"
+        "გაცდენილი",
+        "გავაცდინე",
+        "გაცდინ",
+        "გააცდინ",
+        "გამომრჩა",
+        "გამოვტოვ",
+        "გამოტოვ"
       ],
       "locale": "ka",
       "status": "published",
@@ -923,7 +1029,9 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       "question": "სად ტარდება გამოცდები და რომელ ენაზე?",
       "answer": "თეორიისა და მოედნის გამოცდა ტარდება ახალქალაქში, მართვის საბოლოო გამოცდა — ახალციხეში. კითხვებზე პასუხი შეიძლება სომხურად, რუსულად ან ქართულად. ახალციხეში 3 საგამოცდო მარშრუტი (100 ₾ ავტომატიკა, 120 ₾ მექანიკა) საბოლოო გამოცდამდე მომზადებაა; ახალციხემდე მოსწავლე თავად მიდის.",
       "aliases": [
-        "გამოცდ"
+        "გამოცდ",
+        "ვაბარ",
+        "აბარებ"
       ],
       "locale": "ka",
       "status": "published",
@@ -943,7 +1051,10 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "toxac",
         "toxnel",
         "toxnem",
-        "chtoxneq"
+        "chtoxneq",
+        "թողել",
+        "թողե",
+        "բաց թողել"
       ],
       "locale": "hy",
       "status": "published",
@@ -1002,7 +1113,82 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
         "qnnutyunner",
         "qnnutyunnere",
         "prava",
-        "brava"
+        "brava",
+        "հանձն"
+      ],
+      "locale": "hy",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/hy/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ru-12",
+      "question": "На каком языке проходят занятия?",
+      "answer": "Теория идёт на русском и армянском языках. Вопросы экзамена можно сдавать на армянском, русском и грузинском.",
+      "aliases": [
+        "язык",
+        "языке",
+        "языки",
+        "~~теория",
+        "~~лекции"
+      ],
+      "locale": "ru",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ru/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-en-12",
+      "question": "In which language are the lessons?",
+      "answer": "Theory is taught in Russian and Armenian. Exam questions can be answered in Armenian, Russian or Georgian.",
+      "aliases": [
+        "language",
+        "languages",
+        "speak",
+        "taught",
+        "english"
+      ],
+      "locale": "en",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/en/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-ka-12",
+      "question": "რომელ ენაზე მიმდინარეობს სწავლება?",
+      "answer": "თეორია მიმდინარეობს რუსულ და სომხურ ენებზე. გამოცდის კითხვებზე პასუხი შეიძლება სომხურად, რუსულად ან ქართულად.",
+      "aliases": [
+        "ენაზ",
+        "ენები",
+        "ენებ",
+        "ენა"
+      ],
+      "locale": "ka",
+      "status": "published",
+      "source": "https://motion-drive.vercel.app/ka/pricing",
+      "verifiedAt": "2026-11-13",
+      "responsible": "Motion Drive website",
+      "category": "school"
+    },
+    {
+      "id": "faq-hy-12",
+      "question": "Ո՞ր լեզվով են անցնում դասերը",
+      "answer": "Տեսությունն անցնում է ռուսերեն և հայերեն։ Քննության հարցերին կարելի է պատասխանել հայերեն, ռուսերեն կամ վրացերեն։",
+      "aliases": [
+        "լեզու",
+        "լեզվ",
+        "lezu",
+        "lezv",
+        "lezun",
+        "hayeren",
+        "ruseren",
+        "vraceren"
       ],
       "locale": "hy",
       "status": "published",
