@@ -45,6 +45,13 @@ function localDb() {
     const userColumns = sqlite.prepare("PRAGMA table_info(users)").all() as {
       name: string;
     }[];
+    if (
+      userColumns.some((c) => c.name === "phone") &&
+      !userColumns.some((c) => c.name === "gender")
+    ) {
+      sqlite.exec("ALTER TABLE users ADD COLUMN gender TEXT");
+      sqlite.exec("ALTER TABLE users ADD COLUMN birth_year INTEGER");
+    }
     if (!userColumns.some((c) => c.name === "phone")) {
       sqlite.exec(`PRAGMA foreign_keys=OFF;
       BEGIN;

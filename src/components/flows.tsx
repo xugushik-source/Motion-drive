@@ -46,6 +46,30 @@ function AccountFields({
           />
         </Field>
       )}
+      {register && (
+        <div className="form-grid">
+          <Field label={t("gender")}>
+            <select name="gender" defaultValue="" required>
+              <option value="" disabled>
+                —
+              </option>
+              <option value="m">{t("genderM")}</option>
+              <option value="f">{t("genderF")}</option>
+            </select>
+          </Field>
+          <Field label={t("birthYear")}>
+            <input
+              name="birth_year"
+              type="number"
+              inputMode="numeric"
+              min={1930}
+              max={new Date().getFullYear()}
+              placeholder="2000"
+              required
+            />
+          </Field>
+        </div>
+      )}
       <Field label={t("phone")}>
         <input
           name={register ? "phone" : "login"}

@@ -2761,3 +2761,8 @@ h3 {
 .chip-check input:checked + span { background: var(--ink); color: white; border-color: var(--ink); }
 .chip-check input:focus-visible + span { outline: 2px solid var(--lime); outline-offset: 2px; }
 .back-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; } .back-row .back-home { margin-bottom: 0; cursor: pointer; font-family: inherit; color: inherit; }
+/* Phones: 16px inputs stop iOS from zooming in on focus (the send button used to slide out of view). */
+@media (max-width: 760px) {
+  .field input, .field select, .field textarea, .chat-input input, .record-actions input, .record-actions select { font-size: 16px; }
+  .chat-panel { max-height: calc(100dvh - 105px); }
+}

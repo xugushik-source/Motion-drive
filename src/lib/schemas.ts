@@ -19,6 +19,14 @@ export const registerSchema = z.object({
   phone: phoneSchema,
   password: passwordSchema,
   name: z.string().trim().min(2).max(100),
+  gender: z.enum(["m", "f"]).optional().catch(undefined),
+  birth_year: z.coerce
+    .number()
+    .int()
+    .min(1930)
+    .max(new Date().getFullYear())
+    .optional()
+    .catch(undefined),
   locale: localeSchema,
 });
 export const loginSchema = z.object({

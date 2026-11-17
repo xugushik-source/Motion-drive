@@ -181,7 +181,7 @@ test("the published price list is valid and identical in every language", async 
     }
     return Object.keys(map).length;
   };
-  assert.equal(byLocale("packages"), 28);
+  assert.equal(byLocale("packages"), 44);
   assert.equal(byLocale("services"), 12);
   const price = (id: string) =>
     publicRecords.packages.find((p) => p.id === id)!.price;
@@ -189,6 +189,10 @@ test("the published price list is valid and identical in every language", async 
   assert.equal(price("city-manual-ru"), 80);
   assert.equal(price("yard-ru"), 40);
   assert.equal(price("theory-group-ru"), 150);
+  assert.equal(price("individual-auto-ru"), 80);
+  assert.equal(price("individual-manual-ru"), 90);
+  assert.equal(price("individual-yard-ru"), 60);
+  assert.equal(price("individual-yard2-ru"), 100);
 });
 
 test("group starts repeat every 15 days from the school's first date", async () => {

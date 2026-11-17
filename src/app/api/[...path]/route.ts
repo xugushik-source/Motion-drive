@@ -289,7 +289,9 @@ export async function GET(
               )
             : [],
         users: staff
-          ? await all("SELECT id,name,email,phone,role FROM users")
+          ? await all(
+              "SELECT id,name,email,phone,role,gender,birth_year FROM users",
+            )
           : instructor
             ? await all(
                 "SELECT DISTINCT u.id,u.name FROM users u JOIN bookings b ON b.user_id=u.id WHERE b.instructor_id=?",
@@ -449,9 +451,17 @@ export async function POST(
         const id = randomUUID();
         await db
           .prepare(
-            "INSERT INTO users(id,phone,name,password,locale) VALUES(?,?,?,?,?)",
+            "INSERT INTO users(id,phone,name,password,locale,gender,birth_year) VALUES(?,?,?,?,?,?,?)",
           )
-          .run(id, v.phone, v.name, hashPassword(v.password), v.locale);
+          .run(
+            id,
+            v.phone,
+            v.name,
+            hashPassword(v.password),
+            v.locale,
+            v.gender ?? null,
+            v.birth_year ?? null,
+          );
         await startSession(id);
         return json({
           user: safe((await one("SELECT * FROM users WHERE id=?", id))!),
