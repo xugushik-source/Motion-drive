@@ -309,3 +309,15 @@ test("the database address is found under any integration prefix", async () => {
   );
   assert.equal(pickDatabaseUrl({ BLOB_READ_WRITE_TOKEN: "t" }), "");
 });
+
+test("roles: managers see everything staff see, but never finance", async () => {
+  const { isStaff, canSeeFinance, canManageRoles, ROLES } =
+    await import("../src/lib/roles.ts");
+  assert.ok(ROLES.includes("manager"));
+  for (const r of ["admin", "manager", "operator"]) assert.ok(isStaff(r), r);
+  for (const r of ["student", "instructor", undefined, null, ""])
+    assert.ok(!isStaff(r as string), String(r));
+  assert.ok(canSeeFinance("admin"));
+  assert.ok(!canSeeFinance("manager") && !canSeeFinance("operator"));
+  assert.ok(canManageRoles("admin") && !canManageRoles("manager"));
+});

@@ -26,6 +26,8 @@ END $$;
 -- Phone sign-in, operator password reset and multi-lesson series (idempotent upgrades).
 ALTER TABLE motion_drive.users ALTER COLUMN email DROP NOT NULL;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE motion_drive.users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE motion_drive.users ADD CONSTRAINT users_role_check CHECK(role IN ('student','operator','manager','instructor','admin'));
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS gender TEXT;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS birth_year INTEGER;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS must_change_password INTEGER NOT NULL DEFAULT 0;

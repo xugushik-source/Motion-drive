@@ -166,5 +166,14 @@ test("the embedded schema equals db/postgres.sql and works on a host without Sup
     ).rows[0].n,
     12,
   );
+  // the manager role is accepted, an unknown one is not
+  await pg.exec(
+    "INSERT INTO motion_drive.users(id,email,name,password,role) VALUES('m1','m@x.test','M','x','manager')",
+  );
+  await assert.rejects(
+    pg.exec(
+      "INSERT INTO motion_drive.users(id,email,name,password,role) VALUES('m2','n@x.test','N','x','boss')",
+    ),
+  );
   await pg.close();
 });

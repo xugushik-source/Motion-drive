@@ -1,3 +1,4 @@
+import { isStaff } from "../../../lib/roles";
 import { get as getBlob, put as putBlob } from "@vercel/blob";
 import { findKnowledge, detectLanguage } from "../../../lib/knowledge";
 import { contactOnly } from "../../../lib/deployment";
@@ -242,8 +243,7 @@ export async function GET(
     if (!user) return fail("loginRequired", 401);
     if (p[0] === "dashboard") {
       const admin = user.role === "admin",
-        operator = user.role === "operator",
-        staff = admin || operator,
+        staff = isStaff(user.role),
         instructor = user.role === "instructor";
       const bookings = staff
         ? await all(
@@ -623,7 +623,7 @@ export async function POST(
               status: z.enum(["cancelled", "confirmed"]),
             })
             .parse(body);
-          const staffMember = ["admin", "operator"].includes(user.role);
+          const staffMember = isStaff(user.role);
           const lessons = await all(
             "SELECT * FROM bookings WHERE series_id=? FOR UPDATE",
             v.series_id,
@@ -679,15 +679,11 @@ export async function POST(
             "SELECT * FROM bookings WHERE id=? FOR UPDATE",
             v.id,
           );
-          if (
-            !b ||
-            (!["admin", "operator"].includes(user.role) &&
-              b.user_id !== user.id)
-          )
+          if (!b || (!isStaff(user.role) && b.user_id !== user.id))
             return fail("forbidden", 403);
           if (!["pending", "confirmed"].includes(b.status))
             return fail("invalid");
-          const staffMove = ["admin", "operator"].includes(user.role);
+          const staffMove = isStaff(user.role);
           if (!staffMove && (await tooLate(b))) return fail("lateChange", 409);
           const slot = await one(
             "SELECT * FROM slots WHERE id=? AND available=1 FOR UPDATE",
@@ -731,13 +727,13 @@ export async function POST(
         );
         if (!b) return fail("notFound", 404);
         if (
-          !["admin", "operator"].includes(user.role) &&
+          !isStaff(user.role) &&
           (b.user_id !== user.id || v.status !== "cancelled")
         )
           return fail("forbidden", 403);
         if (!["pending", "confirmed"].includes(b.status))
           return fail("invalid");
-        if (!["admin", "operator"].includes(user.role) && (await tooLate(b)))
+        if (!isStaff(user.role) && (await tooLate(b)))
           return fail("lateChange", 409);
         if (v.status === "confirmed" && !b.slot_id) return fail("slotRequired");
         if (v.status !== "cancelled") {
@@ -759,7 +755,7 @@ export async function POST(
         return json({ ok: true });
       });
     if (p[0] === "lesson") {
-      if (!["admin", "operator", "instructor"].includes(user.role))
+      if (!(isStaff(user.role) || user.role === "instructor"))
         return fail("forbidden", 403);
       const v = z
         .object({
@@ -799,7 +795,7 @@ export async function POST(
     }
     if (p[0] === "slot")
       return await transaction(async () => {
-        if (!["admin", "operator", "instructor"].includes(user.role))
+        if (!(isStaff(user.role) || user.role === "instructor"))
           return fail("forbidden", 403);
         if (p[1] === "availability") {
           const v = z
@@ -966,7 +962,7 @@ export async function POST(
     if (
       user.role !== "admin" &&
       !(
-        user.role === "operator" &&
+        (user.role === "operator" || user.role === "manager") &&
         p[0] === "admin" &&
         ["reply", "reset-password"].includes(p[1])
       )
@@ -980,7 +976,7 @@ export async function POST(
         if (
           !target ||
           target.role === "admin" ||
-          (user.role === "operator" && target.role !== "student")
+          (user.role !== "admin" && target.role !== "student")
         )
           return fail("forbidden", 403);
         const password = temporaryPassword();
@@ -1018,7 +1014,7 @@ export async function POST(
         const v = z
           .object({
             id: z.string(),
-            role: z.enum(["student", "instructor", "operator"]),
+            role: z.enum(["student", "instructor", "operator", "manager"]),
           })
           .parse(body);
         const u = await one("SELECT * FROM users WHERE id=?", v.id);

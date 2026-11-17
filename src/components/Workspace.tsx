@@ -73,7 +73,9 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
       null,
     );
   const admin = user.role === "admin" && page === "admin",
-    operator = user.role === "operator" && page === "operator",
+    operator =
+      (user.role === "operator" || user.role === "manager") &&
+      page === user.role,
     staff = admin || operator,
     instructor = user.role === "instructor" && page === "instructor";
   const tabs = [
@@ -216,12 +218,13 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               <ArrowUpRight size={16} />
             </Link>
           )}
-          {user.role === "operator" && page !== "operator" && (
-            <Link href={"/" + locale + "/operator"}>
-              {t("operator")}
-              <ArrowUpRight size={16} />
-            </Link>
-          )}
+          {(user.role === "operator" || user.role === "manager") &&
+            page !== user.role && (
+              <Link href={"/" + locale + "/" + user.role}>
+                {t(user.role)}
+                <ArrowUpRight size={16} />
+              </Link>
+            )}
           {user.role === "instructor" && page !== "instructor" && (
             <Link href={"/" + locale + "/instructor"}>
               {t("instructor")}
@@ -649,6 +652,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                           <option value="student">{t("student")}</option>
                           <option value="instructor">{t("instructor")}</option>
                           <option value="operator">{t("operator")}</option>
+                          <option value="manager">{t("manager")}</option>
                         </select>
                       </Field>
                     </>
