@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 const pages = [
   "",
   "about",
+  "theory",
   "courses",
   "pricing",
   "instructors",

@@ -99,7 +99,7 @@ export default function Site({
   const href = (p = "") => `/${locale}${p ? "/" + p : ""}`;
   const list = (kind: string) =>
     content[kind].filter((x) => !x.locale || x.locale === locale);
-  const nav = ["about", "courses", "instructors", "exam", "contacts"];
+  const nav = ["about", "theory", "courses", "instructors", "exam", "contacts"];
   const { scrollY } = useScroll();
   const reduce = useReducedMotion();
   const heroY = useTransform(scrollY, [0, 1000], ["0%", "18%"]);
@@ -175,7 +175,7 @@ export default function Site({
       </div>
     );
   };
-  const packagesSection = (compact = false) => (
+  const packagesSection = (compact = false, group?: string) => (
     <section className={"packages-section" + (compact ? "" : " section")}>
       <div className="section-head">
         <div>
@@ -190,7 +190,13 @@ export default function Site({
           <ArrowUpRight size={18} />
         </Link>
       </div>
-      <Packages packages={list("packages")} locale={locale} t={t} />
+      <Packages
+        packages={list("packages").filter(
+          (p) => !group || (p.group || "driving") === group,
+        )}
+        locale={locale}
+        t={t}
+      />
     </section>
   );
   const route = () => (
@@ -687,10 +693,23 @@ export default function Site({
                   : "")
               }
             >
-              <Link className="back-home" href={href()}>
-                <ArrowLeft size={16} />
-                {t("backHome")}
-              </Link>
+              <div className="back-row">
+                <button
+                  type="button"
+                  className="back-home"
+                  onClick={() => {
+                    if (window.history.length > 1) window.history.back();
+                    else window.location.assign(href());
+                  }}
+                >
+                  <ArrowLeft size={16} />
+                  {t("back")}
+                </button>
+                <Link className="back-home" href={href()}>
+                  <ArrowLeft size={16} />
+                  {t("backHome")}
+                </Link>
+              </div>
               <div className="breadcrumbs">
                 <Link href={href()}>{t("home")}</Link>
                 <span>/</span>
@@ -734,6 +753,12 @@ export default function Site({
                     <figcaption>{t("demoImage")}</figcaption>
                   </figure>
                   {contacts()}
+                </>
+              )}
+              {page === "theory" && (
+                <>
+                  <Notice>{t("theoryNote")}</Notice>
+                  {packagesSection(true, "theory")}
                 </>
               )}
               {page === "courses" && (

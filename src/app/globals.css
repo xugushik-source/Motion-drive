@@ -2760,3 +2760,4 @@ h3 {
 .chip-check span { display: inline-grid; place-items: center; min-width: 48px; min-height: 40px; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line); background: white; font-size: 12px; text-transform: capitalize; }
 .chip-check input:checked + span { background: var(--ink); color: white; border-color: var(--ink); }
 .chip-check input:focus-visible + span { outline: 2px solid var(--lime); outline-offset: 2px; }
+.back-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; } .back-row .back-home { margin-bottom: 0; cursor: pointer; font-family: inherit; color: inherit; }
