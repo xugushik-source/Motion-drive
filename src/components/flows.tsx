@@ -835,7 +835,17 @@ export function Booking({
             </>
           )}
           <Field label={t("note")}>
-            <textarea name="note" maxLength={1000} rows={3} />
+            <textarea
+              name="note"
+              maxLength={1000}
+              rows={3}
+              ref={(el) => {
+                const n = new URLSearchParams(window.location.search).get(
+                  "note",
+                );
+                if (el && n && !el.value) el.value = n.slice(0, 1000);
+              }}
+            />
           </Field>
           <div className="honeypot" aria-hidden="true">
             <input name="website" tabIndex={-1} autoComplete="off" />

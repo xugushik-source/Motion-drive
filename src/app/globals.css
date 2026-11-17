@@ -2766,3 +2766,15 @@ h3 {
   .field input, .field select, .field textarea, .chat-input input, .record-actions input, .record-actions select { font-size: 16px; }
   .chat-panel { max-height: calc(100dvh - 105px); }
 }
+.builder { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin: 0 0 32px; display: grid; gap: 14px; }
+.builder h3 { margin: 0; font-size: 20px; }
+.builder-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.builder-row > label { font-size: 12px; font-weight: 600; min-width: 130px; }
+.builder-chips { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.builder-chips button { padding: 9px 14px; border-radius: 99px; border: 1px solid var(--line); background: #f4f5ef; font-size: 12px; cursor: pointer; }
+.builder-chips button.on { background: var(--green); color: white; border-color: var(--green); }
+.builder-step { display: inline-flex; align-items: center; gap: 12px; }
+.builder-step button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: white; display: grid; place-items: center; cursor: pointer; }
+.builder-step b { min-width: 24px; text-align: center; }
+.builder-total { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 12px; }
+.builder-total strong { font-size: 22px; }

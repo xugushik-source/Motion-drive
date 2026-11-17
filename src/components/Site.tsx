@@ -36,6 +36,7 @@ import BackgroundVideo from "./BackgroundVideo";
 const Workspace = dynamic(() => import("./Workspace"));
 import { Booking, Auth, Exam } from "./flows";
 import Packages, { Services } from "./Packages";
+import PackageBuilder from "./PackageBuilder";
 import { DEMO } from "../lib/demo";
 export type Item = Record<string, any>;
 export async function api(path: string, data?: any) {
@@ -190,6 +191,13 @@ export default function Site({
           <ArrowUpRight size={18} />
         </Link>
       </div>
+      {compact && !group && (
+        <PackageBuilder
+          packages={list("packages")}
+          locale={locale}
+          bookingHref={href("booking")}
+        />
+      )}
       <Packages
         packages={list("packages").filter(
           (p) => !group || (p.group || "driving") === group,
