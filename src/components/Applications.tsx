@@ -7,9 +7,22 @@ type T = (k: string) => string;
 type Row = Record<string, any>;
 
 /** Applications sent from the programme cards, newest first, with a status the staff move along. */
-export default function Applications({ t }: { t: T }) {
+export default function Applications({
+  t,
+  students = [],
+  onCreated,
+  onOpen,
+}: {
+  t: T;
+  students?: Row[];
+  onCreated?: () => Promise<void> | void;
+  onOpen?: (phone: string) => void;
+}) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState("");
+  const [made, setMade] = useState<{ id: string; password: string } | null>(
+    null,
+  );
   const load = useCallback(async () => {
     try {
       setRows(await api("applications/list", {}));
@@ -42,6 +55,56 @@ export default function Applications({ t }: { t: T }) {
           </p>
           {a.note && <p>{a.note}</p>}
           <small>{String(a.created).slice(0, 16).replace("T", " ")}</small>
+          {students.some((u) => u.phone === a.phone) ? (
+            <button
+              type="button"
+              className="button small"
+              onClick={() => onOpen?.(a.phone)}
+            >
+              Открыть ученика
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="button small"
+              onClick={async () => {
+                setError("");
+                try {
+                  const r = await api("student/create", {
+                    name: a.name,
+                    phone: a.phone,
+                  });
+                  setMade({ id: a.id, password: r.password });
+                  await onCreated?.();
+                } catch (e) {
+                  setError(
+                    (e as Error).message === "accountExists"
+                      ? "Ученик с таким телефоном уже есть."
+                      : "Не получилось создать ученика.",
+                  );
+                }
+              }}
+            >
+              Создать ученика
+            </button>
+          )}
+          {made?.id === a.id && (
+            <div className="temp-password" role="status">
+              <small>
+                Ученик создан. Вход по его телефону и временному паролю (показан
+                один раз). Теперь откройте его в «Ученики», чтобы записать на
+                занятия и принять оплату.
+              </small>
+              <code>{made?.password}</code>
+              <button
+                type="button"
+                className="button small"
+                onClick={() => onOpen?.(a.phone)}
+              >
+                Открыть ученика
+              </button>
+            </div>
+          )}
           <select
             value={a.status}
             aria-label={t("status")}

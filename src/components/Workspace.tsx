@@ -37,6 +37,7 @@ import { MySalary, PayrollReport } from "./Payroll";
 import Roles from "./Roles";
 import Today from "./Today";
 import Guide from "./Guide";
+import { AddStudent, SetPersonalId } from "./OfficeStudent";
 import { ExpensesTab, MoneyOverview } from "./Money";
 type Props = {
   user: Item;
@@ -802,7 +803,18 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
           </>
         )}
         {tab === "mypay" && !staff && !instructor && <PayPanel t={t} />}
-        {tab === "applications" && staff && <Applications t={t} />}
+        {tab === "applications" && staff && (
+          <Applications
+            t={t}
+            students={data.users.filter((u: Item) => u.role === "student")}
+            onCreated={refresh}
+            onOpen={(phone) => {
+              setSearch(phone);
+              setTab("students");
+              window.scrollTo({ top: 0 });
+            }}
+          />
+        )}
         {tab === "today" && staff && (
           <Today
             data={data}
@@ -841,6 +853,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         )}
         {tab === "students" && (
           <div className="data-list">
+            {staff && (
+              <AddStudent
+                onCreated={async (phone) => {
+                  await refresh();
+                  setSearch(phone);
+                }}
+              />
+            )}
             <input
               type="search"
               className="list-search"
@@ -882,7 +902,12 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                     )}
                     act={act}
                   />
-                  <ShowId id={u.id} has={!!Number(u.has_personal_id)} t={t} />
+                  <ShowId
+                    id={u.id}
+                    has={!!Number(u.has_personal_id)}
+                    t={t}
+                    onSaved={refresh}
+                  />
                   <BookFor
                     student={u}
                     slots={freeSlots}
@@ -2087,13 +2112,20 @@ function ShowId({
   id,
   has,
   t,
+  onSaved,
 }: {
   id: string;
   has: boolean;
   t: (k: string) => string;
+  onSaved?: () => Promise<void> | void;
 }) {
   const [value, setValue] = useState<string | null>(null);
-  if (!has) return <p className="muted">{t("personalId")}: —</p>;
+  if (!has)
+    return onSaved ? (
+      <SetPersonalId id={id} onSaved={onSaved} />
+    ) : (
+      <p className="muted">{t("personalId")}: —</p>
+    );
   return value === null ? (
     <button
       type="button"

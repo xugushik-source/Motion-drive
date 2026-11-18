@@ -45,6 +45,49 @@ export const registerSchema = z
         message: "badPersonalId",
       });
   });
+const personalIdOk = (id: string, foreign: boolean) =>
+  foreign ? /^[A-Za-z0-9]{5,20}$/.test(id) : /^\d{11}$/.test(id);
+/** A student created or completed by the office on his behalf (the personal number may come later). */
+export const officeStudentSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100),
+    phone: phoneSchema,
+    gender: z.enum(["m", "f"]).optional().catch(undefined),
+    birth_year: z.coerce
+      .number()
+      .int()
+      .min(1930)
+      .max(new Date().getFullYear())
+      .optional()
+      .catch(undefined),
+    personal_id: z.string().trim().max(30).optional(),
+    foreign: z.union([z.boolean(), z.literal("on")]).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (
+      v.personal_id &&
+      !personalIdOk(v.personal_id, v.foreign === true || v.foreign === "on")
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["personal_id"],
+        message: "badPersonalId",
+      });
+  });
+export const personalIdSchema = z
+  .object({
+    id: z.string().max(80),
+    personal_id: z.string().trim().max(30),
+    foreign: z.union([z.boolean(), z.literal("on")]).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (!personalIdOk(v.personal_id, v.foreign === true || v.foreign === "on"))
+      ctx.addIssue({
+        code: "custom",
+        path: ["personal_id"],
+        message: "badPersonalId",
+      });
+  });
 export const loginSchema = z.object({
   login: z.string().trim().min(3).max(180),
   password: z.string().max(128),

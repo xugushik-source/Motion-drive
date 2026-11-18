@@ -65,6 +65,8 @@ import { loginFromName, loginPattern } from "../../../lib/translit";
 import { ACCOUNTS, ageDebt, change, type Account } from "../../../lib/books";
 import {
   registerSchema,
+  officeStudentSchema,
+  personalIdSchema,
   phoneSchema,
   loginSchema,
   passwordSchema,
@@ -1228,6 +1230,52 @@ export async function POST(
         .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
         .run(user.id, "student:personal-id:view", JSON.stringify({ id: v.id }));
       return json({ personal_id: row.personal_id || "" });
+    }
+    if (p[0] === "student" && p[1] === "create") {
+      // The office registers a student who cannot (or does not want to) do it himself.
+      if (!isStaff(user.role)) return fail("forbidden", 403);
+      const v = officeStudentSchema.parse(body);
+      if (await one("SELECT id FROM users WHERE phone=?", v.phone))
+        return fail("accountExists", 409);
+      const id = randomUUID(),
+        password = temporaryPassword();
+      await db
+        .prepare(
+          "INSERT INTO users(id,phone,name,password,locale,gender,birth_year,personal_id,must_change_password) VALUES(?,?,?,?,'ru',?,?,?,1)",
+        )
+        .run(
+          id,
+          v.phone,
+          v.name,
+          hashPassword(password),
+          v.gender ?? null,
+          v.birth_year ?? null,
+          v.personal_id || null,
+        );
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(
+          user.id,
+          "student:create",
+          JSON.stringify({ id, withPersonalId: !!v.personal_id }),
+        );
+      // Shown once: the student may sign in with his phone and this password and choose his own.
+      return json({ id, password });
+    }
+    if (p[0] === "student" && p[1] === "personal-id-set") {
+      if (!isStaff(user.role)) return fail("forbidden", 403);
+      const v = personalIdSchema.parse(body);
+      if (
+        !(await one("SELECT id FROM users WHERE id=? AND role='student'", v.id))
+      )
+        return fail("notFound", 404);
+      await db
+        .prepare("UPDATE users SET personal_id=? WHERE id=?")
+        .run(v.personal_id, v.id);
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(user.id, "student:personal-id:set", JSON.stringify({ id: v.id }));
+      return json({ ok: true });
     }
     if (p[0] === "finance") return await finance(p, body, user);
     if (p[0] === "schedule" && p[1] === "daylight") {
