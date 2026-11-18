@@ -331,7 +331,8 @@ export async function GET(
           ? await all(
               admin
                 ? "SELECT id,name,email,phone,role,gender,birth_year,active,must_change_password,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users"
-                : "SELECT id,name,email,phone,role,gender,birth_year,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users",
+                : // administrators see contacts of students only; colleagues' phones and e-mails stay private
+                  "SELECT id,name,CASE WHEN role='student' THEN email END AS email,CASE WHEN role='student' THEN phone END AS phone,role,gender,birth_year,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users",
             )
           : instructor
             ? await all(
