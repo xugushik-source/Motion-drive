@@ -299,6 +299,13 @@ export function PayrollReport() {
                 Сохранить оклад
               </button>
             </form>
+            {r.items.some((i: Row) => i.kind === "salary" && i.fromRole) &&
+              !r.items.some((i: Row) => i.kind === "salary" && !i.fromRole) && (
+                <small className="muted">
+                  Оклад по должности. Если записать здесь другой, он заменит
+                  оклад должности для этого человека.
+                </small>
+              )}
             {r.items
               .filter((i: Row) => i.kind !== "salary")
               .map((i: Row) => (
@@ -307,18 +314,21 @@ export function PayrollReport() {
                     {itemName(i)}
                     {i.title && !i.scope ? ` · ${i.title}` : ""}:{" "}
                     <b>{itemText(i)}</b>
+                    {i.fromRole && <small> · по должности</small>}
                   </span>
-                  <button
-                    type="button"
-                    className="link-button"
-                    aria-label="Убрать"
-                    onClick={() =>
-                      confirm("Убрать эту доплату?") &&
-                      call("finance/pay-void", { id: i.id })
-                    }
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {!i.fromRole && (
+                    <button
+                      type="button"
+                      className="link-button"
+                      aria-label="Убрать"
+                      onClick={() =>
+                        confirm("Убрать эту доплату?") &&
+                        call("finance/pay-void", { id: i.id })
+                      }
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </p>
               ))}
             {r.lessons > 0 && (

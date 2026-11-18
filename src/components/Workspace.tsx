@@ -34,6 +34,7 @@ import Applications from "./Applications";
 import Staff from "./Staff";
 import PayPanel from "./PayPanel";
 import { MySalary, PayrollReport } from "./Payroll";
+import Roles from "./Roles";
 import { ExpensesTab, MoneyOverview } from "./Money";
 type Props = {
   user: Item;
@@ -102,6 +103,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
           "expenses",
           "finance",
           "payroll",
+          "roles",
           "staff",
           ...modules.slice(3),
         ]
@@ -732,8 +734,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         )}
         {tab === "mypay" && !staff && !instructor && <PayPanel t={t} />}
         {tab === "applications" && staff && <Applications t={t} />}
+        {tab === "roles" && admin && <Roles />}
         {tab === "staff" && admin && (
-          <Staff users={data.users} me={user.id} onChange={refresh} />
+          <Staff
+            users={data.users}
+            me={user.id}
+            cards={data.records?.instructors || []}
+            onChange={refresh}
+          />
         )}
         {tab === "payroll" && admin && <PayrollReport />}
         {tab === "salary" && (instructor || operator) && <MySalary />}

@@ -34,6 +34,7 @@ ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS active INTEGER NOT NULL 
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS lesson_rate INTEGER;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS personal_id TEXT;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS pay_method TEXT;
+ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS started TEXT;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS must_change_password INTEGER NOT NULL DEFAULT 0;
 CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON motion_drive.users(phone) WHERE phone IS NOT NULL;
 ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS series_id TEXT;
@@ -70,6 +71,8 @@ ALTER TABLE motion_drive.expenses ADD COLUMN IF NOT EXISTS person TEXT;
 ALTER TABLE motion_drive.payouts ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'cash';
 ALTER TABLE motion_drive.charges ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'other';
 CREATE TABLE IF NOT EXISTS motion_drive.cash_adjust(id TEXT PRIMARY KEY,account TEXT NOT NULL CHECK(account IN ('cash','card','transfer','owners')),amount INTEGER NOT NULL,note TEXT NOT NULL DEFAULT '',created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS motion_drive.role_pay(id TEXT PRIMARY KEY,role TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('salary','bonus','percent','per_lesson','per_student','premium')),title TEXT NOT NULL DEFAULT '',amount INTEGER,percent DOUBLE PRECISION,scope TEXT,from_month TEXT NOT NULL,to_month TEXT,created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS role_pay_role ON motion_drive.role_pay(role);
 CREATE TABLE IF NOT EXISTS motion_drive.results(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),answers TEXT NOT NULL,score INTEGER NOT NULL,total INTEGER NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS motion_drive.attempts(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),questions TEXT NOT NULL,deadline BIGINT NOT NULL,finished INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS motion_drive.messages(id TEXT PRIMARY KEY,user_id TEXT REFERENCES motion_drive.users(id),guest_id TEXT,locale TEXT NOT NULL,text TEXT NOT NULL,answer TEXT NOT NULL,admin_reply TEXT NOT NULL DEFAULT '',escalated INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -82,7 +85,7 @@ CREATE TABLE IF NOT EXISTS motion_drive.uploads(id TEXT PRIMARY KEY,user_id TEXT
 -- RLS is defense in depth, including for the private schema. An app-only role is
 -- granted DML and policies separately; no browser key can access this schema.
 DO $$ DECLARE t text; BEGIN
- FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications','pay_items','payouts','theory_enrollments','expenses','collections','cash_adjust'] LOOP
+ FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications','pay_items','payouts','theory_enrollments','expenses','collections','cash_adjust','role_pay'] LOOP
  EXECUTE format('ALTER TABLE motion_drive.%I ENABLE ROW LEVEL SECURITY',t);
  END LOOP;
 END $$;

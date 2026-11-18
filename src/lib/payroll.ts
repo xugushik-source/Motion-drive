@@ -50,6 +50,8 @@ export type PayItem = {
   percent?: number | null;
   /** per_lesson: lesson kind (yard, city, theory, exam); per_student: group scope. Empty means all. */
   scope?: string | null;
+  /** True for a rule that belongs to the role (not to the person). */
+  fromRole?: boolean;
   from_month: string;
   to_month?: string | null;
   voided?: number;
@@ -76,7 +78,11 @@ export function computePay(
     active
       .filter((i) => i.kind === kind)
       .reduce((a, i) => a + Math.round(Number(i.amount) || 0), 0);
-  const salary = sum("salary");
+  // a salary agreed with the person replaces the salary of the role
+  const personalSalary = active.some((i) => i.kind === "salary" && !i.fromRole);
+  const salary = active
+    .filter((i) => i.kind === "salary" && !(personalSalary && i.fromRole))
+    .reduce((a, i) => a + Math.round(Number(i.amount) || 0), 0);
   const bonus = sum("bonus");
   const percent = active
     .filter((i) => i.kind === "percent")
@@ -170,6 +176,9 @@ export const DEFAULT_RATES: Record<
     title: string;
   }[]
 > = {
+  operator: [
+    { kind: "salary", scope: "", amount: 50000, title: "Оклад администратора" },
+  ],
   instructor: [
     {
       kind: "per_lesson",

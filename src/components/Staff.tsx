@@ -25,15 +25,25 @@ const STAFF = Object.keys(ROLE);
  * Accounts of employees. The administrator creates them, sets or resets a password, replaces the
  * person (name and phone), closes access or deletes an account that has no history yet.
  */
+/** The people of the public "team" cards, offered when an account is created for that role. */
+const CARD_ROLE: Record<string, string> = {
+  instructor: "instructor",
+  lecturer: "lecturer",
+  operator: "administrator",
+};
 export default function Staff({
   users,
   me,
+  cards = [],
   onChange,
 }: {
   users: Item[];
   me: string;
+  cards?: Item[];
   onChange: () => Promise<void>;
 }) {
+  const [role, setRole] = useState("instructor");
+  const [name, setName] = useState("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
     null,
   );
@@ -42,6 +52,15 @@ export default function Staff({
   );
   const [editing, setEditing] = useState<string | null>(null);
   const people = users.filter((u) => STAFF.includes(u.role));
+  // people of the site team who have no account yet, for the chosen role
+  const offered = cards
+    .filter(
+      (c) =>
+        (c.role || "instructor") === CARD_ROLE[role] &&
+        !c.userId &&
+        !users.some((u) => u.name === c.title),
+    )
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
   const ERR: Record<string, string> = {
     accountExists: "Этот телефон уже занят другим аккаунтом.",
     hasHistory:
@@ -90,25 +109,55 @@ export default function Staff({
           if (r) {
             setIssued({ id: r.id, password: r.password });
             f.reset();
+            setName("");
           }
         }}
       >
         <h3>Добавить сотрудника</h3>
         <div className="form-grid">
-          <Field label="Имя и фамилия">
-            <input name="name" minLength={2} maxLength={100} required />
-          </Field>
-          <Field label="Телефон (это логин)">
-            <input name="phone" type="tel" inputMode="tel" required />
-          </Field>
           <Field label="Должность">
-            <select name="role" defaultValue="operator">
+            <select
+              name="role"
+              value={role}
+              onChange={(e) => {
+                setRole(e.target.value);
+                setName("");
+              }}
+            >
               {STAFF.map((r) => (
                 <option key={r} value={r}>
                   {ROLE[r]}
                 </option>
               ))}
             </select>
+          </Field>
+          {offered.length > 0 && (
+            <Field label="Выберите человека из команды сайта">
+              <select
+                value=""
+                onChange={(e) => e.target.value && setName(e.target.value)}
+              >
+                <option value="">— выбрать —</option>
+                {offered.map((c) => (
+                  <option key={c.id} value={String(c.title)}>
+                    {String(c.title)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <Field label="Имя и фамилия">
+            <input
+              name="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              minLength={2}
+              maxLength={100}
+              required
+            />
+          </Field>
+          <Field label="Телефон (это логин)">
+            <input name="phone" type="tel" inputMode="tel" required />
           </Field>
         </div>
         <button className="button small">

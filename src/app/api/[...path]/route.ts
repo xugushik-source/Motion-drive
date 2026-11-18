@@ -1197,13 +1197,32 @@ export async function POST(
     if (p[0] === "schedule" && p[1] === "daylight") {
       // Opens driving lessons in Akhalkalaki hour by hour from the morning until it gets dark.
       if (!isStaff(user.role)) return fail("forbidden", 403);
+      // the hours the owner set on the "Должности" screen are the defaults
+      const saved = (await records("settings")).find(
+        (x) => x.id === "drive-hours",
+      );
       const v = z
         .object({
           weeks: z.coerce.number().int().min(1).max(8).default(4),
-          startHour: z.coerce.number().int().min(6).max(14).default(9),
+          startHour: z.coerce
+            .number()
+            .int()
+            .min(6)
+            .max(14)
+            .default(Number(saved?.startHour ?? 9)),
           cars: z.coerce.number().int().min(1).max(10).default(1),
-          lastYardStart: z.coerce.number().int().min(10).max(21).default(18),
-          cityUntil: z.coerce.number().int().min(12).max(23).default(21),
+          lastYardStart: z.coerce
+            .number()
+            .int()
+            .min(10)
+            .max(21)
+            .default(Number(saved?.lastYardStart ?? 18)),
+          cityUntil: z.coerce
+            .number()
+            .int()
+            .min(12)
+            .max(23)
+            .default(Number(saved?.cityUntil ?? 21)),
         })
         .parse(body || {});
       const teachers = await all(
@@ -1612,14 +1631,20 @@ export async function POST(
           password = temporaryPassword();
         await db
           .prepare(
-            "INSERT INTO users(id,phone,name,password,role,locale,must_change_password) VALUES(?,?,?,?,?,'ru',1)",
+            "INSERT INTO users(id,phone,name,password,role,locale,must_change_password,started) VALUES(?,?,?,?,?,'ru',1,?)",
           )
-          .run(id, v.phone, v.name, hashPassword(password), v.role);
+          .run(
+            id,
+            v.phone,
+            v.name,
+            hashPassword(password),
+            v.role,
+            currentMonth(),
+          );
         await db
           .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
           .run(user.id, "staff:create", JSON.stringify({ id, role: v.role }));
         await linkTeacherCard({ id, name: v.name, role: v.role }, user.id);
-        await addDefaultRates(id, v.role, user.id);
         // Shown once; the employee must change it at the first sign-in.
         return json({ id, password });
       }
@@ -1643,7 +1668,6 @@ export async function POST(
           .prepare("UPDATE users SET role=? WHERE id=?")
           .run(v.role, v.id);
         await linkTeacherCard({ ...u, role: v.role }, user.id);
-        await addDefaultRates(v.id, v.role, user.id);
         return json({ ok: true });
       }
       if (p[1] === "record") {
@@ -1856,40 +1880,66 @@ async function countsByMonth(userId: string) {
   }
   return out;
 }
-/** The school's standard rates are added when an instructor or lecturer account appears. */
-async function addDefaultRates(userId: string, role: string, actor: string) {
+/**
+ * Pay rules live on the role, not on the person: everyone with the role is paid by them, and a change
+ * made "from month X" never rewrites earlier months. Personal items (salary, a special rate) are added on top.
+ * The school's standard rates are written the first time a role is used.
+ */
+const ROLE_START = "2020-01";
+async function roleItems(role: string): Promise<PayItem[]> {
   const rates = DEFAULT_RATES[role];
-  if (!rates) return;
   if (
-    await one(
-      "SELECT id FROM pay_items WHERE user_id=? AND kind IN ('per_lesson','per_student') AND voided=0",
-      userId,
-    )
+    rates &&
+    !(await one("SELECT id FROM role_pay WHERE role=? LIMIT 1", role))
   )
-    return;
-  for (const r of rates)
-    await db
-      .prepare(
-        "INSERT INTO pay_items(id,user_id,kind,title,amount,percent,scope,from_month,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
-      )
-      .run(
-        randomUUID(),
-        userId,
-        r.kind,
-        r.title,
-        r.amount ?? null,
-        r.percent ?? null,
-        r.scope,
-        currentMonth(),
-        actor,
-      );
+    for (const r of rates)
+      await db
+        .prepare(
+          "INSERT INTO role_pay(id,role,kind,title,amount,percent,scope,from_month,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          randomUUID(),
+          role,
+          r.kind,
+          r.title,
+          r.amount ?? null,
+          r.percent ?? null,
+          r.scope,
+          ROLE_START,
+          "system",
+        );
+  const rows = await all(
+    "SELECT * FROM role_pay WHERE role=? AND voided=0 ORDER BY created",
+    role,
+  );
+  return rows.map((r) => ({
+    ...r,
+    id: "role:" + r.id,
+    fromRole: true,
+  })) as unknown as PayItem[];
 }
-/** Earned so far, confirmed payouts and what is still owed (or paid ahead) for one employee. */
-async function ledgerFor(userId: string) {
-  const items = (await all(
+/** Everything an employee is paid by: the rules of the role plus personal items. */
+async function itemsFor(userId: string, role?: string): Promise<PayItem[]> {
+  const me = await one("SELECT role,started FROM users WHERE id=?", userId);
+  const r = role || String(me?.role || "");
+  const personal = (await all(
     "SELECT * FROM pay_items WHERE user_id=? AND voided=0 ORDER BY created",
     userId,
   )) as unknown as PayItem[];
+  // the rules of a role count from the month the person started, never for earlier months
+  const started =
+    String(me?.started || "") ||
+    personal.map((i) => i.from_month).sort()[0] ||
+    currentMonth();
+  const byRole = (await roleItems(r)).map((i) => ({
+    ...i,
+    from_month: i.from_month > started ? i.from_month : started,
+  }));
+  return [...byRole, ...personal];
+}
+/** Earned so far, confirmed payouts and what is still owed (or paid ahead) for one employee. */
+async function ledgerFor(userId: string) {
+  const items = await itemsFor(userId);
   const { accrued, months } = accrualSince(
     items,
     currentMonth(),
@@ -1943,8 +1993,27 @@ async function ownPayouts(userId: string) {
 }
 /** An instructor or lecturer account gets its public card automatically (linked by name, or a new draft). */
 async function linkTeacherCard(u: Row, actor: string) {
-  if (!isTeacher(u.role)) return;
   const cards = await records("instructors");
+  if (u.role === "operator") {
+    // an office administrator is tied to the card of the same name, nothing is created
+    const norm = (x: unknown) =>
+      String(x || "")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    const mine = cards.find(
+      (c) =>
+        c.role === "administrator" &&
+        !c.userId &&
+        norm(c.title) === norm(u.name),
+    );
+    if (mine) {
+      const { id, ...data } = mine;
+      await saveRecord("instructors", id, { ...data, userId: u.id }, actor);
+    }
+    return;
+  }
+  if (!isTeacher(u.role)) return;
   const mine = cards.find((c) => c.userId === u.id);
   if (mine) {
     if (mine.role !== u.role) {
@@ -2022,10 +2091,6 @@ async function lessons(p: string[], body: any, user: Row) {
       .parse(body || {});
     const month = v.month || currentMonth();
     const [from, to] = monthRange(month);
-    const items = (await all(
-      "SELECT * FROM pay_items WHERE user_id=? AND voided=0 ORDER BY created",
-      user.id,
-    )) as unknown as PayItem[];
     const counts = (await countsByMonth(user.id))[month] || {};
     const done = counts.lessons?.all || 0;
     const pending = Number(
@@ -2501,12 +2566,9 @@ async function financeInner(p: string[], body: any, user: Row) {
     const people = await all(
       "SELECT id,name,role,active FROM users WHERE role<>'student' ORDER BY CASE role WHEN 'admin' THEN 3 ELSE 0 END, name",
     );
-    const items = (await all(
-      "SELECT * FROM pay_items WHERE voided=0 ORDER BY created",
-    )) as unknown as (PayItem & { user_id: string })[];
     const rows = await Promise.all(
       people.map(async (u) => {
-        const mine = items.filter((i) => i.user_id === u.id);
+        const mine = await itemsFor(String(u.id), String(u.role));
         const counts = (await countsByMonth(u.id))[month] || {};
         const lessonsDone = counts.lessons?.all || 0;
         const pay = computePay(mine, month, counts);
@@ -3157,6 +3219,164 @@ async function financeInner(p: string[], body: any, user: Row) {
       ),
     });
   }
+  if (p[1] === "role-rules") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const now = currentMonth();
+    const roles = [];
+    for (const role of [
+      "instructor",
+      "lecturer",
+      "operator",
+      "manager",
+      "admin",
+    ]) {
+      await roleItems(role); // writes the standard rates the first time
+      const rules = (
+        await all(
+          "SELECT * FROM role_pay WHERE role=? AND voided=0 AND (to_month IS NULL OR to_month>=?) ORDER BY created",
+          role,
+          now,
+        )
+      ).map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        scope: r.scope,
+        title: r.title,
+        amount: r.amount === null ? null : Number(r.amount),
+        percent: r.percent === null ? null : Number(r.percent),
+        from_month: r.from_month,
+        to_month: r.to_month,
+      }));
+      const people = await all(
+        "SELECT id,name,active FROM users WHERE role=? ORDER BY name",
+        role,
+      );
+      roles.push({ role, rules, people });
+    }
+    const hours = (await records("settings")).find(
+      (x) => x.id === "drive-hours",
+    );
+    return json({
+      roles,
+      work: {
+        startHour: Number(hours?.startHour ?? 9),
+        lastYardStart: Number(hours?.lastYardStart ?? 18),
+        cityUntil: Number(hours?.cityUntil ?? 21),
+      },
+    });
+  }
+  if (p[1] === "role-rule-set") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        role: z.enum([
+          "instructor",
+          "lecturer",
+          "operator",
+          "manager",
+          "admin",
+        ]),
+        kind: z.enum([
+          "salary",
+          "bonus",
+          "percent",
+          "per_lesson",
+          "per_student",
+          "premium",
+        ]),
+        scope: z.string().max(40).default(""),
+        amount: z.coerce
+          .number()
+          .min(0)
+          .max(1000000)
+          .multipleOf(0.01)
+          .optional(),
+        percent: z.coerce.number().min(0).max(100).optional(),
+        title: z.string().trim().max(120).default(""),
+        from_month: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+      })
+      .parse(body);
+    if (v.amount === undefined && v.percent === undefined)
+      return fail("invalid");
+    const from = v.from_month || currentMonth();
+    await roleItems(v.role);
+    await transaction(async () => {
+      // the old rate of the same kind ends the month before the new one starts, earlier months stay as they were
+      const old = await all(
+        "SELECT id,from_month FROM role_pay WHERE role=? AND kind=? AND COALESCE(scope,'')=? AND voided=0 AND (to_month IS NULL OR to_month>=?)",
+        v.role,
+        v.kind,
+        v.scope,
+        from,
+      );
+      for (const o of old)
+        if (String(o.from_month) >= from)
+          await db.prepare("UPDATE role_pay SET voided=1 WHERE id=?").run(o.id);
+        else
+          await db
+            .prepare("UPDATE role_pay SET to_month=? WHERE id=?")
+            .run(previousMonth(from), o.id);
+      await db
+        .prepare(
+          "INSERT INTO role_pay(id,role,kind,title,amount,percent,scope,from_month,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          randomUUID(),
+          v.role,
+          v.kind,
+          v.title,
+          v.amount === undefined ? null : tetri(v.amount),
+          v.percent ?? null,
+          v.scope || null,
+          from,
+          user.id,
+        );
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(user.id, "role-rule:set", JSON.stringify({ ...v, from }));
+    });
+    return json({ ok: true });
+  }
+  if (p[1] === "role-rule-end") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z.object({ id: z.string().max(80) }).parse(body);
+    const row = await one(
+      "SELECT * FROM role_pay WHERE id=? AND voided=0",
+      v.id,
+    );
+    if (!row) return fail("notFound", 404);
+    const now = currentMonth();
+    if (String(row.from_month) >= now)
+      await db.prepare("UPDATE role_pay SET voided=1 WHERE id=?").run(v.id);
+    else
+      await db
+        .prepare("UPDATE role_pay SET to_month=? WHERE id=?")
+        .run(previousMonth(now), v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "role-rule:end", JSON.stringify({ id: v.id }));
+    return json({ ok: true });
+  }
+  if (p[1] === "work-rules-set") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        startHour: z.coerce.number().int().min(6).max(14),
+        lastYardStart: z.coerce.number().int().min(10).max(21),
+        cityUntil: z.coerce.number().int().min(12).max(23),
+      })
+      .parse(body);
+    await saveRecord(
+      "settings",
+      "drive-hours",
+      { key: "drive_hours", status: "published", ...v },
+      user.id,
+    );
+    return json({ ok: true });
+  }
   if (p[1] === "adjust" || p[1] === "adjust-void") {
     if (!canSeeFinance(user.role)) return fail("forbidden", 403);
     if (p[1] === "adjust-void") {
@@ -3335,15 +3555,12 @@ async function financeInner(p: string[], body: any, user: Row) {
     const people = await all(
       "SELECT id,name,role FROM users WHERE role<>'student' AND active=1 ORDER BY name",
     );
-    const allItems = (await all(
-      "SELECT * FROM pay_items WHERE voided=0 ORDER BY created",
-    )) as unknown as (PayItem & { user_id: string })[];
     const months = monthsBetween(v.from, v.to);
     const direction: Record<string, number> = {};
     let accrued = 0;
     const staffRows = [];
     for (const u of people) {
-      const mine = allItems.filter((i) => i.user_id === u.id);
+      const mine = await itemsFor(String(u.id), String(u.role));
       const counts = await countsByMonth(String(u.id));
       let acc = 0;
       for (const m of months) {

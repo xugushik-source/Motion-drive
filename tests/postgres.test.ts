@@ -164,7 +164,7 @@ test("the embedded schema equals db/postgres.sql and works on a host without Sup
         "SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema='motion_drive'",
       )
     ).rows[0].n,
-    21,
+    22,
   );
   // the manager role is accepted, an unknown one is not
   await pg.exec(
