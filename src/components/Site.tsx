@@ -37,6 +37,7 @@ const Workspace = dynamic(() => import("./Workspace"));
 import { Booking, Auth, Exam } from "./flows";
 import Packages, { Services } from "./Packages";
 import PackageBuilder from "./PackageBuilder";
+import Intro from "./Intro";
 import { DEMO } from "../lib/demo";
 export type Item = Record<string, any>;
 export async function api(path: string, data?: any) {
@@ -569,6 +570,7 @@ export default function Site({
           </ul>
         </details>
       )}
+      {!page && <Intro hint={t("introHint")} />}
       {header}
       <main id="main">
         {!page ? (

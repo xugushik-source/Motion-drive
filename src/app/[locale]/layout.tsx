@@ -2,6 +2,7 @@ import "../globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { notFound } from "next/navigation";
 import { locales } from "../../lib/schemas";
+import ScrollToTop from "../../components/ScrollToTop";
 export default async function Layout({
   children,
   params,
@@ -13,9 +14,15 @@ export default async function Layout({
   if (!locales.includes(locale as any)) notFound();
   const messages = (await import(`../../../messages/${locale}.json`)).default;
   return (
-    <html lang={locale}>
+    <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <link rel="stylesheet" href="/fonts/fonts.css" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{document.documentElement.dataset.intro=sessionStorage.getItem('md-intro')?'seen':'new'}catch(e){}",
+          }}
+        />
       </head>
       <body>
         <NextIntlClientProvider
@@ -23,6 +30,7 @@ export default async function Layout({
           timeZone="Asia/Tbilisi"
           messages={messages}
         >
+          <ScrollToTop />
           {children}
         </NextIntlClientProvider>
       </body>

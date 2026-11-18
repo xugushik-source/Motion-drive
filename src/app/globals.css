@@ -2787,3 +2787,18 @@ h3 {
 .team-photo { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 25%; border-radius: 10px; background: #eceee5; }
 .team-initial { display: grid; place-items: center; font-size: 72px; font-weight: 600; color: var(--green); }
 .lightbox video { max-height: 80svh; max-width: 100%; border-radius: 8px; }
+/* Opening shutter */
+.intro-curtain { position: fixed; inset: 0; z-index: 2000; background: #020001; display: grid; place-items: center; align-content: center; gap: 18px; overflow: hidden; cursor: pointer; transition: transform 1s cubic-bezier(.75, 0, .15, 1); will-change: transform; }
+.intro-curtain::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, transparent 0 46px, #ffffff0a 46px 48px); pointer-events: none; }
+.intro-curtain::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: linear-gradient(#303030, #0b0b0b); box-shadow: 0 -3px 0 #d6192b; }
+.intro-curtain.open { transform: translateY(-101%); }
+.intro-logo { position: relative; width: min(98vw, 1200px); max-height: 64svh; height: auto; object-fit: contain; opacity: 0; transform: scale(.93); animation: introLogo 1.2s .1s cubic-bezier(.2, .8, .2, 1) forwards; }
+.intro-line { position: relative; width: min(70vw, 760px); height: 3px; background: linear-gradient(90deg, transparent, #e11d2e 30%, #ff5a4f 70%, transparent); transform: scaleX(0); animation: introLine 1.6s .7s cubic-bezier(.3, .7, .2, 1) forwards; }
+.intro-sound { position: absolute; left: 50%; bottom: 5svh; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 99px; border: 1px solid #ffffff40; background: #ffffff12; color: white; font: inherit; font-size: 13px; cursor: pointer; opacity: 0; animation: introFade .6s 1s forwards; }
+.intro-sound:hover { background: #ffffff24; }
+html.intro-lock, html.intro-lock body { overflow: hidden; }
+html[data-intro="seen"] .intro-curtain { display: none; }
+@keyframes introLogo { to { opacity: 1; transform: scale(1); } }
+@keyframes introLine { to { transform: scaleX(1); } }
+@keyframes introFade { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .intro-curtain { display: none; } }
