@@ -91,6 +91,7 @@ function localDb() {
       );
     for (const [table, col, ddl] of [
       ["expenses", "method", "TEXT NOT NULL DEFAULT 'cash'"],
+      ["expenses", "person", "TEXT"],
       ["payouts", "method", "TEXT NOT NULL DEFAULT 'cash'"],
       ["charges", "kind", "TEXT NOT NULL DEFAULT 'other'"],
     ] as const) {

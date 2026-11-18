@@ -43,7 +43,7 @@ export const ACCOUNT_LABEL: Record<Account, string> = {
   cash: "Касса (наличные)",
   card: "Карта",
   transfer: "Расчётный счёт / переводы",
-  owners: "У руководства (инкассация)",
+  owners: "У владельцев (инкассация)",
 };
 /** Change in percent between two periods; null when there is nothing to compare with. */
 export const change = (now: number, before: number) =>

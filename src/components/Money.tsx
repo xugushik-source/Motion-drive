@@ -103,7 +103,10 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const cats = useMemo(
-    () => EXPENSE_CATEGORIES.filter((c) => admin || !c.big),
+    () =>
+      EXPENSE_CATEGORIES.filter(
+        (c) => c.id !== "dividends" && (admin || !c.big),
+      ),
     [admin],
   );
   const load = useCallback(async () => {
@@ -199,7 +202,20 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
         >
           <h4>Записать расход</h4>
           <Field label="Статья">
-            <select name="category" defaultValue={cats[0]?.id}>
+            <select
+              name="category"
+              defaultValue={cats[0]?.id}
+              onChange={(e) => {
+                // small things are paid from the cash desk, big ones from the bank
+                const big = !!EXPENSE_CATEGORIES.find(
+                  (c) => c.id === e.target.value,
+                )?.big;
+                const m = e.currentTarget.form?.elements.namedItem(
+                  "method",
+                ) as HTMLSelectElement | null;
+                if (m) m.value = big ? "transfer" : "cash";
+              }}
+            >
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
@@ -209,11 +225,11 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
           </Field>
           {admin && (
             <Field label="Чем оплачено">
-              <select name="method" defaultValue="transfer">
+              <select name="method" defaultValue="cash">
                 <option value="cash">Наличные из кассы</option>
                 <option value="card">Карта</option>
                 <option value="transfer">Расчётный счёт / перевод</option>
-                <option value="owners">Деньги руководства</option>
+                <option value="owners">Деньги владельцев</option>
               </select>
             </Field>
           )}
@@ -251,6 +267,81 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
           </button>
         </form>
 
+        {admin && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = e.currentTarget;
+              const d = Object.fromEntries(new FormData(f));
+              if (
+                await send(
+                  "finance/expense-add",
+                  {
+                    category: "dividends",
+                    person: d.person,
+                    amount: d.amount,
+                    method: d.method,
+                    note: d.note || "",
+                    spent_on: d.spent_on || undefined,
+                  },
+                  "Дивиденды записаны",
+                )
+              )
+                f.reset();
+            }}
+          >
+            <h4>Дивиденды владельца</h4>
+            <p className="muted">
+              Записывается по факту: сколько взял, столько и пишете. Плана и
+              нормы нет, можно взять больше, меньше или не брать.
+            </p>
+            <Field label="Кто взял">
+              <select name="person" required defaultValue="">
+                <option value="" disabled>
+                  выберите владельца
+                </option>
+                {(cash?.admins || []).map((a: Row) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Сумма, ₾">
+              <input
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                inputMode="decimal"
+                required
+              />
+            </Field>
+            <Field label="Откуда взяли">
+              <select name="method" defaultValue="owners">
+                <option value="owners">Из денег владельцев (инкассация)</option>
+                <option value="cash">Из кассы (наличные)</option>
+                <option value="card">С карты</option>
+                <option value="transfer">С расчётного счёта</option>
+              </select>
+            </Field>
+            <Field label="Дата">
+              <input
+                name="spent_on"
+                type="date"
+                defaultValue={today()}
+                max={today()}
+              />
+            </Field>
+            <Field label="Комментарий (необязательно)">
+              <input name="note" maxLength={300} />
+            </Field>
+            <button className="button small outline-dark">
+              <Plus size={16} />
+              Записать дивиденды
+            </button>
+          </form>
+        )}
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -266,7 +357,7 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
               f.reset();
           }}
         >
-          <h4>Передать наличные руководству (инкассация)</h4>
+          <h4>Передать наличные владельцам (инкассация)</h4>
           <Field label="Кому передали">
             <select name="to_user" required defaultValue="">
               <option value="" disabled>
@@ -388,7 +479,7 @@ const ACC: Record<string, string> = {
   cash: "Касса (наличные)",
   card: "Карта",
   transfer: "Расчётный счёт и переводы",
-  owners: "У руководства (инкассация)",
+  owners: "У владельцев (инкассация)",
 };
 const METHOD: Record<string, string> = {
   cash: "Наличные",
@@ -570,6 +661,11 @@ export function MoneyOverview() {
           c.label,
           r.expenses.byCategory[c.id] / 100,
         ]),
+      ...r.expenses.dividendsBy.map((d: Row) => [
+        "Дивиденды (за период)",
+        d.name,
+        d.period / 100,
+      ]),
       ["Зарплаты", "Начислено", r.payroll.accrued / 100],
       ["Зарплаты", "Выплачено", r.payroll.paid / 100],
       ["Зарплаты", "Долг школы сотрудникам", r.payroll.owed / 100],
@@ -865,6 +961,24 @@ export function MoneyOverview() {
               />
             </div>
           </div>
+
+          {r.expenses.dividendsBy.length > 0 && (
+            <>
+              <h4>Дивиденды владельцев</h4>
+              <p className="muted">
+                По факту: кто сколько взял за выбранный период и за всё время.
+              </p>
+              <ul className="ledger">
+                {r.expenses.dividendsBy.map((d: Row) => (
+                  <li key={d.id}>
+                    <span>{d.name}</span>
+                    <span>за всё время {gel(d.total)}</span>
+                    <b>{gel(d.period)}</b>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           <h4>Зарплаты</h4>
           <div className="stat-cards">

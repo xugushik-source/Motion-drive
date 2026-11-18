@@ -402,7 +402,7 @@ export function PayrollReport() {
                   <option value="cash">Из кассы (наличные)</option>
                   <option value="card">С карты</option>
                   <option value="transfer">С расчётного счёта</option>
-                  <option value="owners">Из денег руководства</option>
+                  <option value="owners">Из денег владельцев</option>
                 </select>
                 <input
                   name="amount"

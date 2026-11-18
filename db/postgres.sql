@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS motion_drive.collections(id TEXT PRIMARY KEY,from_use
 CREATE INDEX IF NOT EXISTS collections_to ON motion_drive.collections(to_user);
 ALTER TABLE motion_drive.slots ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'any';
 ALTER TABLE motion_drive.expenses ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'cash';
+ALTER TABLE motion_drive.expenses ADD COLUMN IF NOT EXISTS person TEXT;
 ALTER TABLE motion_drive.payouts ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'cash';
 ALTER TABLE motion_drive.charges ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'other';
 CREATE TABLE IF NOT EXISTS motion_drive.cash_adjust(id TEXT PRIMARY KEY,account TEXT NOT NULL CHECK(account IN ('cash','card','transfer','owners')),amount INTEGER NOT NULL,note TEXT NOT NULL DEFAULT '',created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided INTEGER NOT NULL DEFAULT 0);

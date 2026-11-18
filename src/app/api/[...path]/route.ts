@@ -2746,9 +2746,11 @@ async function financeInner(p: string[], body: any, user: Row) {
       .object({
         category: z.string().max(40),
         amount: lariAmount,
-        note: z.string().trim().min(3).max(300),
+        note: z.string().trim().max(300).default(""),
         city: z.enum(["", "akhalkalaki", "ninotsminda"]).default(""),
         method: z.enum(["cash", "card", "transfer", "owners"]).optional(),
+        // dividends: which owner took the money
+        person: z.string().max(80).optional(),
         spent_on: z
           .string()
           .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -2756,12 +2758,25 @@ async function financeInner(p: string[], body: any, user: Row) {
       })
       .parse(body);
     if (!categoryById(v.category)) return fail("invalid");
+    if (v.category !== DIVIDENDS && v.note.trim().length < 3)
+      return fail("invalid");
     if (isBigCategory(v.category) && !canSeeFinance(user.role))
       return fail("forbidden", 403);
+    if (v.category === DIVIDENDS) {
+      // a dividend is always taken by a named owner
+      if (
+        !v.person ||
+        !(await one(
+          "SELECT id FROM users WHERE id=? AND role='admin' AND active=1",
+          v.person,
+        ))
+      )
+        return fail("invalid");
+    }
     const id = randomUUID();
     await db
       .prepare(
-        "INSERT INTO expenses(id,category,amount,note,city,spent_on,method,created_by,created) VALUES(?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO expenses(id,category,amount,note,city,spent_on,method,person,created_by,created) VALUES(?,?,?,?,?,?,?,?,?,?)",
       )
       .run(
         id,
@@ -2775,6 +2790,7 @@ async function financeInner(p: string[], body: any, user: Row) {
         canSeeFinance(user.role)
           ? v.method || (isBigCategory(v.category) ? "transfer" : "cash")
           : "cash",
+        v.category === DIVIDENDS ? v.person || null : null,
         user.id,
         new Date().toISOString(),
       );
@@ -2804,7 +2820,7 @@ async function financeInner(p: string[], body: any, user: Row) {
       to = v.to || "9999-12-31";
     const rows = (
       await all(
-        "SELECT e.*,u.name AS author FROM expenses e LEFT JOIN users u ON u.id=e.created_by WHERE e.voided=0 AND e.spent_on>=? AND e.spent_on<=? ORDER BY e.spent_on DESC,e.created DESC LIMIT 500",
+        "SELECT e.*,u.name AS author,p.name AS person_name FROM expenses e LEFT JOIN users u ON u.id=e.created_by LEFT JOIN users p ON p.id=e.person WHERE e.voided=0 AND e.spent_on>=? AND e.spent_on<=? ORDER BY e.spent_on DESC,e.created DESC LIMIT 500",
         from,
         to,
       )
@@ -3063,6 +3079,7 @@ async function financeInner(p: string[], body: any, user: Row) {
           "Сумма ₾",
           "Описание",
           "Кто внёс",
+          "Кому (дивиденды)",
           "Отменён",
         ],
         ...(await all("SELECT * FROM expenses ORDER BY spent_on,created")).map(
@@ -3074,6 +3091,7 @@ async function financeInner(p: string[], body: any, user: Row) {
             lari(r.amount),
             String(r.note),
             name.get(String(r.created_by)) || "",
+            name.get(String(r.person)) || "",
             Number(r.voided) ? "да" : "",
           ],
         ),
@@ -3269,7 +3287,7 @@ async function financeInner(p: string[], body: any, user: Row) {
 
     // --- expenses ---
     const expRows = (await all(
-      "SELECT category,city,method,amount,spent_on FROM expenses WHERE voided=0",
+      "SELECT category,city,method,amount,spent_on,person FROM expenses WHERE voided=0",
     )) as Row[];
     const expIn = (lo: string, hi: string) =>
       expRows.filter(
@@ -3286,6 +3304,28 @@ async function financeInner(p: string[], body: any, user: Row) {
       total(expIn(prevFrom, prevTo)) -
       (group(expIn(prevFrom, prevTo), (r) => String(r.category))[DIVIDENDS] ||
         0);
+    // dividends by owner: what each took in the period and in total, by fact
+    const owners = new Map(
+      (
+        await all("SELECT id,name FROM users WHERE role='admin' ORDER BY name")
+      ).map((u) => [String(u.id), String(u.name)]),
+    );
+    const divAll = expRows.filter((r) => r.category === DIVIDENDS);
+    const dividendsBy = [...owners.entries()]
+      .map(([id, name]) => ({
+        id,
+        name,
+        period: divAll
+          .filter(
+            (r) =>
+              r.person === id && r.spent_on >= v.from && r.spent_on <= v.to,
+          )
+          .reduce((x, r) => x + Number(r.amount), 0),
+        total: divAll
+          .filter((r) => r.person === id)
+          .reduce((x, r) => x + Number(r.amount), 0),
+      }))
+      .filter((d) => d.period || d.total);
     const expByCity = group(
       expNow.filter((r) => r.category !== DIVIDENDS),
       (r) => String(r.city || "common"),
@@ -3427,6 +3467,7 @@ async function financeInner(p: string[], body: any, user: Row) {
         prev: prevExpenses,
         change: change(expenses, prevExpenses),
         dividends,
+        dividendsBy,
       },
       payroll: {
         accrued,
