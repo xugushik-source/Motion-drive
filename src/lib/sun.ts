@@ -33,27 +33,39 @@ export function sunsetUtc(
 /** Akhalkalaki, where driving practice takes place. */
 export const AKHALKALAKI = { lat: 41.4067, lon: 43.4865 };
 /**
- * Lesson starts (UTC ISO) for one local day: hourly from `startHour` (Georgian time, UTC+4)
- * while the lesson still ends before the sun sets.
+ * Lesson starts (UTC ISO) for one local day on an hourly grid from `startHour` (Georgian time, UTC+4).
+ * Yard lessons ("any" kind) need daylight: they start no later than `lastYardStart` and end before sunset.
+ * After that only city driving is offered, up to `cityUntil` o'clock.
  */
 export function daylightLessons(
   year: number,
   month: number,
   day: number,
-  { startHour = 9, minutes = 60, place = AKHALKALAKI } = {},
+  {
+    startHour = 9,
+    minutes = 60,
+    lastYardStart = 18,
+    cityUntil = 21,
+    place = AKHALKALAKI,
+  } = {},
 ) {
   const sunset = sunsetUtc(year, month, day, place.lat, place.lon);
   if (!sunset) return [];
   const dayStartUtc = Date.UTC(year, month - 1, day) - 4 * 3600 * 1000;
-  const out: { start: string; end: string }[] = [];
+  const out: { start: string; end: string; kind: "any" | "city" }[] = [];
   for (
     let s = dayStartUtc + startHour * 3600 * 1000;
-    s + minutes * 60000 <= sunset.getTime();
+    s + minutes * 60000 <= dayStartUtc + cityUntil * 3600 * 1000;
     s += minutes * 60000
-  )
+  ) {
+    const e = s + minutes * 60000;
+    const daylight =
+      s <= dayStartUtc + lastYardStart * 3600 * 1000 && e <= sunset.getTime();
     out.push({
       start: new Date(s).toISOString(),
-      end: new Date(s + minutes * 60000).toISOString(),
+      end: new Date(e).toISOString(),
+      kind: daylight ? "any" : "city",
     });
+  }
   return out;
 }

@@ -755,20 +755,20 @@ test("driving hours follow the daylight in Akhalkalaki", async () => {
     local(jun) > 19.8 && local(jun) < 21.2,
     "midsummer sunset after 20:00: " + local(jun),
   );
-  // November: lessons from 09:00 and the last one ends before sunset; summer gives more lessons
-  const winter = daylightLessons(2026, 11, 18);
-  const summer = daylightLessons(2026, 6, 21);
-  assert.equal(winter[0]!.start, "2026-11-18T05:00:00.000Z", "09:00 local");
+  const all = daylightLessons(2026, 11, 18);
+  const winter = all.filter((l) => l.kind === "any");
+  const summer = daylightLessons(2026, 6, 21).filter((l) => l.kind === "any");
+  assert.equal(all[0]!.start, "2026-11-18T05:00:00.000Z", "09:00 local");
   assert.ok(Date.parse(winter.at(-1)!.end) <= nov.getTime());
-  assert.ok(
-    winter.length >= 7 && winter.length <= 8,
-    "winter lessons " + winter.length,
-  );
-  assert.ok(
-    summer.length > winter.length + 2,
-    "summer lessons " + summer.length,
-  );
+  assert.equal(winter.length, 8, "yard lessons end before 17:45");
+  // summer: the last yard lesson starts at 18:00 at the latest
+  assert.equal(summer.length, 10);
+  assert.equal(local(new Date(summer.at(-1)!.start)), 18);
+  // after the yard window only city driving, until 21:00
+  const evening = all.filter((l) => l.kind === "city");
+  assert.ok(evening.length >= 3);
+  assert.equal(local(new Date(all.at(-1)!.end)), 21);
   // lessons are back to back, one hour each
-  for (let i = 1; i < winter.length; i++)
-    assert.equal(winter[i]!.start, winter[i - 1]!.end);
+  for (let i = 1; i < all.length; i++)
+    assert.equal(all[i]!.start, all[i - 1]!.end);
 });

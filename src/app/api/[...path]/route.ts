@@ -1,5 +1,11 @@
 import { daylightLessons } from "../../../lib/sun";
 import {
+  EXPENSE_CATEGORIES,
+  categoryById,
+  isBigCategory,
+  DIVIDENDS,
+} from "../../../lib/expenses";
+import {
   monthRange,
   currentMonth,
   previousMonth,
@@ -230,7 +236,7 @@ export async function GET(
     if (p[0] === "slots")
       return json(
         await all(
-          "SELECT s.id,s.city,s.start,s.end,s.instructor_id FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
+          "SELECT s.id,s.city,s.start,s.end,s.instructor_id,s.kind FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
           new Date().toISOString(),
         ),
       );
@@ -322,6 +328,15 @@ export async function GET(
                 user.id,
               )
             : [],
+        newApplications: staff
+          ? Number(
+              (
+                await one(
+                  "SELECT count(*) AS n FROM applications WHERE status='new'",
+                )
+              )?.n || 0,
+            )
+          : 0,
         enrollments: staff
           ? (
               await all(
@@ -639,6 +654,13 @@ export async function POST(
               (v.instructor_id && v.instructor_id !== slot.instructor_id)
             )
               return fail("slotUnavailable", 409);
+            // after dark only city driving is offered; the yard needs daylight
+            if (
+              slot.kind === "city" &&
+              (v.lesson_kind ||
+                lessonKindOf(pack?.id, pack?.program || v.program)) === "yard"
+            )
+              return fail("cityOnlySlot", 409);
             if (
               await one(
                 "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
@@ -1077,6 +1099,8 @@ export async function POST(
           weeks: z.coerce.number().int().min(1).max(8).default(4),
           startHour: z.coerce.number().int().min(6).max(14).default(9),
           cars: z.coerce.number().int().min(1).max(10).default(1),
+          lastYardStart: z.coerce.number().int().min(10).max(21).default(18),
+          cityUntil: z.coerce.number().int().min(12).max(23).default(21),
         })
         .parse(body || {});
       const teachers = await all(
@@ -1100,7 +1124,11 @@ export async function POST(
           day.getUTCFullYear(),
           day.getUTCMonth() + 1,
           day.getUTCDate(),
-          { startHour: v.startHour },
+          {
+            startHour: v.startHour,
+            lastYardStart: v.lastYardStart,
+            cityUntil: v.cityUntil,
+          },
         );
         let any = false;
         for (const l of lessons) {
@@ -1124,9 +1152,9 @@ export async function POST(
             if (have) continue;
             await db
               .prepare(
-                'INSERT INTO slots(id,instructor_id,city,start,"end",available) VALUES(?,?,?,?,?,1)',
+                'INSERT INTO slots(id,instructor_id,city,start,"end",available,kind) VALUES(?,?,?,?,?,1,?)',
               )
-              .run(randomUUID(), who, "akhalkalaki", l.start, l.end);
+              .run(randomUUID(), who, "akhalkalaki", l.start, l.end, l.kind);
             created++;
             any = true;
           }
@@ -1785,6 +1813,31 @@ async function ledgerFor(userId: string) {
     months: months.slice(-12),
   };
 }
+/**
+ * What an employee may see about money: advances paid to them (to confirm receipt) and whether the
+ * final salary is waiting for their confirmation. No rates, no totals, no balance.
+ */
+async function ownPayouts(userId: string) {
+  const rows = await all(
+    "SELECT id,amount,kind,note,created,confirmed_at FROM payouts WHERE user_id=? AND voided=0 ORDER BY created DESC LIMIT 30",
+    userId,
+  );
+  const shape = (x: Row) => ({
+    id: x.id,
+    kind: x.kind,
+    note: x.note,
+    created: x.created,
+    // the final salary is confirmed without a figure; advances show the amount handed over
+    amount: x.kind === "advance" ? Number(x.amount) : null,
+  });
+  return {
+    pendingPayouts: rows.filter((x) => !x.confirmed_at).map(shape),
+    receivedPayouts: rows
+      .filter((x) => x.confirmed_at)
+      .slice(0, 10)
+      .map((x) => ({ ...shape(x), confirmed_at: x.confirmed_at })),
+  };
+}
 /** An instructor or lecturer account gets its public card automatically (linked by name, or a new draft). */
 async function linkTeacherCard(u: Row, actor: string) {
   if (!isTeacher(u.role)) return;
@@ -1880,14 +1933,20 @@ async function lessons(p: string[], body: any, user: Row) {
         )
       )?.n || 0,
     );
-    const pay = computePay(items, month, counts);
     return json({
       month,
-      ...pay,
       lessons: done,
       students: counts.students?.all?.n || 0,
+      lessonsByKind: Object.fromEntries(
+        Object.entries(counts.lessons || {}).filter(([k]) => k !== "all"),
+      ),
+      studentsByScope: Object.fromEntries(
+        Object.entries(counts.students || {})
+          .filter(([k]) => k !== "all")
+          .map(([k, x]) => [k, x.n]),
+      ),
       pending,
-      ledger: await ledgerFor(user.id),
+      ...(await ownPayouts(user.id)),
     });
   }
   const v = z.object({ id: z.string().max(80) }).parse(body);
@@ -2430,6 +2489,285 @@ async function finance(p: string[], body: any, user: Row) {
       .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
       .run(user.id, "pay:void", JSON.stringify({ id: v.id }));
     return json({ ok: true });
+  }
+  if (p[1] === "expense-add") {
+    const v = z
+      .object({
+        category: z.string().max(40),
+        amount: lariAmount,
+        note: z.string().trim().min(3).max(300),
+        city: z.enum(["", "akhalkalaki", "ninotsminda"]).default(""),
+        spent_on: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      })
+      .parse(body);
+    if (!categoryById(v.category)) return fail("invalid");
+    if (isBigCategory(v.category) && !canSeeFinance(user.role))
+      return fail("forbidden", 403);
+    const id = randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO expenses(id,category,amount,note,city,spent_on,created_by,created) VALUES(?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        v.category,
+        tetri(v.amount),
+        v.note,
+        v.city,
+        v.spent_on ||
+          new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10),
+        user.id,
+        new Date().toISOString(),
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "expense:add",
+        JSON.stringify({ id, category: v.category, amount: v.amount }),
+      );
+    return json({ id });
+  }
+  if (p[1] === "expenses") {
+    const v = z
+      .object({
+        from: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        to: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      })
+      .parse(body || {});
+    const from = v.from || "0000-01-01",
+      to = v.to || "9999-12-31";
+    const rows = (
+      await all(
+        "SELECT e.*,u.name AS author FROM expenses e LEFT JOIN users u ON u.id=e.created_by WHERE e.voided=0 AND e.spent_on>=? AND e.spent_on<=? ORDER BY e.spent_on DESC,e.created DESC LIMIT 500",
+        from,
+        to,
+      )
+    )
+      .filter((r) => canSeeFinance(user.role) || !isBigCategory(r.category))
+      .map((r) => ({ ...r, amount: Number(r.amount) }));
+    return json({ rows });
+  }
+  if (p[1] === "expense-void") {
+    const v = z
+      .object({
+        id: z.string().max(80),
+        reason: z.string().trim().min(3).max(300),
+      })
+      .parse(body);
+    const row = await one(
+      "SELECT * FROM expenses WHERE id=? AND voided=0",
+      v.id,
+    );
+    if (!row) return fail("notFound", 404);
+    if (!canSeeFinance(user.role)) {
+      const own =
+        row.created_by === user.id &&
+        Date.now() - Date.parse(row.created) < 24 * 3600e3;
+      if (!own || isBigCategory(row.category)) return fail("forbidden", 403);
+    }
+    await db
+      .prepare("UPDATE expenses SET voided=1,void_reason=? WHERE id=?")
+      .run(v.reason, v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "expense:void",
+        JSON.stringify({ id: v.id, reason: v.reason }),
+      );
+    return json({ ok: true });
+  }
+  if (p[1] === "cash") {
+    // The cash desk: cash received minus small cash expenses minus what was handed over to the owners.
+    const got = Number(
+      (
+        await one(
+          "SELECT COALESCE(SUM(amount),0) AS n FROM payments WHERE voided=0 AND method='cash'",
+        )
+      )?.n || 0,
+    );
+    const smallIds = EXPENSE_CATEGORIES.filter((c) => !c.big).map((c) => c.id);
+    const spent = Number(
+      (
+        await one(
+          `SELECT COALESCE(SUM(amount),0) AS n FROM expenses WHERE voided=0 AND category IN (${smallIds.map(() => "?").join(",")})`,
+          ...smallIds,
+        )
+      )?.n || 0,
+    );
+    const handed = Number(
+      (
+        await one(
+          "SELECT COALESCE(SUM(amount),0) AS n FROM collections WHERE voided=0",
+        )
+      )?.n || 0,
+    );
+    const admins = (
+      await all(
+        "SELECT id,name FROM users WHERE role='admin' AND active=1 ORDER BY name",
+      )
+    ).map((a) => ({ id: a.id, name: a.name }));
+    const list: Row[] = (
+      await all(
+        `SELECT c.*,f.name AS from_name,t.name AS to_name FROM collections c
+         JOIN users f ON f.id=c.from_user JOIN users t ON t.id=c.to_user
+         WHERE c.voided=0 ${canSeeFinance(user.role) ? "" : "AND c.from_user=?"}
+         ORDER BY c.created DESC LIMIT 60`,
+        ...(canSeeFinance(user.role) ? [] : [user.id]),
+      )
+    ).map((c) => ({ ...c, amount: Number(c.amount) }));
+    return json({
+      till: got - spent - handed,
+      received: got,
+      spent,
+      handed,
+      admins,
+      collections: list,
+      toConfirm: list.filter((c) => c.to_user === user.id && !c.confirmed_at),
+    });
+  }
+  if (p[1] === "collect") {
+    const v = z
+      .object({
+        to_user: z.string().max(80),
+        amount: lariAmount,
+        note: z.string().max(300).default(""),
+      })
+      .parse(body);
+    if (
+      !(await one(
+        "SELECT id FROM users WHERE id=? AND role='admin' AND active=1",
+        v.to_user,
+      )) ||
+      v.to_user === user.id
+    )
+      return fail("invalid");
+    const id = randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO collections(id,from_user,to_user,amount,note,created) VALUES(?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        user.id,
+        v.to_user,
+        tetri(v.amount),
+        v.note,
+        new Date().toISOString(),
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "collection:create",
+        JSON.stringify({ id, to: v.to_user, amount: v.amount }),
+      );
+    return json({ id });
+  }
+  if (p[1] === "collect-confirm" || p[1] === "collect-void") {
+    const v = z.object({ id: z.string().max(80) }).parse(body);
+    const row = await one(
+      "SELECT * FROM collections WHERE id=? AND voided=0",
+      v.id,
+    );
+    if (!row) return fail("notFound", 404);
+    if (p[1] === "collect-confirm") {
+      // only the person who received the money can confirm it
+      if (row.to_user !== user.id || row.confirmed_at)
+        return fail("forbidden", 403);
+      await db
+        .prepare("UPDATE collections SET confirmed_at=? WHERE id=?")
+        .run(new Date().toISOString(), v.id);
+    } else {
+      if (row.confirmed_at && !canSeeFinance(user.role))
+        return fail("forbidden", 403);
+      if (row.from_user !== user.id && !canSeeFinance(user.role))
+        return fail("forbidden", 403);
+      await db.prepare("UPDATE collections SET voided=1 WHERE id=?").run(v.id);
+    }
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "collection:" + p[1].slice(8),
+        JSON.stringify({ id: v.id }),
+      );
+    return json({ ok: true });
+  }
+  if (p[1] === "period") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      })
+      .parse(body);
+    // the interval is in Georgian local days (UTC+4)
+    const a = new Date(
+      Date.parse(v.from + "T00:00:00Z") - 4 * 3600e3,
+    ).toISOString();
+    const b = new Date(
+      Date.parse(v.to + "T00:00:00Z") + 20 * 3600e3,
+    ).toISOString();
+    const byMethod = await all(
+      "SELECT method, SUM(amount) AS total FROM payments WHERE voided=0 AND paid_at>=? AND paid_at<? GROUP BY method",
+      a,
+      b,
+    );
+    const received = byMethod.reduce((s, r) => s + Number(r.total), 0);
+    const students = await all(
+      `SELECT COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.user_id=u.id AND c.voided=0),0) AS charged,
+              COALESCE((SELECT SUM(x.amount) FROM payments x WHERE x.user_id=u.id AND x.voided=0),0) AS paid
+       FROM users u WHERE u.role='student'`,
+    );
+    const expected = students.reduce(
+      (s, r) => s + Math.max(Number(r.charged) - Number(r.paid), 0),
+      0,
+    );
+    const exp = await all(
+      "SELECT category, city, SUM(amount) AS total FROM expenses WHERE voided=0 AND spent_on>=? AND spent_on<=? GROUP BY category, city",
+      v.from,
+      v.to,
+    );
+    const byCategory: Record<string, number> = {};
+    for (const r of exp)
+      byCategory[r.category] = (byCategory[r.category] || 0) + Number(r.total);
+    const dividends = byCategory[DIVIDENDS] || 0;
+    const expenses = Object.entries(byCategory)
+      .filter(([k]) => k !== DIVIDENDS)
+      .reduce((s, [, n]) => s + n, 0);
+    const pay = await one(
+      "SELECT COALESCE(SUM(amount),0) AS n FROM payouts WHERE voided=0 AND confirmed_at IS NOT NULL AND created>=? AND created<?",
+      a,
+      b,
+    );
+    const salaries = Number(pay?.n || 0);
+    return json({
+      from: v.from,
+      to: v.to,
+      received,
+      byMethod: byMethod.map((r) => ({
+        method: r.method,
+        total: Number(r.total),
+      })),
+      expected,
+      expenses,
+      byCategory,
+      salaries,
+      dividends,
+      net: received - expenses - salaries,
+      categories: EXPENSE_CATEGORIES,
+    });
   }
   if (p[1] === "report") {
     if (!canSeeFinance(user.role)) return fail("forbidden", 403);

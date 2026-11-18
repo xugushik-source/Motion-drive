@@ -34,6 +34,7 @@ import Applications from "./Applications";
 import Staff from "./Staff";
 import PayPanel from "./PayPanel";
 import { MySalary, PayrollReport } from "./Payroll";
+import { ExpensesTab, PeriodReport } from "./Money";
 type Props = {
   user: Item;
   locale: string;
@@ -98,6 +99,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
       ? [
           ...modules.slice(0, 3),
           "payments",
+          "expenses",
           "finance",
           "payroll",
           "staff",
@@ -110,6 +112,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             "schedule",
             "students",
             "payments",
+            "expenses",
             "salary",
             "messages",
             "media",
@@ -132,6 +135,17 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             ]),
     "security",
   ];
+  // Staff get new orders and applications without reloading the page.
+  useEffect(() => {
+    if (!["admin", "manager", "operator"].includes(user.role)) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible")
+        api("dashboard")
+          .then(setData)
+          .catch(() => {});
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [user.role]);
   async function refresh() {
     try {
       setData(await api("dashboard"));
@@ -245,7 +259,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               <Users size={16} />
             ) : ["knowledge", "faq", "messages"].includes(k) ? (
               <MessageCircle size={16} />
-            ) : k === "payments" ? (
+            ) : k === "payments" || k === "expenses" ? (
               <Wallet size={16} />
             ) : k === "finance" ? (
               <BarChart3 size={16} />
@@ -253,6 +267,9 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               <BookOpen size={16} />
             )}
             {t(k)}
+            {k === "applications" && data.newApplications > 0 && (
+              <span>{data.newApplications}</span>
+            )}
             {k === "bookings" && (
               <span>
                 {
@@ -721,7 +738,15 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         {tab === "payroll" && admin && <PayrollReport />}
         {tab === "salary" && (instructor || operator) && <MySalary />}
         {tab === "payments" && staff && <PaymentsTab t={t} />}
-        {tab === "finance" && admin && <FinanceReport t={t} />}
+        {tab === "expenses" && staff && (
+          <ExpensesTab admin={admin} myId={user.id} />
+        )}
+        {tab === "finance" && admin && (
+          <>
+            <PeriodReport />
+            <FinanceReport t={t} />
+          </>
+        )}
         {tab === "students" && (
           <div className="data-list">
             {data.users

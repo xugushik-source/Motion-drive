@@ -262,6 +262,7 @@ export function ApplyForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [summary, setSummary] = useState("");
   // Driving practice runs only from Akhalkalaki; theory is taught in both towns.
   const practice = course !== "theory";
   useEffect(() => {
@@ -303,6 +304,14 @@ export function ApplyForm({
           <div className="apply-done" role="status">
             <Check size={40} />
             <h3>{t("applySent")}</h3>
+            <ul className="apply-summary">
+              <li>
+                <b>{t("category" + category)}</b> · {t("stage_" + course)} ·{" "}
+                {t(practice || city === "akhalkalaki" ? "city1" : "city2")}
+              </li>
+              <li>{summary}</li>
+            </ul>
+            <p className="apply-next">{t("applyNext")}</p>
             <button type="button" className="button" onClick={onClose}>
               {t("close")}
             </button>
@@ -326,6 +335,7 @@ export function ApplyForm({
                   consent: d.consent === "on",
                   website: d.website || "",
                 });
+                setSummary(`${d.name} · ${d.phone}`);
                 setSent(true);
               } catch (err) {
                 setError(t((err as Error).message));

@@ -89,6 +89,13 @@ function localDb() {
       sqlite.exec(
         "ALTER TABLE bookings ADD COLUMN package_title TEXT NOT NULL DEFAULT ''",
       );
+    const slotNow = sqlite.prepare("PRAGMA table_info(slots)").all() as {
+      name: string;
+    }[];
+    if (!slotNow.some((c) => c.name === "kind"))
+      sqlite.exec(
+        "ALTER TABLE slots ADD COLUMN kind TEXT NOT NULL DEFAULT 'any'",
+      );
     sqlite.exec(
       "CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON users(phone) WHERE phone IS NOT NULL; CREATE INDEX IF NOT EXISTS bookings_series ON bookings(series_id);",
     );

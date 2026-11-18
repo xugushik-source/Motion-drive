@@ -32,6 +32,13 @@ const monthName = (m: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
+const shift = (m: string, by: number) => {
+  const [y, mo] = m.split("-").map(Number) as [number, number];
+  const d = new Date(Date.UTC(y, mo - 1 + by, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+const previous = (m: string) => shift(m, -1);
+const following = (m: string) => shift(m, 1);
 const SCOPE: Record<string, string> = {
   yard: "площадка",
   city: "город",
@@ -57,7 +64,10 @@ const itemText = (i: Row) =>
             ? " за ученика"
             : "");
 
-/** Own pay for a month: salary and every extra, so the person sees how the total is made up. */
+/**
+ * An employee's own month: hours and lessons only. Rates, totals and balances are for administrators.
+ * Advances handed over are confirmed here, and so is the final salary (without any figure).
+ */
 export function MySalary() {
   const [month, setMonth] = useState("");
   const [d, setD] = useState<Row | null>(null);
@@ -79,16 +89,24 @@ export function MySalary() {
       </p>
     );
   if (!d) return <Notice>Загрузка…</Notice>;
-  const empty = !d.items.length;
-  const L = d.ledger;
+  const kinds = Object.entries(d.lessonsByKind as Record<string, number>);
+  const groups = Object.entries(d.studentsByScope as Record<string, number>);
   return (
     <div className="finance">
-      {L.pending.map((x: Row) => (
+      {d.pendingPayouts.map((x: Row) => (
         <div className="notice payout-note" key={x.id} role="status">
           <span>
-            Вам выплатили <b>{gel(x.amount)}</b> ({PAYKIND[x.kind]},{" "}
-            {dayOf(x.created)}
-            {x.note ? ` · ${x.note}` : ""}). Получили деньги?
+            {x.kind === "advance" ? (
+              <>
+                Вам выплатили аванс <b>{gel(x.amount)}</b> ({dayOf(x.created)}
+                {x.note ? ` · ${x.note}` : ""}). Получили?
+              </>
+            ) : (
+              <>
+                Зарплата выплачена ({dayOf(x.created)}). Получили всё, долга
+                нет?
+              </>
+            )}
           </span>
           <button
             className="button small"
@@ -97,109 +115,80 @@ export function MySalary() {
               await load();
             }}
           >
-            Получил(а)
+            {x.kind === "advance"
+              ? "Получил(а) аванс"
+              : "Получил(а), долга нет"}
           </button>
         </div>
       ))}
+      <div className="month-nav">
+        <button
+          className="icon-button"
+          aria-label="Предыдущий месяц"
+          onClick={() => setMonth(previous(d.month))}
+        >
+          ‹
+        </button>
+        <strong>{monthName(d.month)}</strong>
+        <button
+          className="icon-button"
+          aria-label="Следующий месяц"
+          onClick={() => setMonth(following(d.month))}
+        >
+          ›
+        </button>
+      </div>
       <div className="stat-cards">
-        <article className={L.debt ? "owe" : ""}>
-          <small>
-            {L.debt
-              ? "К получению (долг)"
-              : L.advance
-                ? "Получено вперёд (аванс)"
-                : "Всё получено"}
-          </small>
-          <strong>
-            {L.debt ? gel(L.debt) : L.advance ? gel(L.advance) : "0 ₾"}
-          </strong>
-          <small>
-            {L.debt
-              ? "остаётся, пока вам не выплатят и вы не подтвердите"
-              : L.advance
-                ? "зачтётся в следующих начислениях"
-                : "задолженности нет"}
-          </small>
-        </article>
         <article>
-          <small>Начислено всего</small>
-          <strong>{gel(L.accrued)}</strong>
+          <small>Принятых уроков</small>
+          <strong>{d.lessons}</strong>
         </article>
+        {d.students > 0 && (
+          <article>
+            <small>Учеников в группах</small>
+            <strong>{d.students}</strong>
+          </article>
+        )}
         <article>
-          <small>Получено всего</small>
-          <strong>{gel(L.paid)}</strong>
+          <small>Ждут принятия офисом</small>
+          <strong>{d.pending}</strong>
         </article>
       </div>
-      {L.history.length > 0 && (
+      {kinds.length > 0 && (
+        <ul className="ledger">
+          {kinds.map(([k, n]) => (
+            <li key={k}>
+              <span>{SCOPE[k] || k}</span>
+              <b>{n}</b>
+            </li>
+          ))}
+        </ul>
+      )}
+      {groups.length > 0 && (
+        <ul className="ledger">
+          {groups.map(([k, n]) => (
+            <li key={k}>
+              <span>{SCOPE[k] || k}</span>
+              <b>{n}</b>
+            </li>
+          ))}
+        </ul>
+      )}
+      {d.receivedPayouts.length > 0 && (
         <>
-          <h4>Полученные выплаты</h4>
+          <h4>Подтверждённые выплаты</h4>
           <ul className="ledger">
-            {L.history.map((x: Row) => (
-              <li key={x.id} className="payment">
-                <span>{dayOf(x.confirmed_at)}</span>
-                <span>
-                  {PAYKIND[x.kind]}
-                  {x.note ? ` · ${x.note}` : ""}
-                </span>
-                <b>{gel(x.amount)}</b>
+            {d.receivedPayouts.map((x: Row) => (
+              <li key={x.id}>
+                <span>{dayOf(x.created)}</span>
+                <span>{PAYKIND[x.kind]}</span>
+                <b>{x.amount === null ? "получено" : gel(x.amount)}</b>
               </li>
             ))}
           </ul>
         </>
       )}
-      <h4>Начисления за месяц</h4>
-      <div className="finance-toolbar">
-        <label>
-          Месяц{" "}
-          <input
-            type="month"
-            value={month || d.month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
-        </label>
-      </div>
-      {empty && (
-        <Notice>
-          За этот месяц ничего не начислено. Оклад и доплаты вносит
-          администратор.
-        </Notice>
-      )}
-      <div className="stat-cards">
-        <article>
-          <small>Итого за {monthName(d.month)}</small>
-          <strong>{gel(d.total)}</strong>
-        </article>
-        <article>
-          <small>Оклад</small>
-          <strong>{gel(d.salary)}</strong>
-        </article>
-        <article>
-          <small>Бонусы и проценты</small>
-          <strong>{gel(d.bonus + d.percent + d.perLesson)}</strong>
-        </article>
-        <article>
-          <small>Премии</small>
-          <strong>{gel(d.premium)}</strong>
-        </article>
-      </div>
-      {!empty && (
-        <ul className="ledger">
-          {d.items.map((i: Row) => (
-            <li key={i.id} className="payment">
-              <span>{itemName(i)}</span>
-              <span>
-                {i.title && i.title !== "Оклад" && !i.scope ? i.title : ""}
-              </span>
-              <b>{itemText(i)}</b>
-            </li>
-          ))}
-        </ul>
-      )}
-      {(d.lessons > 0 || d.pending > 0) && (
-        <p className="muted">
-          Принято уроков в этом месяце: {d.lessons}. Ждут принятия: {d.pending}.
-        </p>
-      )}
+      <Notice>Суммы и ставки видят только администраторы.</Notice>
     </div>
   );
 }
