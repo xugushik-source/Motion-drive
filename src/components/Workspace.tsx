@@ -171,6 +171,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
       dateStyle: "medium",
       timeStyle: "short",
     });
+  const clock = (s: string) =>
+    new Date(
+      /(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(s) ? s : s + "Z",
+    ).toLocaleTimeString(locale, {
+      timeZone: "Asia/Tbilisi",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   const query = search
     .trim()
     .toLowerCase()
@@ -486,12 +494,26 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                         <p className="lesson-when">
                           <CalendarDays size={15} />
                           {b.slot_start ? fmt(b.slot_start) : t("agreeTime")}
+                          {b.slot_start && b.slot_end
+                            ? ` – ${clock(b.slot_end)}`
+                            : ""}
                           {series && (
                             <span className={"status " + b.status}>
                               {t(b.status)}
                             </span>
                           )}
                         </p>
+                        {b.slot_end &&
+                          !staff &&
+                          !instructor &&
+                          ["pending", "confirmed"].includes(b.status) && (
+                            <small className="late-hint">
+                              {t("lessonEnds").replace(
+                                "%TIME%",
+                                clock(b.slot_end),
+                              )}
+                            </small>
+                          )}
                         <div className="record-actions">
                           {b.status === "confirmed" &&
                             b.slot_start &&
