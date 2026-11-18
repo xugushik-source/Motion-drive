@@ -38,6 +38,7 @@ import { Booking, Auth, Exam } from "./flows";
 import Packages, { Services } from "./Packages";
 import PackageBuilder from "./PackageBuilder";
 import Intro from "./Intro";
+import Programs from "./Programs";
 import { DEMO } from "../lib/demo";
 export type Item = Record<string, any>;
 export async function api(path: string, data?: any) {
@@ -117,6 +118,8 @@ export default function Site({
     </div>
   );
   const programs = () => {
+    if (list("programs").length)
+      return <Programs programs={list("programs")} locale={locale} t={t} />;
     const real = list("courses");
     return (
       <div className="program-grid">

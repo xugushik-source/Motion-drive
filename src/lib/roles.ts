@@ -34,6 +34,7 @@ export const STAFF_KINDS = [
   "instructors",
   "branches",
   "courses",
+  "programs",
   "reviews",
   "faq",
   "knowledge",

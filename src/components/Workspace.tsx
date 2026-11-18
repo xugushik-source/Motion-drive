@@ -30,6 +30,7 @@ import { georgiaDay } from "./AvailabilityPicker";
 import { formatPhone } from "../lib/phone";
 import { STAFF_KINDS } from "../lib/roles";
 import { PaymentsTab, FinanceReport } from "./Finance";
+import Applications from "./Applications";
 type Props = {
   user: Item;
   locale: string;
@@ -39,8 +40,10 @@ type Props = {
 };
 const modules = [
   "bookings",
+  "applications",
   "students",
   "instructors",
+  "programs",
   "packages",
   "services",
   "courses",
@@ -89,10 +92,11 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
     admin || (operator && STAFF_KINDS.includes(kind));
   const tabs = [
     ...(admin
-      ? [...modules.slice(0, 2), "payments", "finance", ...modules.slice(2)]
+      ? [...modules.slice(0, 3), "payments", "finance", ...modules.slice(3)]
       : operator
         ? [
             "bookings",
+            "applications",
             "schedule",
             "students",
             "payments",
@@ -100,6 +104,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             "media",
             "instructors",
             "branches",
+            "programs",
             "courses",
             "reviews",
             "faq",
@@ -615,6 +620,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             ))}
           </>
         )}
+        {tab === "applications" && staff && <Applications t={t} />}
         {tab === "payments" && staff && <PaymentsTab t={t} />}
         {tab === "finance" && admin && <FinanceReport t={t} />}
         {tab === "students" && admin && (
@@ -1305,16 +1311,29 @@ function RecordEditor({
             ]
           : kind === "services"
             ? ["title", "price", "term", "description", "order"]
-            : [
-                "title",
-                "description",
-                ...(kind === "courses" ? ["price", "duration"] : []),
-                ...(kind === "branches" ? ["city", "address", "phone"] : []),
-                ...(kind === "instructors"
-                  ? ["userId", "languages", "vehicle"]
-                  : []),
-                ...(["media", "materials"].includes(kind) ? ["url"] : []),
-              ];
+            : kind === "programs"
+              ? [
+                  "title",
+                  "description",
+                  "category",
+                  "stage",
+                  "items",
+                  "exam",
+                  "price",
+                  "duration",
+                  "image",
+                  "order",
+                ]
+              : [
+                  "title",
+                  "description",
+                  ...(kind === "courses" ? ["price", "duration"] : []),
+                  ...(kind === "branches" ? ["city", "address", "phone"] : []),
+                  ...(kind === "instructors"
+                    ? ["userId", "languages", "vehicle"]
+                    : []),
+                  ...(["media", "materials"].includes(kind) ? ["url"] : []),
+                ];
   const update = (key: string, value: any) =>
     setRecord((r) => ({ ...r, [key]: value }));
   return (
@@ -1362,12 +1381,14 @@ function RecordEditor({
             "explanation",
             "options",
             "features",
+            "items",
+            "exam",
             "value",
           ].includes(key) ? (
             <textarea
               rows={key === "answer" ? 5 : 3}
               value={
-                ["options", "features"].includes(key)
+                ["options", "features", "items"].includes(key)
                   ? (record[key] || []).join("\n")
                   : record[key] || ""
               }
@@ -1379,12 +1400,26 @@ function RecordEditor({
                   key,
                   key === "options"
                     ? e.target.value.split("\n")
-                    : key === "features"
+                    : ["features", "items"].includes(key)
                       ? e.target.value.split("\n").filter((x) => x.trim())
                       : e.target.value,
                 )
               }
             />
+          ) : ["category", "stage"].includes(key) ? (
+            <select
+              value={record[key] || (key === "category" ? "B" : "theory")}
+              onChange={(e) => update(key, e.target.value)}
+            >
+              {(key === "category"
+                ? ["B", "C"]
+                : ["theory", "yard", "city", "official"]
+              ).map((k) => (
+                <option key={k} value={k}>
+                  {key === "category" ? t("category" + k) : t("stage_" + k)}
+                </option>
+              ))}
+            </select>
           ) : ["program", "gearbox", "group", "priceType"].includes(key) ? (
             <select
               value={

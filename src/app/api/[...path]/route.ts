@@ -91,6 +91,7 @@ function packageSnapshot(pack: Row, booked: number) {
 }
 const kinds = [
   "courses",
+  "programs",
   "packages",
   "services",
   "instructors",
@@ -108,6 +109,7 @@ const kinds = [
 ];
 const publicKinds = [
   "courses",
+  "programs",
   "packages",
   "services",
   "instructors",
@@ -444,6 +446,40 @@ export async function POST(
       return json({ url: "/api/files/" + id, type: mime });
     }
     const body = await req.json();
+    if (p[0] === "applications" && p[1] === "create") {
+      if (!(await limit("apply:" + identity, 5, 3600)))
+        return fail("rateLimit", 429);
+      const v = z
+        .object({
+          category: z.enum(["B", "C"]),
+          course: z.enum(["theory", "yard", "city"]),
+          city: z.enum(["akhalkalaki", "ninotsminda"]),
+          name: z.string().trim().min(2).max(100),
+          phone: phoneSchema,
+          note: z.string().max(500).default(""),
+          locale: localeSchema,
+          consent: z.literal(true),
+          website: z.string().max(0).default(""),
+        })
+        .parse(body);
+      const id = randomUUID();
+      await db
+        .prepare(
+          "INSERT INTO applications(id,category,course,city,name,phone,note,locale,created) VALUES(?,?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          id,
+          v.category,
+          v.course,
+          v.city,
+          v.name,
+          v.phone,
+          v.note,
+          v.locale,
+          new Date().toISOString(),
+        );
+      return json({ id });
+    }
     if (p[0] === "auth") {
       if (!(await limit("auth:" + identity, 12, 600)))
         return fail("rateLimit", 429);
@@ -987,6 +1023,31 @@ export async function POST(
     }
     // Money entries and debts: all staff. Reports and statistics: administrators.
     if (p[0] === "finance") return await finance(p, body, user);
+    if (p[0] === "applications") {
+      if (!isStaff(user.role)) return fail("forbidden", 403);
+      if (p[1] === "list")
+        return json(
+          await all(
+            "SELECT * FROM applications ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'contacted' THEN 1 ELSE 2 END, created DESC LIMIT 500",
+          ),
+        );
+      if (p[1] === "update") {
+        const v = z
+          .object({
+            id: z.string().max(80),
+            status: z.enum(["new", "contacted", "closed"]),
+          })
+          .parse(body);
+        await db
+          .prepare("UPDATE applications SET status=? WHERE id=?")
+          .run(v.status, v.id);
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(user.id, "application:status", JSON.stringify(v));
+        return json({ ok: true });
+      }
+      return fail("notFound", 404);
+    }
     if (
       user.role !== "admin" &&
       !(

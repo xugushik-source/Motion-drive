@@ -98,3 +98,72 @@ export function nextStarts(
     (_, i) => new Date(first + (skip + i) * step),
   );
 }
+
+const MONTHS: Record<string, string[]> = {
+  ru: [
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря",
+  ],
+  en: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ],
+  ka: [
+    "იანვარი",
+    "თებერვალი",
+    "მარტი",
+    "აპრილი",
+    "მაისი",
+    "ივნისი",
+    "ივლისი",
+    "აგვისტო",
+    "სექტემბერი",
+    "ოქტომბერი",
+    "ნოემბერი",
+    "დეკემბერი",
+  ],
+  hy: [
+    "հունվարի",
+    "փետրվարի",
+    "մարտի",
+    "ապրիլի",
+    "մայիսի",
+    "հունիսի",
+    "հուլիսի",
+    "օգոստոսի",
+    "սեպտեմբերի",
+    "հոկտեմբերի",
+    "նոյեմբերի",
+    "դեկտեմբերի",
+  ],
+};
+/**
+ * "23 ноября" in every language, from a fixed table. Intl month names for Georgian and Armenian
+ * differ between Node and the browser, which breaks server rendering (hydration) of these dates.
+ */
+export function formatDayMonth(d: Date, locale: string) {
+  const names = MONTHS[locale] || MONTHS.en!;
+  return locale === "en"
+    ? `${names[d.getUTCMonth()]} ${d.getUTCDate()}`
+    : `${d.getUTCDate()} ${names[d.getUTCMonth()]}`;
+}

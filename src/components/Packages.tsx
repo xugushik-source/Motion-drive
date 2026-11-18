@@ -12,7 +12,7 @@ import {
   Phone,
 } from "lucide-react";
 import type { Item } from "./Site";
-import { nextStarts } from "../lib/schedule";
+import { nextStarts, formatDayMonth } from "../lib/schedule";
 
 export const sortPackages = (list: Item[]) =>
   [...list].sort(
@@ -203,11 +203,7 @@ export default function Packages({
                   <div>
                     {nextStarts(p).map((d, k) => (
                       <span key={k} className={k === 0 ? "first" : ""}>
-                        {d.toLocaleDateString(locale, {
-                          day: "numeric",
-                          month: "long",
-                          timeZone: "UTC",
-                        })}
+                        {formatDayMonth(d, locale)}
                       </span>
                     ))}
                   </div>

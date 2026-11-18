@@ -387,3 +387,68 @@ test("roles: staff edit photos and content, never prices, roles or reports", asy
     "a lecturer is a teacher, not office staff",
   );
 });
+
+test("training programmes: B and C, three courses each, same content in all four languages", async () => {
+  const { publicRecords } = await import("../src/lib/public-content.ts");
+  const all = publicRecords.programs!;
+  const key = (p: any) => `${p.category}-${p.stage}`;
+  const langs = ["ru", "en", "ka", "hy"];
+  for (const cat of ["B", "C"])
+    for (const stage of ["theory", "yard", "city", "official"]) {
+      const group = all.filter((p) => key(p) === `${cat}-${stage}`);
+      assert.deepEqual(
+        group.map((p) => p.locale).sort(),
+        [...langs].sort(),
+        `${cat}-${stage}`,
+      );
+      const counts = new Set(group.map((p) => p.items.length));
+      assert.equal(
+        counts.size,
+        1,
+        `${cat}-${stage} item counts differ between languages`,
+      );
+      for (const p of group) {
+        assert.ok(p.items.every((x: string) => x.trim().length > 2));
+        assert.ok(p.title.trim() && p.status === "published");
+        // no invented prices or durations: the school fills them in
+        assert.equal(p.price, "");
+        assert.equal(p.duration, "");
+      }
+    }
+  const items = (c: string, s: string) =>
+    all.find((p) => p.category === c && p.stage === s && p.locale === "ru")!
+      .items.length;
+  assert.deepEqual(
+    [items("B", "theory"), items("B", "yard"), items("B", "city")],
+    [10, 10, 10],
+  );
+  assert.deepEqual(
+    [items("C", "theory"), items("C", "yard"), items("C", "city")],
+    [10, 9, 10],
+  );
+  // official exam figures (sa.gov.ge, checked 2026-11-18) in every language
+  for (const l of langs) {
+    const exam = (c: string) =>
+      all.find(
+        (p) => p.category === c && p.stage === "theory" && p.locale === l,
+      )!.exam;
+    assert.ok(exam("B").includes("30") && exam("B").includes("25"), l);
+    assert.ok(exam("C").includes("40") && exam("C").includes("36"), l);
+    for (const c of ["B", "C"]) {
+      const o = all.find(
+        (p) => p.category === c && p.stage === "official" && p.locale === l,
+      )!;
+      assert.match(o.source, /^https:\/\/www\.sa\.gov\.ge\//);
+      assert.equal(o.verifiedAt, "2026-11-18");
+    }
+  }
+});
+
+test("group start dates are formatted from a fixed table, identical on server and browser", async () => {
+  const { formatDayMonth } = await import("../src/lib/schedule.ts");
+  const d = new Date(Date.UTC(2026, 10, 23));
+  assert.equal(formatDayMonth(d, "ru"), "23 ноября");
+  assert.equal(formatDayMonth(d, "en"), "November 23");
+  assert.equal(formatDayMonth(d, "ka"), "23 ნოემბერი");
+  assert.equal(formatDayMonth(d, "hy"), "23 նոյեմբերի");
+});

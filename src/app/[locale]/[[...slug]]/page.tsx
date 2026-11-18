@@ -99,6 +99,7 @@ export default async function Page({
     await Promise.all(
       [
         "courses",
+        "programs",
         "packages",
         "services",
         "instructors",
