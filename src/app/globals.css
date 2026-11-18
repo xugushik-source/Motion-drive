@@ -2903,3 +2903,12 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 @media (prefers-reduced-motion: reduce) { .program-art .art-float { animation: none; } }
 .late-rule { margin: 0; padding: 12px 14px; border-radius: 10px; background: #f4f5ef; border: 1px solid var(--line); font-size: 12.5px; line-height: 1.6; color: var(--muted); }
 .late-hint { display: block; margin: -4px 0 8px; color: var(--muted); font-size: 12px; }
+/* Booking steps and package buttons */
+.step-hint { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.wizard-step { scroll-margin-top: 90px; transition: opacity .3s; }
+.wizard-step.locked { opacity: .38; pointer-events: none; }
+.no-slots-request { display: grid; gap: 12px; justify-items: start; margin-top: 14px; padding: 18px; border-radius: 14px; background: #fff3ef; border: 1px solid #ffc9bd; }
+.no-slots-request p { margin: 0; font-size: 14px; }
+.package-cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 99px; background: #101712; color: white; font-size: 13px; font-weight: 600; white-space: nowrap; transition: background .2s, transform .2s; }
+.package-card:hover .package-cta { background: #ff6b52; color: #1a0a06; transform: translateX(2px); }
+.package-card.featured .package-cta { background: #ff6b52; color: #1a0a06; }

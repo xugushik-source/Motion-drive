@@ -22,6 +22,7 @@ import {
 import { api, Field, Notice, type Item } from "./Site";
 import AvailabilityPicker from "./AvailabilityPicker";
 import Packages, { sortPackages } from "./Packages";
+import { ApplyForm } from "./Programs";
 import { autoPick, type DayPart } from "../lib/schedule";
 type Common = { locale: string; t: (k: string) => string };
 
@@ -249,6 +250,8 @@ export function Booking({
   const [localUser, setLocalUser] = useState(user),
     [slots, setSlots] = useState<Item[]>([]),
     [pack, setPack] = useState<Item | null>(null),
+    [custom, setCustom] = useState(false),
+    [applyOpen, setApplyOpen] = useState(false),
     [customCount, setCustomCount] = useState(1),
     [city, setCity] = useState("akhalkalaki"),
     [instructor, setInstructor] = useState(""),
@@ -294,6 +297,15 @@ export function Booking({
       window.removeEventListener("focus", refreshSlots);
     };
   }, []);
+  const chosen = !!pack || custom;
+  const goTo = (id: string) =>
+    setTimeout(
+      () =>
+        document
+          .getElementById(id)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      180,
+    );
   const perLesson = pack?.priceType === "perLesson";
   // Driving practice and exam routes run only from Akhalkalaki; theory in both branches.
   const practiceOnly = pack?.group !== "theory";
@@ -570,6 +582,7 @@ export function Booking({
             <span className="step-index">01</span>
             <h3>{t("choosePackageTitle")}</h3>
           </header>
+          <p className="step-hint">{t("step1Hint")}</p>
           {packages.length > 0 && (
             <Packages
               packages={packages}
@@ -579,7 +592,9 @@ export function Booking({
               selected={pack?.id}
               onSelect={(p) => {
                 setPack(p);
+                setCustom(false);
                 resetPick();
+                goTo("wizard-step-2");
               }}
             />
           )}
@@ -589,19 +604,21 @@ export function Booking({
               {stepper}
             </div>
           )}
-          <div className={"custom-package" + (!pack ? " selected" : "")}>
+          <div className={"custom-package" + (custom ? " selected" : "")}>
             <button
               type="button"
               role="radio"
-              aria-checked={!pack}
+              aria-checked={custom}
               className="custom-package-label"
               onClick={() => {
                 setPack(null);
+                setCustom(true);
                 resetPick();
+                goTo("wizard-step-2");
               }}
             >
-              <span className={"package-radio" + (!pack ? " on" : "")}>
-                {!pack && <Check size={16} />}
+              <span className={"package-radio" + (custom ? " on" : "")}>
+                {custom && <Check size={16} />}
               </span>
               <span>
                 <strong>{t("customPackage")}</strong>
@@ -612,15 +629,20 @@ export function Booking({
                 </small>
               </span>
             </button>
-            {!pack && stepper}
+            {custom && stepper}
           </div>
         </section>
 
-        <section className="wizard-step">
+        <section
+          id="wizard-step-2"
+          className={"wizard-step" + (chosen ? "" : " locked")}
+          inert={!chosen}
+        >
           <header>
             <span className="step-index">02</span>
             <h3>{t("chooseDatesTitle")}</h3>
           </header>
+          {!chosen && <Notice>{t("pickFirst")}</Notice>}
           <div className="form-grid">
             {practiceOnly ? (
               <p className="practice-city">
@@ -710,7 +732,19 @@ export function Booking({
             ))}
           </div>
           {available.length === 0 ? (
-            <Notice>{t("noSlots")}</Notice>
+            <>
+              <Notice>{t("noSlots")}</Notice>
+              <div className="no-slots-request">
+                <p>{t("noSlotsRequest")}</p>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => setApplyOpen(true)}
+                >
+                  {t("leaveRequest")}
+                </button>
+              </div>
+            </>
           ) : mode === "auto" ? (
             <div className="auto-pick">
               <p>{t("autoPickText")}</p>
@@ -796,9 +830,22 @@ export function Booking({
             />
           )}
           <small>{t("availabilityRefresh")}</small>
+          {picked.length > 0 && (
+            <button
+              type="button"
+              className="button"
+              onClick={() => goTo("wizard-step-3")}
+            >
+              {t("continueStep")}
+            </button>
+          )}
         </section>
 
-        <section className="wizard-step">
+        <section
+          id="wizard-step-3"
+          className={"wizard-step" + (chosen ? "" : " locked")}
+          inert={!chosen}
+        >
           <header>
             <span className="step-index">03</span>
             <h3>{t("contactsTitle")}</h3>
@@ -876,6 +923,23 @@ export function Booking({
           <ArrowUpRight size={20} />
         </button>
       </form>
+      {applyOpen && (
+        <ApplyForm
+          preset={{
+            category: "B",
+            course:
+              pack?.group === "theory"
+                ? "theory"
+                : String(pack?.id || "").includes("yard")
+                  ? "yard"
+                  : "city",
+          }}
+          cats={["B", "C"]}
+          locale={locale}
+          t={t}
+          onClose={() => setApplyOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -61,6 +61,13 @@ export default function Programs({
   const [apply, setApply] = useState<{ category: Cat; course: Stage } | null>(
     null,
   );
+  // A link like /courses?apply=B-theory opens the application form straight away.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("apply") || "";
+    const [c, st] = q.split("-");
+    if ((c === "B" || c === "C") && ["theory", "yard", "city"].includes(st))
+      setApply({ category: c, course: st as Stage });
+  }, []);
   const active = cats.includes(cat) ? cat : cats[0];
   const cards = useMemo(
     () =>
@@ -236,7 +243,7 @@ export default function Programs({
   );
 }
 
-function ApplyForm({
+export function ApplyForm({
   preset,
   cats,
   locale,

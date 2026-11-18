@@ -114,7 +114,7 @@ export default function Packages({
   const groups = GROUPS.filter((g) =>
     list.some((p) => (p.group || "driving") === g),
   );
-  if (mode === "showcase" && groups.length > 1)
+  if (groups.length > 1)
     return (
       <div className="package-groups">
         {groups.map((g) => {
@@ -129,7 +129,9 @@ export default function Packages({
                 packages={list.filter((p) => (p.group || "driving") === g)}
                 locale={locale}
                 t={t}
-                mode="showcase"
+                mode={mode}
+                selected={selected}
+                onSelect={onSelect}
               />
             </div>
           );
@@ -233,16 +235,10 @@ export default function Packages({
                 </strong>
               </span>
               {mode === "showcase" ? (
-                p.bookable === false ? (
-                  <span className="package-phone">
-                    <Phone size={14} />
-                    {t("byPhone")}
-                  </span>
-                ) : (
-                  <span className="round-link" aria-hidden="true">
-                    <ArrowUpRight size={20} />
-                  </span>
-                )
+                <span className="package-cta">
+                  {t(p.bookable === false ? "applyNow" : "enroll")}
+                  <ArrowUpRight size={16} />
+                </span>
               ) : (
                 <span className="package-choose">
                   {t(isSelected ? "selectedPackage" : "choosePackage")}
@@ -266,7 +262,7 @@ export default function Packages({
               <Link
                 href={
                   p.bookable === false
-                    ? `/${locale}/contacts`
+                    ? `/${locale}/courses?apply=B-theory`
                     : `/${locale}/booking?package=${encodeURIComponent(p.id)}`
                 }
                 className={"package-card" + (p.featured ? " featured" : "")}
