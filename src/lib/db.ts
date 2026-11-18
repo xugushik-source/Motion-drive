@@ -334,20 +334,15 @@ export function ensureSchema() {
     throw error;
   }));
 }
-const tables = new Set([
-  "users",
-  "sessions",
-  "records",
-  "bookings",
-  "slots",
-  "results",
-  "attempts",
-  "messages",
-  "audit",
-  "usage",
-  "limits",
-  "uploads",
-]);
+// Every table of the private schema, read from the schema itself so a new table can never be forgotten
+// (an unprefixed name would be looked up in "public" and fail with "relation does not exist").
+const tables = new Set(
+  [
+    ...postgresSchema.matchAll(
+      /CREATE TABLE IF NOT EXISTS motion_drive\.([a-z_]+)/g,
+    ),
+  ].map((m) => m[1] as string),
+);
 // Queries are internal literals; values always travel as separate bound parameters.
 export function postgresQuery(sql: string) {
   let index = 0;

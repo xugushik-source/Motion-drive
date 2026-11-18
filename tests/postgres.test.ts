@@ -228,3 +228,21 @@ test("the embedded schema equals db/postgres.sql and works on a host without Sup
   );
   await pg.close();
 });
+
+test("every table the application uses is reachable through the private schema", async () => {
+  const pg = new PGlite();
+  await pg.exec("CREATE ROLE anon; CREATE ROLE authenticated;");
+  await pg.exec(readFileSync("db/postgres.sql", "utf8"));
+  const sqlite = readFileSync("src/lib/sqlite-schema.ts", "utf8");
+  const names = [
+    ...sqlite.matchAll(/CREATE TABLE IF NOT EXISTS ([a-z_]+)\(/g),
+  ].map((m) => m[1]!);
+  assert.ok(names.length >= 20, "found the tables: " + names.length);
+  for (const name of names) {
+    // the same translation production uses: a forgotten table would fail here as "relation does not exist"
+    await pg.query(postgresQuery(`SELECT count(*) FROM ${name}`));
+    await pg.query(
+      postgresQuery(`SELECT 1 FROM users u JOIN ${name} x ON 1=0`),
+    );
+  }
+});
