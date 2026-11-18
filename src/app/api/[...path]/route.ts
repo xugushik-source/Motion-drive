@@ -29,7 +29,14 @@ import {
 import { get as getBlob, put as putBlob } from "@vercel/blob";
 import { findKnowledge, detectLanguage } from "../../../lib/knowledge";
 import { contactOnly } from "../../../lib/deployment";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import {
+  appendRow,
+  replaceTab,
+  sheetsConfigured,
+  serviceEmail,
+  sheetId,
+} from "../../../lib/sheets";
 import { cookies } from "next/headers";
 import { randomUUID, createHash } from "node:crypto";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
@@ -685,6 +692,7 @@ export async function POST(
             JSON.stringify({ id, total: ready.total }),
           );
       });
+      mirror("Начисление (заказ)", user.name, ready.total, title);
       return json({ id, total: ready.total, parts: ready.parts, city });
     }
     if (p[0] === "booking")
@@ -803,6 +811,13 @@ export async function POST(
                   total,
                   "system",
                 );
+            if (Number.isFinite(total) && total > 0)
+              mirror(
+                "Начисление (запись)",
+                user.name,
+                total / 100,
+                packageSnapshot(pack, slotIds.length),
+              );
           }
           await db
             .prepare(
@@ -2241,7 +2256,67 @@ const monthsBetween = (from: string, to: string) => {
   return out;
 };
 /** Charges and payments. Staff see per-student balances; totals and reports are admin-only. */
+const FINANCE_EVENTS: Record<string, string> = {
+  pay: "Платёж ученика",
+  charge: "Начисление ученику",
+  void: "Отмена записи",
+  "expense-add": "Расход",
+  "expense-void": "Отмена расхода",
+  "pay-out": "Выплата сотруднику",
+  "pay-out-confirm": "Выплата подтверждена",
+  "pay-salary": "Оклад изменён",
+  collect: "Инкассация",
+  "collect-confirm": "Инкассация подтверждена",
+  "collect-void": "Инкассация отменена",
+  adjust: "Корректировка остатка",
+};
+/** Runs after the response is sent, so a slow or unavailable spreadsheet never slows the school down. */
+function mirror(
+  event: string,
+  who: string,
+  amount: number | null,
+  detail: string,
+) {
+  if (!sheetsConfigured()) return;
+  const row = [
+    new Date(Date.now() + 4 * 3600e3)
+      .toISOString()
+      .replace("T", " ")
+      .slice(0, 16),
+    event,
+    who,
+    amount === null ? "" : amount,
+    detail.slice(0, 300),
+  ];
+  try {
+    after(() => appendRow("Журнал", row));
+  } catch {
+    void appendRow("Журнал", row);
+  }
+}
 async function finance(p: string[], body: any, user: Row) {
+  const res = await financeInner(p, body, user);
+  const event = FINANCE_EVENTS[p[1] || ""];
+  if (event && res.ok && sheetsConfigured()) {
+    const who = body?.user_id
+      ? String(
+          (await one("SELECT name FROM users WHERE id=?", body.user_id))
+            ?.name || "",
+        )
+      : "";
+    const amount = Number(body?.amount);
+    mirror(
+      event,
+      user.name + (who ? " → " + who : ""),
+      Number.isFinite(amount) ? amount : null,
+      [body?.title, body?.category, body?.method, body?.account, body?.note]
+        .filter(Boolean)
+        .join(" · "),
+    );
+  }
+  return res;
+}
+async function financeInner(p: string[], body: any, user: Row) {
   if (!isStaff(user.role)) return fail("forbidden", 403);
   if (p[1] === "debts") {
     const rows = await all(
@@ -2929,6 +3004,139 @@ async function finance(p: string[], body: any, user: Row) {
       dividends,
       net: received - expenses - salaries,
       categories: EXPENSE_CATEGORIES,
+    });
+  }
+  if (p[1] === "sheets-status") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    return json({
+      configured: sheetsConfigured(),
+      email: serviceEmail(),
+      url: sheetId()
+        ? `https://docs.google.com/spreadsheets/d/${sheetId()}`
+        : "",
+    });
+  }
+  if (p[1] === "sheets-sync") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    if (!sheetsConfigured()) return fail("sheetsNotConfigured", 409);
+    const day = (iso: unknown) =>
+      new Date(Date.parse(String(iso)) + 4 * 3600e3)
+        .toISOString()
+        .slice(0, 16)
+        .replace("T", " ");
+    const name = new Map(
+      (await all("SELECT id,name FROM users")).map((u) => [
+        String(u.id),
+        String(u.name),
+      ]),
+    );
+    const lari = (n: unknown) => Number(n) / 100;
+    const tabs: Record<string, (string | number)[][]> = {
+      Платежи: [
+        ["Дата", "Ученик", "Способ", "Сумма ₾", "Комментарий", "Отменён"],
+        ...(await all("SELECT * FROM payments ORDER BY paid_at")).map((r) => [
+          day(r.paid_at),
+          name.get(String(r.user_id)) || "",
+          String(r.method),
+          lari(r.amount),
+          String(r.note),
+          Number(r.voided) ? "да" : "",
+        ]),
+      ],
+      Начисления: [
+        ["Дата", "Ученик", "Направление", "Название", "Сумма ₾", "Отменено"],
+        ...(await all("SELECT * FROM charges ORDER BY created")).map((r) => [
+          day(r.created),
+          name.get(String(r.user_id)) || "",
+          String(r.kind),
+          String(r.title),
+          lari(r.amount),
+          Number(r.voided) ? "да" : "",
+        ]),
+      ],
+      Расходы: [
+        [
+          "Дата",
+          "Статья",
+          "Филиал",
+          "Чем оплачено",
+          "Сумма ₾",
+          "Описание",
+          "Кто внёс",
+          "Отменён",
+        ],
+        ...(await all("SELECT * FROM expenses ORDER BY spent_on,created")).map(
+          (r) => [
+            String(r.spent_on),
+            categoryById(String(r.category))?.label || String(r.category),
+            String(r.city || "общий"),
+            String(r.method),
+            lari(r.amount),
+            String(r.note),
+            name.get(String(r.created_by)) || "",
+            Number(r.voided) ? "да" : "",
+          ],
+        ),
+      ],
+      Выплаты: [
+        [
+          "Дата",
+          "Сотрудник",
+          "Вид",
+          "Чем выплачено",
+          "Сумма ₾",
+          "Подтверждено",
+        ],
+        ...(
+          await all("SELECT * FROM payouts WHERE voided=0 ORDER BY created")
+        ).map((r) => [
+          day(r.created),
+          name.get(String(r.user_id)) || "",
+          String(r.kind),
+          String(r.method),
+          lari(r.amount),
+          r.confirmed_at ? day(r.confirmed_at) : "нет",
+        ]),
+      ],
+      Инкассация: [
+        ["Дата", "От кого", "Кому", "Сумма ₾", "Подтверждено"],
+        ...(
+          await all("SELECT * FROM collections WHERE voided=0 ORDER BY created")
+        ).map((r) => [
+          day(r.created),
+          name.get(String(r.from_user)) || "",
+          name.get(String(r.to_user)) || "",
+          lari(r.amount),
+          r.confirmed_at ? day(r.confirmed_at) : "нет",
+        ]),
+      ],
+      Остатки: [
+        ["Счёт", "Остаток ₾", "Обновлено"],
+        ...Object.entries(await accountBalances()).map(([k, x]) => [
+          k,
+          lari(x.balance),
+          day(new Date().toISOString()),
+        ]),
+      ],
+    };
+    try {
+      for (const [tab, rows] of Object.entries(tabs))
+        await replaceTab(tab, rows);
+    } catch (e) {
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(
+          user.id,
+          "sheets:error",
+          String((e as Error).message).slice(0, 300),
+        );
+      return fail("sheetsFailed", 502);
+    }
+    return json({
+      ok: true,
+      tabs: Object.fromEntries(
+        Object.entries(tabs).map(([k, v]) => [k, v.length - 1]),
+      ),
     });
   }
   if (p[1] === "adjust" || p[1] === "adjust-void") {

@@ -505,6 +505,29 @@ export function MoneyOverview() {
       setError("Не удалось записать корректировку.");
     }
   }
+  const [sheets, setSheets] = useState<Row | null>(null);
+  const [syncMsg, setSyncMsg] = useState("");
+  useEffect(() => {
+    api("finance/sheets-status", {})
+      .then(setSheets)
+      .catch(() => {});
+  }, []);
+  async function syncSheets() {
+    setSyncMsg("Синхронизирую…");
+    try {
+      const x = await api("finance/sheets-sync", {});
+      setSyncMsg(
+        "Готово: " +
+          Object.entries(x.tabs as Record<string, number>)
+            .map(([k, n]) => `${k} ${n}`)
+            .join(", "),
+      );
+    } catch {
+      setSyncMsg(
+        "Не получилось записать в таблицу. Проверьте доступ таблицы для сервисного адреса.",
+      );
+    }
+  }
   function csv() {
     if (!r) return;
     const rows: (string | number)[][] = [
@@ -598,6 +621,53 @@ export function MoneyOverview() {
           Скачать для Excel / Google Таблиц
         </button>
       </div>
+      {sheets && (
+        <div className="notice sheets-note">
+          {sheets.configured ? (
+            <>
+              <span>
+                Google Таблица подключена: каждая операция добавляется в лист
+                «Журнал» сама.{" "}
+                <a href={sheets.url} target="_blank" rel="noopener noreferrer">
+                  Открыть таблицу
+                </a>
+              </span>
+              <button
+                type="button"
+                className="button small outline-dark"
+                onClick={syncSheets}
+              >
+                Обновить все листы
+              </button>
+              {syncMsg && <small>{syncMsg}</small>}
+            </>
+          ) : (
+            <details>
+              <summary>Google Таблица не подключена. Как подключить</summary>
+              <ol>
+                <li>
+                  В Google Cloud создайте сервисный аккаунт и скачайте его ключ
+                  (JSON), включите Google Sheets API.
+                </li>
+                <li>
+                  Создайте таблицу и дайте доступ «Редактор» адресу сервисного
+                  аккаунта из ключа (client_email).
+                </li>
+                <li>
+                  В Vercel добавьте переменные:{" "}
+                  <code>GOOGLE_SERVICE_ACCOUNT_JSON</code> (содержимое ключа) и{" "}
+                  <code>GOOGLE_SHEET_ID</code> (часть адреса таблицы между /d/ и
+                  /edit).
+                </li>
+                <li>
+                  Перезапустите сайт — здесь появится кнопка «Обновить все
+                  листы».
+                </li>
+              </ol>
+            </details>
+          )}
+        </div>
+      )}
       {error && (
         <p className="error" role="alert">
           {error}

@@ -828,3 +828,86 @@ test("debts are aged first-in-first-out and pay is split by direction", async ()
   });
   assert.equal(t.theory, 10000);
 });
+
+test("Google Sheets mirror signs the service account and writes rows", async () => {
+  const { generateKeyPairSync, createVerify } = await import("node:crypto");
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+  });
+  const pem = privateKey.export({ type: "pkcs8", format: "pem" }) as string;
+  const sheets = await import("../src/lib/sheets.ts");
+  // not configured: a quiet no-op
+  delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  assert.equal(sheets.sheetsConfigured(), false);
+  assert.equal(
+    await sheets.appendRow("Журнал", ["x"], (async () => {
+      throw new Error("must not call");
+    }) as any),
+    false,
+  );
+  // the key may be given raw or base64, with escaped newlines
+  const key = JSON.stringify({
+    client_email: "bot@x.iam.gserviceaccount.com",
+    private_key: pem.replace(/\n/g, "\\n"),
+  });
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = Buffer.from(key).toString("base64");
+  process.env.GOOGLE_SHEET_ID = "SHEET123";
+  assert.equal(sheets.sheetsConfigured(), true);
+  assert.equal(sheets.serviceEmail(), "bot@x.iam.gserviceaccount.com");
+  const jwt = sheets.signAssertion(sheets.creds()!, 1000);
+  const [h, b, sig] = jwt.split(".");
+  assert.ok(
+    createVerify("RSA-SHA256")
+      .update(`${h}.${b}`)
+      .verify(publicKey, Buffer.from(sig!, "base64url")),
+    "signature verifies",
+  );
+  assert.equal(JSON.parse(Buffer.from(b!, "base64url").toString()).exp, 4600);
+  // calls: token, tab list, append
+  const calls: { url: string; method: string; body?: string }[] = [];
+  const fake = (async (url: string, init: any = {}) => {
+    calls.push({
+      url: String(url),
+      method: init.method || "GET",
+      body: init.body ? String(init.body) : undefined,
+    });
+    const u = String(url);
+    const body = u.includes("oauth2")
+      ? { access_token: "tok", expires_in: 3600 }
+      : u.includes("fields=sheets")
+        ? { sheets: [] }
+        : {};
+    return {
+      ok: true,
+      status: 200,
+      json: async () => body,
+      text: async () => "",
+    } as any;
+  }) as any;
+  assert.equal(
+    await sheets.appendRow(
+      "Журнал",
+      ["2026-11-18", "Расход", "Оператор", 12.5, "вода"],
+      fake,
+    ),
+    true,
+  );
+  const append = calls.find((c) => c.url.includes(":append"))!;
+  assert.ok(append.url.includes("SHEET123"));
+  assert.deepEqual(JSON.parse(append.body!).values, [
+    ["2026-11-18", "Расход", "Оператор", 12.5, "вода"],
+  ]);
+  assert.ok(
+    calls.some((c) => c.url.includes(":batchUpdate")),
+    "a missing tab is created first",
+  );
+  // a failing spreadsheet never throws out of the live journal
+  const broken = (async () => ({
+    ok: false,
+    status: 500,
+    json: async () => ({}),
+    text: async () => "boom",
+  })) as any;
+  assert.equal(await sheets.appendRow("Журнал", ["x"], broken), false);
+  delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+});
