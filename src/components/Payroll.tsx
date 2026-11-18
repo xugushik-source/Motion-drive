@@ -6,9 +6,9 @@ import { gel } from "./Finance";
 
 type Row = Record<string, any>;
 const ROLE: Record<string, string> = {
-  admin: "Администратор",
+  admin: "Владелец",
   manager: "Менеджмент",
-  operator: "Оператор",
+  operator: "Администратор",
   instructor: "Инструктор",
   lecturer: "Лектор",
 };
@@ -188,7 +188,7 @@ export function MySalary() {
           </ul>
         </>
       )}
-      <Notice>Суммы и ставки видят только администраторы.</Notice>
+      <Notice>Суммы и ставки видят только владельцы.</Notice>
     </div>
   );
 }

@@ -13,9 +13,9 @@ import { api, Field, type Item } from "./Site";
 import { formatPhone } from "../lib/phone";
 
 const ROLE: Record<string, string> = {
-  admin: "Администратор (полный доступ)",
+  admin: "Владелец (полный доступ, деньги и зарплаты)",
   manager: "Менеджмент",
-  operator: "Оператор",
+  operator: "Администратор (заявки, оплаты, касса)",
   instructor: "Инструктор",
   lecturer: "Лектор",
 };
@@ -46,7 +46,7 @@ export default function Staff({
     accountExists: "Этот телефон уже занят другим аккаунтом.",
     hasHistory:
       "У этого человека есть история (занятия, оплаты, записи). Удалить нельзя, закройте доступ.",
-    lastAdmin: "Нельзя закрыть доступ последнему администратору.",
+    lastAdmin: "Нельзя закрыть доступ последнему владельцу.",
     forbidden: "Для этого действия нет прав.",
     invalid: "Проверьте данные.",
     badPhone: "Неверный номер телефона.",
