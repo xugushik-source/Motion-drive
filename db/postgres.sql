@@ -32,6 +32,8 @@ ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS gender TEXT;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS birth_year INTEGER;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS active INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS lesson_rate INTEGER;
+ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS personal_id TEXT;
+ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS pay_method TEXT;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS must_change_password INTEGER NOT NULL DEFAULT 0;
 CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON motion_drive.users(phone) WHERE phone IS NOT NULL;
 ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS series_id TEXT;

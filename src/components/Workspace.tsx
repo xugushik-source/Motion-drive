@@ -32,6 +32,7 @@ import { STAFF_KINDS } from "../lib/roles";
 import { PaymentsTab, FinanceReport } from "./Finance";
 import Applications from "./Applications";
 import Staff from "./Staff";
+import PayPanel from "./PayPanel";
 import { MySalary, PayrollReport } from "./Payroll";
 type Props = {
   user: Item;
@@ -121,7 +122,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
           ]
         : instructor
           ? ["bookings", "students", "schedule", "lessons", "salary"]
-          : ["bookings", "progress", "results", "materials", "messages"]),
+          : [
+              "bookings",
+              "mypay",
+              "progress",
+              "results",
+              "materials",
+              "messages",
+            ]),
     "security",
   ];
   async function refresh() {
@@ -705,6 +713,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             ))}
           </>
         )}
+        {tab === "mypay" && !staff && !instructor && <PayPanel t={t} />}
         {tab === "applications" && staff && <Applications t={t} />}
         {tab === "staff" && admin && (
           <Staff users={data.users} me={user.id} onChange={refresh} />
@@ -728,6 +737,23 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                     )}
                     {!admin && u.role !== "student" && <> · {t(u.role)}</>}
                   </p>
+                  {u.role === "student" && (
+                    <>
+                      {u.pay_method && (
+                        <p className="muted">
+                          {t("payHowShort")}:{" "}
+                          {t(
+                            u.pay_method === "cash" ? "payCash" : "payNoncash",
+                          )}
+                        </p>
+                      )}
+                      <ShowId
+                        id={u.id}
+                        has={!!Number(u.has_personal_id)}
+                        t={t}
+                      />
+                    </>
+                  )}
                   {staff && (admin || u.role === "student") && (
                     <button
                       type="button"
@@ -1880,4 +1906,37 @@ function exportCsv(
   a.download = `motion-drive-orders-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/** Personal number of a student: hidden until staff ask for it; each view is written to the log. */
+function ShowId({
+  id,
+  has,
+  t,
+}: {
+  id: string;
+  has: boolean;
+  t: (k: string) => string;
+}) {
+  const [value, setValue] = useState<string | null>(null);
+  if (!has) return <p className="muted">{t("personalId")}: —</p>;
+  return value === null ? (
+    <button
+      type="button"
+      className="link-button"
+      onClick={async () => {
+        try {
+          const r = await api("student/personal-id", { id });
+          setValue(r.personal_id || "—");
+          setTimeout(() => setValue(null), 30000);
+        } catch {}
+      }}
+    >
+      {t("showPersonalId")}
+    </button>
+  ) : (
+    <p className="muted">
+      {t("personalId")}: <b>{value}</b>
+    </p>
+  );
 }

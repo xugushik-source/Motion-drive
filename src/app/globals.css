@@ -2912,3 +2912,14 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .package-cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 99px; background: #101712; color: white; font-size: 13px; font-weight: 600; white-space: nowrap; transition: background .2s, transform .2s; }
 .package-card:hover .package-cta { background: #ff6b52; color: #1a0a06; transform: translateX(2px); }
 .package-card.featured .package-cta { background: #ff6b52; color: #1a0a06; }
+/* Payment choice at the end of the funnel */
+.pay-panel { display: grid; gap: 14px; text-align: left; margin: 24px 0 8px; padding: 22px; border-radius: 18px; background: white; border: 1px solid var(--line); }
+.pay-panel h3 { margin: 0; font-size: 22px; }
+.pay-due { margin: 0; font-size: 15px; } .pay-due small { color: var(--muted); }
+.pay-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pay-option { display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px 18px; border-radius: 14px; border: 1.5px solid var(--line); background: #f9faf7; cursor: pointer; font: inherit; color: var(--ink); transition: border-color .2s, background .2s, transform .2s; }
+.pay-option:hover { transform: translateY(-2px); border-color: var(--ink); }
+.pay-option.on { border-color: #101712; background: #101712; color: white; }
+.pay-option span { display: grid; gap: 2px; flex: 1; } .pay-option small { opacity: .7; font-size: 12px; }
+.pay-next { margin: 0; padding: 12px 14px; border-radius: 10px; background: #eef7ee; color: #1f5f2a; font-size: 14px; }
+.foreign-id { font-size: 12.5px; } .id-help { margin: 0; font-size: 12px; }

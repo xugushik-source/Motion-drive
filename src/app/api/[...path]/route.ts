@@ -309,8 +309,8 @@ export async function GET(
         users: staff
           ? await all(
               admin
-                ? "SELECT id,name,email,phone,role,gender,birth_year,active,must_change_password FROM users"
-                : "SELECT id,name,email,phone,role,gender,birth_year FROM users",
+                ? "SELECT id,name,email,phone,role,gender,birth_year,active,must_change_password,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users"
+                : "SELECT id,name,email,phone,role,gender,birth_year,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users",
             )
           : instructor
             ? await all(
@@ -347,7 +347,9 @@ function error(e: unknown) {
           ? "badPhone"
           : e.issues.some((i) => i.path[0] === "password")
             ? "passwordShort"
-            : "invalid",
+            : e.issues.some((i) => i.message === "badPersonalId")
+              ? "badPersonalId"
+              : "invalid",
       },
       400,
     );
@@ -509,7 +511,7 @@ export async function POST(
         const id = randomUUID();
         await db
           .prepare(
-            "INSERT INTO users(id,phone,name,password,locale,gender,birth_year) VALUES(?,?,?,?,?,?,?)",
+            "INSERT INTO users(id,phone,name,password,locale,gender,birth_year,personal_id) VALUES(?,?,?,?,?,?,?,?)",
           )
           .run(
             id,
@@ -519,6 +521,7 @@ export async function POST(
             v.locale,
             v.gender ?? null,
             v.birth_year ?? null,
+            v.personal_id,
           );
         await startSession(id);
         return json({
@@ -1036,6 +1039,21 @@ export async function POST(
     // Money entries and debts: all staff. Reports and statistics: administrators.
     if (p[0] === "teach" || p[0] === "payroll")
       return await lessons(p, body, user);
+    if (p[0] === "mypay") return await myPay(p, body, user);
+    if (p[0] === "student" && p[1] === "personal-id") {
+      // The personal number is shown to school staff only, one student at a time, and every view is logged.
+      if (!isStaff(user.role)) return fail("forbidden", 403);
+      const v = z.object({ id: z.string().max(80) }).parse(body);
+      const row = await one(
+        "SELECT personal_id FROM users WHERE id=? AND role='student'",
+        v.id,
+      );
+      if (!row) return fail("notFound", 404);
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(user.id, "student:personal-id:view", JSON.stringify({ id: v.id }));
+      return json({ personal_id: row.personal_id || "" });
+    }
     if (p[0] === "finance") return await finance(p, body, user);
     if (p[0] === "applications") {
       if (!isStaff(user.role)) return fail("forbidden", 403);
@@ -1723,6 +1741,36 @@ async function lessons(p: string[], body: any, user: Row) {
   }
   return fail("notFound", 404);
 }
+/** A student's own money: what is charged, what is paid, how they prefer to pay. */
+async function myPay(p: string[], body: any, user: Row) {
+  if (p[1] === "method") {
+    const v = z.object({ method: z.enum(["cash", "noncash"]) }).parse(body);
+    await db
+      .prepare("UPDATE users SET pay_method=? WHERE id=?")
+      .run(v.method, user.id);
+    return json({ ok: true, method: v.method });
+  }
+  if (p[1] !== "balance") return fail("notFound", 404);
+  const charges = await all(
+    "SELECT id,title,amount,created FROM charges WHERE user_id=? AND voided=0 ORDER BY created DESC",
+    user.id,
+  );
+  const payments = await all(
+    "SELECT id,amount,method,paid_at FROM payments WHERE user_id=? AND voided=0 ORDER BY paid_at DESC",
+    user.id,
+  );
+  const charged = charges.reduce((a, c) => a + Number(c.amount), 0);
+  const paid = payments.reduce((a, c) => a + Number(c.amount), 0);
+  const me = await one("SELECT pay_method FROM users WHERE id=?", user.id);
+  return json({
+    charged,
+    paid,
+    due: Math.max(charged - paid, 0),
+    method: me?.pay_method || null,
+    charges: charges.map((c) => ({ ...c, amount: Number(c.amount) })),
+    payments: payments.map((c) => ({ ...c, amount: Number(c.amount) })),
+  });
+}
 const tetri = (lari: number) => Math.round(lari * 100);
 const lariAmount = z.coerce.number().positive().max(100000).multipleOf(0.01);
 /** Charges and payments. Staff see per-student balances; totals and reports are admin-only. */
@@ -1730,7 +1778,7 @@ async function finance(p: string[], body: any, user: Row) {
   if (!isStaff(user.role)) return fail("forbidden", 403);
   if (p[1] === "debts") {
     const rows = await all(
-      `SELECT u.id,u.name,u.phone,
+      `SELECT u.id,u.name,u.phone,u.pay_method,
         COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.user_id=u.id AND c.voided=0),0) AS charged,
         COALESCE((SELECT SUM(x.amount) FROM payments x WHERE x.user_id=u.id AND x.voided=0),0) AS paid
        FROM users u WHERE u.role='student'
@@ -1745,6 +1793,7 @@ async function finance(p: string[], body: any, user: Row) {
             id: r.id,
             name: r.name,
             phone: r.phone,
+            pay_method: r.pay_method,
             charged,
             paid,
             balance: Math.max(charged - paid, 0),

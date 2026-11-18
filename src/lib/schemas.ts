@@ -15,20 +15,36 @@ export const phoneSchema = z
   });
 // Students sign up with a phone number and a simple password; no SMS by owner decision.
 export const passwordSchema = z.string().min(6).max(128);
-export const registerSchema = z.object({
-  phone: phoneSchema,
-  password: passwordSchema,
-  name: z.string().trim().min(2).max(100),
-  gender: z.enum(["m", "f"]).optional().catch(undefined),
-  birth_year: z.coerce
-    .number()
-    .int()
-    .min(1930)
-    .max(new Date().getFullYear())
-    .optional()
-    .catch(undefined),
-  locale: localeSchema,
-});
+export const registerSchema = z
+  .object({
+    phone: phoneSchema,
+    password: passwordSchema,
+    name: z.string().trim().min(2).max(100),
+    gender: z.enum(["m", "f"]).optional().catch(undefined),
+    birth_year: z.coerce
+      .number()
+      .int()
+      .min(1930)
+      .max(new Date().getFullYear())
+      .optional()
+      .catch(undefined),
+    locale: localeSchema,
+    /** Personal number: 11 digits for Georgian citizens; a passport number (5-20 letters/digits) for foreigners. */
+    personal_id: z.string("badPersonalId").trim().max(30),
+    foreign: z.union([z.boolean(), z.literal("on")]).optional(),
+  })
+  .superRefine((v, ctx) => {
+    const foreign = v.foreign === true || v.foreign === "on";
+    const ok = foreign
+      ? /^[A-Za-z0-9]{5,20}$/.test(v.personal_id)
+      : /^\d{11}$/.test(v.personal_id);
+    if (!ok)
+      ctx.addIssue({
+        code: "custom",
+        path: ["personal_id"],
+        message: "badPersonalId",
+      });
+  });
 export const loginSchema = z.object({
   login: z.string().trim().min(3).max(180),
   password: z.string().max(128),

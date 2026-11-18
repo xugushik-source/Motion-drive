@@ -856,6 +856,7 @@ export default function Site({
                 <div className="legal">
                   <Notice>{t("unverified")}</Notice>
                   <p>{t("legalText")}</p>
+                  <p>{t("idPolicy")}</p>
                   <p>
                     <b>{t("lateRuleTitle")}.</b> {t("lateRule")}
                   </p>

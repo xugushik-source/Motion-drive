@@ -28,6 +28,7 @@ test("registration uses a phone, cannot set a role and enforces a 6+ password", 
     name: "Student",
     locale: "ru",
     role: "admin",
+    personal_id: "01001012345",
   });
   assert.equal("role" in parsed, false);
   assert.equal(parsed.phone, "+995597939327");
@@ -596,4 +597,29 @@ test("payouts: a debt stays until the employee confirms the money, a surplus is 
   );
   assert.equal(kpi.accrued, 14000);
   assert.equal(accrualSince([], "2026-11").accrued, 0);
+});
+
+test("personal number: 11 digits for Georgian citizens, a passport number only when marked foreign", async () => {
+  const base = {
+    phone: "597 93 93 27",
+    password: "simple",
+    name: "Student",
+    locale: "ru",
+  };
+  const ok = (extra: object) =>
+    registerSchema.safeParse({ ...base, ...extra }).success;
+  assert.ok(ok({ personal_id: "01001012345" }));
+  assert.ok(!ok({ personal_id: "0100101234" }), "10 digits");
+  assert.ok(!ok({ personal_id: "010010123456" }), "12 digits");
+  assert.ok(!ok({ personal_id: "0100101234A" }), "letters for a citizen");
+  assert.ok(!ok({}), "required");
+  assert.ok(
+    ok({ personal_id: "AB1234567", foreign: "on" }),
+    "foreign passport",
+  );
+  assert.ok(!ok({ personal_id: "12", foreign: "on" }), "too short");
+  assert.ok(
+    !ok({ personal_id: "AB 123 45", foreign: true }),
+    "no spaces or symbols",
+  );
 });

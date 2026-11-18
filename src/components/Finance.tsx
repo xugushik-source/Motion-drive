@@ -9,6 +9,7 @@ type Debt = {
   id: string;
   name: string;
   phone?: string;
+  pay_method?: string | null;
   charged: number;
   paid: number;
   balance: number;
@@ -318,6 +319,12 @@ export function PaymentsTab({ t }: { t: T }) {
               >
                 <span style={{ width: d.percent + "%" }} />
               </div>
+              {d.pay_method && (
+                <p className="muted">
+                  {t("payHowShort")}:{" "}
+                  {t(d.pay_method === "cash" ? "payCash" : "payNoncash")}
+                </p>
+              )}
               <p>
                 {t("paidSum")}: <b>{gel(d.paid)}</b> / {gel(d.charged)} (
                 {d.percent}%)

@@ -23,6 +23,7 @@ import { api, Field, Notice, type Item } from "./Site";
 import AvailabilityPicker from "./AvailabilityPicker";
 import Packages, { sortPackages } from "./Packages";
 import { ApplyForm } from "./Programs";
+import PayPanel from "./PayPanel";
 import { autoPick, type DayPart } from "../lib/schedule";
 type Common = { locale: string; t: (k: string) => string };
 
@@ -70,6 +71,25 @@ function AccountFields({
             />
           </Field>
         </div>
+      )}
+      {register && (
+        <>
+          <Field label={t("personalId")}>
+            <input
+              name="personal_id"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={20}
+              placeholder="01001012345"
+              required
+            />
+          </Field>
+          <label className="checkbox foreign-id">
+            <input type="checkbox" name="foreign" />
+            <span>{t("foreignId")}</span>
+          </label>
+          <p className="hint id-help">{t("personalIdHelp")}</p>
+        </>
       )}
       <Field label={t("phone")}>
         <input
@@ -425,6 +445,7 @@ export function Booking({
             </div>
           );
         })()}
+        <PayPanel t={t} />
         <div className="success-actions">
           <Link className="button" href={"/" + locale + "/account"}>
             {t("account")}
