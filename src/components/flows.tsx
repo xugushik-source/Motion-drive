@@ -505,6 +505,7 @@ export function Booking({
           <div className="booking-summary">
             <ShieldCheck size={22} />
             <p>{t("operatorConfirms")}</p>
+            <p className="late-rule">{t("lateRule")}</p>
           </div>
         </div>
       </aside>
@@ -834,6 +835,7 @@ export function Booking({
               {!registerMode && <Forgot t={t} />}
             </>
           )}
+          <p className="late-rule">{t("lateRule")}</p>
           <Field label={t("note")}>
             <textarea
               name="note"

@@ -2901,3 +2901,4 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .program-art .art-float.a3 { animation-delay: -3.2s; animation-duration: 5s; }
 @keyframes artFloat { from { translate: 0 0; } to { translate: 0 -7px; } }
 @media (prefers-reduced-motion: reduce) { .program-art .art-float { animation: none; } }
+.late-rule { margin: 0; padding: 12px 14px; border-radius: 10px; background: #f4f5ef; border: 1px solid var(--line); font-size: 12.5px; line-height: 1.6; color: var(--muted); }

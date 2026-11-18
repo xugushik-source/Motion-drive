@@ -179,3 +179,18 @@ test("Armenian question marks inside a word do not split it", () => {
   assert.equal(reply("Որտե՞ղ եք գտնվում", "hy"), 0);
   assert.equal(reply("Որքա՞ն արժե տեսությունը", "hy"), 4);
 });
+
+test("the chatbot explains what happens when a student is late (FAQ 13) in every language", () => {
+  for (const [page, q] of [
+    ["ru", "Что если я опоздаю на урок?"],
+    ["ru", "я опаздываю на вождение"],
+    ["ru", "Опоздал на 15 минут, урок продлят?"],
+    ["en", "What if I am late for a lesson?"],
+    ["en", "I'm running late for driving"],
+    ["ka", "რა მოხდება, თუ გაკვეთილზე დავაგვიანე?"],
+    ["ka", "გაკვეთილზე დაგვიანება"],
+    ["hy", "Ի՞նչ կլինի, եթե դասին ուշանամ։"],
+    ["hy", "ես ուշացել եմ դասից"],
+  ])
+    assert.equal(reply(q, page), 13, `[${page}] ${q}`);
+});
