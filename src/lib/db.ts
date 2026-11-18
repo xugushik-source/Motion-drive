@@ -89,6 +89,17 @@ function localDb() {
       sqlite.exec(
         "ALTER TABLE bookings ADD COLUMN package_title TEXT NOT NULL DEFAULT ''",
       );
+    for (const [table, col, ddl] of [
+      ["expenses", "method", "TEXT NOT NULL DEFAULT 'cash'"],
+      ["payouts", "method", "TEXT NOT NULL DEFAULT 'cash'"],
+      ["charges", "kind", "TEXT NOT NULL DEFAULT 'other'"],
+    ] as const) {
+      const have = sqlite.prepare(`PRAGMA table_info(${table})`).all() as {
+        name: string;
+      }[];
+      if (!have.some((c) => c.name === col))
+        sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
+    }
     const slotNow = sqlite.prepare("PRAGMA table_info(slots)").all() as {
       name: string;
     }[];

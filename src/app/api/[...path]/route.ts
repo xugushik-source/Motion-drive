@@ -11,6 +11,8 @@ import {
   previousMonth,
   computePay,
   accrualSince,
+  nextMonth,
+  payByDirection,
   balanceOf,
   DEFAULT_RATES,
   lessonKindOf,
@@ -52,6 +54,7 @@ import {
 } from "../../../lib/auth";
 import { normalizePhone } from "../../../lib/phone";
 import { priceKit } from "../../../lib/kit";
+import { ACCOUNTS, ageDebt, change, type Account } from "../../../lib/books";
 import {
   registerSchema,
   phoneSchema,
@@ -637,11 +640,21 @@ export async function POST(
         v.gear !== "none" ? "city" : v.yard > 0 ? "yard" : "theory";
       const id = randomUUID();
       await transaction(async () => {
-        await db
-          .prepare(
-            "INSERT INTO charges(id,user_id,title,amount,created_by) VALUES(?,?,?,?,?)",
-          )
-          .run(id, user.id, title.slice(0, 200), tetri(ready.total), user.id);
+        // one charge per part, so income can be analysed by direction (theory / yard / city)
+        for (const part of price.parts)
+          await db
+            .prepare(
+              "INSERT INTO charges(id,user_id,series_id,title,kind,amount,created_by) VALUES(?,?,?,?,?,?,?)",
+            )
+            .run(
+              randomUUID(),
+              user.id,
+              id,
+              ("Свой пакет: " + part.label).slice(0, 200),
+              part.kind,
+              tetri(part.cost),
+              user.id,
+            );
         await db
           .prepare(
             "INSERT INTO applications(id,category,course,city,name,phone,note,locale,created) VALUES(?,?,?,?,?,?,?,?,?)",
@@ -778,13 +791,15 @@ export async function POST(
             if (Number.isFinite(total) && total > 0)
               await db
                 .prepare(
-                  "INSERT INTO charges(id,user_id,series_id,title,amount,created_by) VALUES(?,?,?,?,?,?)",
+                  "INSERT INTO charges(id,user_id,series_id,title,kind,amount,created_by) VALUES(?,?,?,?,?,?,?)",
                 )
                 .run(
                   randomUUID(),
                   user.id,
                   seriesId,
                   packageSnapshot(pack, slotIds.length),
+                  v.lesson_kind ||
+                    lessonKindOf(pack.id, pack.program || v.program),
                   total,
                   "system",
                 );
@@ -2143,6 +2158,88 @@ async function myPay(p: string[], body: any, user: Row) {
 }
 const tetri = (lari: number) => Math.round(lari * 100);
 const lariAmount = z.coerce.number().positive().max(100000).multipleOf(0.01);
+/** Balance of every money account: opening/adjusted figures + money in − money out. */
+async function accountBalances() {
+  const sum = async (sql: string, ...a: unknown[]) =>
+    Number((await one(sql, ...a))?.n || 0);
+  const out = {} as Record<
+    Account,
+    {
+      adj: number;
+      in: number;
+      exp: number;
+      pay: number;
+      out: number;
+      balance: number;
+    }
+  >;
+  for (const acc of ACCOUNTS) {
+    const adj = await sum(
+      "SELECT COALESCE(SUM(amount),0) AS n FROM cash_adjust WHERE voided=0 AND account=?",
+      acc,
+    );
+    const inn =
+      acc === "owners"
+        ? await sum(
+            "SELECT COALESCE(SUM(amount),0) AS n FROM collections WHERE voided=0 AND confirmed_at IS NOT NULL",
+          )
+        : await sum(
+            "SELECT COALESCE(SUM(amount),0) AS n FROM payments WHERE voided=0 AND method=?",
+            acc,
+          );
+    const exp = await sum(
+      "SELECT COALESCE(SUM(amount),0) AS n FROM expenses WHERE voided=0 AND method=?",
+      acc,
+    );
+    const pay = await sum(
+      "SELECT COALESCE(SUM(amount),0) AS n FROM payouts WHERE voided=0 AND method=?",
+      acc,
+    );
+    // cash leaves the desk when it is handed to the management
+    const handed =
+      acc === "cash"
+        ? await sum(
+            "SELECT COALESCE(SUM(amount),0) AS n FROM collections WHERE voided=0",
+          )
+        : 0;
+    out[acc] = {
+      adj,
+      in: inn,
+      exp,
+      pay,
+      out: handed,
+      balance: adj + inn - exp - pay - handed,
+    };
+  }
+  return out;
+}
+/** The branch a student belongs to: the city of the latest order or application. */
+async function studentCities() {
+  const map = new Map<string, string>();
+  const users = await all("SELECT id,phone FROM users WHERE role='student'");
+  const byPhone = new Map<string, string>();
+  for (const a of await all(
+    "SELECT phone,city FROM applications ORDER BY created",
+  ))
+    byPhone.set(String(a.phone), String(a.city));
+  for (const u of users)
+    map.set(String(u.id), byPhone.get(String(u.phone)) || "akhalkalaki");
+  for (const b of await all(
+    "SELECT user_id,city FROM bookings ORDER BY created",
+  ))
+    map.set(String(b.user_id), String(b.city));
+  return map;
+}
+const monthsBetween = (from: string, to: string) => {
+  const out: string[] = [];
+  for (
+    let m = from.slice(0, 7);
+    m <= to.slice(0, 7) && out.length < 60;
+    m = nextMonth(m)
+  )
+    out.push(m);
+  return out;
+};
 /** Charges and payments. Staff see per-student balances; totals and reports are admin-only. */
 async function finance(p: string[], body: any, user: Row) {
   if (!isStaff(user.role)) return fail("forbidden", 403);
@@ -2203,6 +2300,9 @@ async function finance(p: string[], body: any, user: Row) {
         title: z.string().trim().min(2).max(200),
         amount: lariAmount,
         series_id: z.string().max(80).nullable().optional(),
+        kind: z
+          .enum(["theory", "yard", "city", "exam", "other"])
+          .default("other"),
       })
       .parse(body);
     if (
@@ -2215,13 +2315,14 @@ async function finance(p: string[], body: any, user: Row) {
     const id = randomUUID();
     await db
       .prepare(
-        "INSERT INTO charges(id,user_id,series_id,title,amount,created_by) VALUES(?,?,?,?,?,?)",
+        "INSERT INTO charges(id,user_id,series_id,title,kind,amount,created_by) VALUES(?,?,?,?,?,?,?)",
       )
       .run(
         id,
         v.user_id,
         v.series_id || null,
         v.title,
+        v.kind,
         tetri(v.amount),
         user.id,
       );
@@ -2506,6 +2607,7 @@ async function finance(p: string[], body: any, user: Row) {
         user_id: z.string().max(80),
         amount: z.coerce.number().positive().max(1000000).multipleOf(0.01),
         kind: z.enum(["salary", "advance"]).default("salary"),
+        method: z.enum(["cash", "card", "transfer", "owners"]).default("cash"),
         note: z.string().trim().max(200).default(""),
       })
       .parse(body);
@@ -2519,13 +2621,14 @@ async function finance(p: string[], body: any, user: Row) {
     const id = randomUUID();
     await db
       .prepare(
-        "INSERT INTO payouts(id,user_id,amount,kind,note,created_by,created) VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO payouts(id,user_id,amount,kind,method,note,created_by,created) VALUES(?,?,?,?,?,?,?,?)",
       )
       .run(
         id,
         v.user_id,
         tetri(v.amount),
         v.kind,
+        v.method,
         v.note,
         user.id,
         new Date().toISOString(),
@@ -2570,6 +2673,7 @@ async function finance(p: string[], body: any, user: Row) {
         amount: lariAmount,
         note: z.string().trim().min(3).max(300),
         city: z.enum(["", "akhalkalaki", "ninotsminda"]).default(""),
+        method: z.enum(["cash", "card", "transfer", "owners"]).optional(),
         spent_on: z
           .string()
           .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -2582,7 +2686,7 @@ async function finance(p: string[], body: any, user: Row) {
     const id = randomUUID();
     await db
       .prepare(
-        "INSERT INTO expenses(id,category,amount,note,city,spent_on,created_by,created) VALUES(?,?,?,?,?,?,?,?)",
+        "INSERT INTO expenses(id,category,amount,note,city,spent_on,method,created_by,created) VALUES(?,?,?,?,?,?,?,?,?)",
       )
       .run(
         id,
@@ -2592,6 +2696,10 @@ async function finance(p: string[], body: any, user: Row) {
         v.city,
         v.spent_on ||
           new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10),
+        // operators pay small things from the cash desk; big expenses default to the bank
+        canSeeFinance(user.role)
+          ? v.method || (isBigCategory(v.category) ? "transfer" : "cash")
+          : "cash",
         user.id,
         new Date().toISOString(),
       );
@@ -2661,30 +2769,11 @@ async function finance(p: string[], body: any, user: Row) {
     return json({ ok: true });
   }
   if (p[1] === "cash") {
-    // The cash desk: cash received minus small cash expenses minus what was handed over to the owners.
-    const got = Number(
-      (
-        await one(
-          "SELECT COALESCE(SUM(amount),0) AS n FROM payments WHERE voided=0 AND method='cash'",
-        )
-      )?.n || 0,
-    );
-    const smallIds = EXPENSE_CATEGORIES.filter((c) => !c.big).map((c) => c.id);
-    const spent = Number(
-      (
-        await one(
-          `SELECT COALESCE(SUM(amount),0) AS n FROM expenses WHERE voided=0 AND category IN (${smallIds.map(() => "?").join(",")})`,
-          ...smallIds,
-        )
-      )?.n || 0,
-    );
-    const handed = Number(
-      (
-        await one(
-          "SELECT COALESCE(SUM(amount),0) AS n FROM collections WHERE voided=0",
-        )
-      )?.n || 0,
-    );
+    // The cash desk: cash in minus cash paid out minus what was handed over to the management.
+    const bal = (await accountBalances()).cash;
+    const got = bal.in + bal.adj,
+      spent = bal.exp + bal.pay,
+      handed = bal.out;
     const admins = (
       await all(
         "SELECT id,name FROM users WHERE role='admin' AND active=1 ORDER BY name",
@@ -2839,6 +2928,314 @@ async function finance(p: string[], body: any, user: Row) {
       salaries,
       dividends,
       net: received - expenses - salaries,
+      categories: EXPENSE_CATEGORIES,
+    });
+  }
+  if (p[1] === "adjust" || p[1] === "adjust-void") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    if (p[1] === "adjust-void") {
+      const v = z.object({ id: z.string().max(80) }).parse(body);
+      await db.prepare("UPDATE cash_adjust SET voided=1 WHERE id=?").run(v.id);
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(user.id, "account:adjust-void", JSON.stringify(v));
+      return json({ ok: true });
+    }
+    const v = z
+      .object({
+        account: z.enum(["cash", "card", "transfer", "owners"]),
+        // signed: a positive figure adds money, a negative one takes it away
+        amount: z.coerce.number().min(-1000000).max(1000000).multipleOf(0.01),
+        note: z.string().trim().min(3).max(300),
+      })
+      .parse(body);
+    if (!v.amount) return fail("invalid");
+    const id = randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO cash_adjust(id,account,amount,note,created_by,created) VALUES(?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        v.account,
+        Math.round(v.amount * 100),
+        v.note,
+        user.id,
+        new Date().toISOString(),
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "account:adjust", JSON.stringify({ id, ...v }));
+    return json({ id });
+  }
+  if (p[1] === "overview") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        city: z.enum(["", "akhalkalaki", "ninotsminda"]).default(""),
+      })
+      .parse(body);
+    const DAY = 86400000;
+    const bounds = (f: string, t: string) => [
+      new Date(Date.parse(f + "T00:00:00Z") - 4 * 3600e3).toISOString(),
+      new Date(Date.parse(t + "T00:00:00Z") + 20 * 3600e3).toISOString(),
+    ];
+    const [a, b] = bounds(v.from, v.to);
+    const spanDays =
+      Math.round((Date.parse(v.to) - Date.parse(v.from)) / DAY) + 1;
+    const prevTo = new Date(Date.parse(v.from) - DAY)
+      .toISOString()
+      .slice(0, 10);
+    const prevFrom = new Date(Date.parse(v.from) - spanDays * DAY)
+      .toISOString()
+      .slice(0, 10);
+    const [pa, pb] = bounds(prevFrom, prevTo);
+    const cities = await studentCities();
+    const inCity = (uid: string) => !v.city || cities.get(uid) === v.city;
+    const students = await all(
+      "SELECT id,name,phone FROM users WHERE role='student'",
+    );
+
+    // --- income: charged (accrual) and received (cash) ---
+    const charges = (await all(
+      "SELECT user_id,kind,amount,created FROM charges WHERE voided=0",
+    )) as Row[];
+    const payments = (await all(
+      "SELECT user_id,method,amount,paid_at FROM payments WHERE voided=0",
+    )) as Row[];
+    const sumIn = <T extends Row>(
+      rows: T[],
+      key: "created" | "paid_at",
+      lo: string,
+      hi: string,
+    ) =>
+      rows.filter(
+        (r) => r[key] >= lo && r[key] < hi && inCity(String(r.user_id)),
+      );
+    const chargedRows = sumIn(charges, "created", a, b);
+    const receivedRows = sumIn(payments, "paid_at", a, b);
+    const total = (rows: Row[]) =>
+      rows.reduce((s, r) => s + Number(r.amount), 0);
+    const group = (rows: Row[], key: (r: Row) => string) => {
+      const m: Record<string, number> = {};
+      for (const r of rows) m[key(r)] = (m[key(r)] || 0) + Number(r.amount);
+      return m;
+    };
+    const charged = total(chargedRows),
+      received = total(receivedRows);
+    const prevCharged = total(sumIn(charges, "created", pa, pb));
+    const prevReceived = total(sumIn(payments, "paid_at", pa, pb));
+
+    // --- receivables with age ---
+    const debtors = students
+      .filter((u) => inCity(String(u.id)))
+      .map((u) => {
+        const mine = charges
+          .filter((c) => c.user_id === u.id)
+          .map((c) => ({
+            amount: Number(c.amount),
+            created: String(c.created),
+          }));
+        const paid = payments
+          .filter((x) => x.user_id === u.id)
+          .reduce((s, x) => s + Number(x.amount), 0);
+        return {
+          id: u.id,
+          name: u.name,
+          phone: u.phone,
+          ...ageDebt(mine, paid),
+        };
+      })
+      .filter((d) => d.total > 0)
+      .sort((x, y) => y.total - x.total);
+    const receivables = {
+      total: debtors.reduce((s, d) => s + d.total, 0),
+      current: debtors.reduce((s, d) => s + d.current, 0),
+      month: debtors.reduce((s, d) => s + d.month, 0),
+      old: debtors.reduce((s, d) => s + d.old, 0),
+      count: debtors.length,
+      top: debtors.slice(0, 10),
+    };
+
+    // --- expenses ---
+    const expRows = (await all(
+      "SELECT category,city,method,amount,spent_on FROM expenses WHERE voided=0",
+    )) as Row[];
+    const expIn = (lo: string, hi: string) =>
+      expRows.filter(
+        (r) =>
+          r.spent_on >= lo &&
+          r.spent_on <= hi &&
+          (!v.city || r.city === v.city),
+      );
+    const expNow = expIn(v.from, v.to);
+    const byCategory = group(expNow, (r) => String(r.category));
+    const dividends = byCategory[DIVIDENDS] || 0;
+    const expenses = total(expNow) - dividends;
+    const prevExpenses =
+      total(expIn(prevFrom, prevTo)) -
+      (group(expIn(prevFrom, prevTo), (r) => String(r.category))[DIVIDENDS] ||
+        0);
+    const expByCity = group(
+      expNow.filter((r) => r.category !== DIVIDENDS),
+      (r) => String(r.city || "common"),
+    );
+
+    // --- payroll: accrued for the months of the period, paid in the period, owed now ---
+    const people = await all(
+      "SELECT id,name,role FROM users WHERE role<>'student' AND active=1 ORDER BY name",
+    );
+    const allItems = (await all(
+      "SELECT * FROM pay_items WHERE voided=0 ORDER BY created",
+    )) as unknown as (PayItem & { user_id: string })[];
+    const months = monthsBetween(v.from, v.to);
+    const direction: Record<string, number> = {};
+    let accrued = 0;
+    const staffRows = [];
+    for (const u of people) {
+      const mine = allItems.filter((i) => i.user_id === u.id);
+      const counts = await countsByMonth(String(u.id));
+      let acc = 0;
+      for (const m of months) {
+        acc += computePay(mine, m, counts[m] || {}).total;
+        for (const [k, n] of Object.entries(
+          payByDirection(mine, m, counts[m] || {}),
+        ))
+          direction[k] = (direction[k] || 0) + n;
+      }
+      const led = await ledgerFor(String(u.id));
+      const paidNow = Number(
+        (
+          await one(
+            "SELECT COALESCE(SUM(amount),0) AS n FROM payouts WHERE voided=0 AND user_id=? AND created>=? AND created<?",
+            u.id,
+            a,
+            b,
+          )
+        )?.n || 0,
+      );
+      accrued += acc;
+      if (acc || paidNow || led.debt || led.advance)
+        staffRows.push({
+          id: u.id,
+          name: u.name,
+          role: u.role,
+          accrued: acc,
+          paid: paidNow,
+          debt: led.debt,
+          advance: led.advance,
+        });
+    }
+    const paidOut = staffRows.reduce((s, r) => s + r.paid, 0);
+    const owed = staffRows.reduce((s, r) => s + r.debt, 0);
+
+    // --- direction economics ---
+    const chargedByKind = group(chargedRows, (r) => String(r.kind || "other"));
+    const lessonRows = (await all(
+      "SELECT lesson_kind,count(*) AS n FROM bookings WHERE accepted_at IS NOT NULL AND accepted_at>=? AND accepted_at<? GROUP BY lesson_kind",
+      a,
+      b,
+    )) as Row[];
+    const lessonsByKind: Record<string, number> = {};
+    for (const r of lessonRows)
+      lessonsByKind[String(r.lesson_kind || "other")] = Number(r.n);
+    const kinds = ["theory", "yard", "city", "exam", "other"];
+    const directions = kinds
+      .map((k) => ({
+        kind: k,
+        charged: chargedByKind[k] || 0,
+        teachers: direction[k] || 0,
+        lessons: lessonsByKind[k] || 0,
+      }))
+      .filter((d) => d.charged || d.teachers || d.lessons)
+      .map((d) => ({ ...d, margin: d.charged - d.teachers }));
+
+    // --- series for the chart ---
+    const daily = spanDays <= 62;
+    const bucket = (iso: string) =>
+      daily ? iso.slice(0, 10) : iso.slice(0, 7);
+    const ser = new Map<
+      string,
+      { label: string; received: number; expenses: number }
+    >();
+    const put = (label: string, k: "received" | "expenses", n: number) => {
+      const e = ser.get(label) || { label, received: 0, expenses: 0 };
+      e[k] += n;
+      ser.set(label, e);
+    };
+    for (const r of receivedRows)
+      put(
+        bucket(
+          new Date(Date.parse(String(r.paid_at)) + 4 * 3600e3).toISOString(),
+        ),
+        "received",
+        Number(r.amount),
+      );
+    for (const r of expNow.filter((x) => x.category !== DIVIDENDS))
+      put(bucket(String(r.spent_on)), "expenses", Number(r.amount));
+    const series = [...ser.values()].sort((x, y) =>
+      x.label.localeCompare(y.label),
+    );
+
+    const accounts = await accountBalances();
+    const adjustments = (
+      await all(
+        "SELECT * FROM cash_adjust WHERE voided=0 ORDER BY created DESC LIMIT 20",
+      )
+    ).map((r) => ({ ...r, amount: Number(r.amount) }));
+    const cashResult = received - expenses - paidOut;
+    const accrualResult = charged - expenses - accrued;
+    return json({
+      from: v.from,
+      to: v.to,
+      city: v.city,
+      days: spanDays,
+      income: {
+        charged,
+        received,
+        byKind: chargedByKind,
+        byMethod: group(receivedRows, (r) => String(r.method)),
+        byCity: (() => {
+          const m: Record<string, number> = {};
+          for (const r of receivedRows) {
+            const c = cities.get(String(r.user_id)) || "akhalkalaki";
+            m[c] = (m[c] || 0) + Number(r.amount);
+          }
+          return m;
+        })(),
+        prev: { charged: prevCharged, received: prevReceived },
+        change: {
+          charged: change(charged, prevCharged),
+          received: change(received, prevReceived),
+        },
+      },
+      receivables,
+      expenses: {
+        total: expenses,
+        byCategory,
+        byCity: expByCity,
+        prev: prevExpenses,
+        change: change(expenses, prevExpenses),
+        dividends,
+      },
+      payroll: {
+        accrued,
+        paid: paidOut,
+        owed,
+        rows: staffRows,
+        fixed: direction.fixed || 0,
+      },
+      directions,
+      result: {
+        cash: cashResult,
+        accrual: accrualResult,
+        afterDividends: cashResult - dividends,
+      },
+      accounts,
+      adjustments,
+      series,
       categories: EXPENSE_CATEGORIES,
     });
   }

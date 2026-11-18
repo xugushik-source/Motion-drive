@@ -772,3 +772,59 @@ test("driving hours follow the daylight in Akhalkalaki", async () => {
   for (let i = 1; i < all.length; i++)
     assert.equal(all[i]!.start, all[i - 1]!.end);
 });
+
+test("debts are aged first-in-first-out and pay is split by direction", async () => {
+  const { ageDebt, change } = await import("../src/lib/books.ts");
+  const { payByDirection, DEFAULT_RATES } =
+    await import("../src/lib/payroll.ts");
+  const now = Date.parse("2026-11-30T12:00:00Z");
+  const day = (n: number) => new Date(now - n * 86400000).toISOString();
+  // 100 (50 days old) + 200 (20 days) + 300 (3 days), 150 paid: the old one is cleared first
+  const a = ageDebt(
+    [
+      { amount: 10000, created: day(50) },
+      { amount: 20000, created: day(20) },
+      { amount: 30000, created: day(3) },
+    ],
+    15000,
+    now,
+  );
+  assert.equal(a.total, 45000);
+  assert.equal(a.old, 0, "the 50-day-old charge is settled first");
+  assert.equal(a.month, 15000, "what remains of the 20-day-old one");
+  assert.equal(a.current, 30000);
+  assert.equal(a.oldestDays, 20);
+  assert.equal(ageDebt([{ amount: 5000, created: day(40) }], 0, now).old, 5000);
+  assert.equal(
+    ageDebt([{ amount: 5000, created: day(1) }], 9000, now).total,
+    0,
+  );
+  assert.equal(change(150, 100), 50);
+  assert.equal(change(5, 0), null);
+  // an instructor: 10 yard (15 ₾) + 20 city (20 ₾) lessons, plus a fixed salary of 300 ₾
+  const items = [
+    ...DEFAULT_RATES.instructor.map((r: any) => ({
+      ...r,
+      from_month: "2026-11",
+    })),
+    { kind: "salary", amount: 30000, from_month: "2026-11" },
+  ] as any;
+  const d = payByDirection(items, "2026-11", {
+    lessons: { yard: 10, city: 20 },
+  });
+  assert.equal(d.yard, 15000);
+  assert.equal(d.city, 40000);
+  assert.equal(d.fixed, 30000);
+  // a lecturer: 2 students in an Akhalkalaki group go to theory
+  const lec = DEFAULT_RATES.lecturer.map((r: any) => ({
+    ...r,
+    from_month: "2026-11",
+  })) as any;
+  const t = payByDirection(lec, "2026-11", {
+    students: {
+      akhalkalaki: { n: 2, price: 30000 },
+      all: { n: 2, price: 30000 },
+    },
+  });
+  assert.equal(t.theory, 10000);
+});

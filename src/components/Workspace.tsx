@@ -34,7 +34,7 @@ import Applications from "./Applications";
 import Staff from "./Staff";
 import PayPanel from "./PayPanel";
 import { MySalary, PayrollReport } from "./Payroll";
-import { ExpensesTab, PeriodReport } from "./Money";
+import { ExpensesTab, MoneyOverview } from "./Money";
 type Props = {
   user: Item;
   locale: string;
@@ -743,7 +743,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         )}
         {tab === "finance" && admin && (
           <>
-            <PeriodReport />
+            <MoneyOverview />
             <FinanceReport t={t} />
           </>
         )}

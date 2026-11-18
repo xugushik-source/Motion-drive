@@ -369,48 +369,8 @@ export function FinanceReport({ t }: { t: T }) {
       </p>
     );
   if (!r) return <Notice>{t("loading")}</Notice>;
-  const max = Math.max(1, ...r.monthly.map((m: Row) => m.total));
   return (
     <div className="finance">
-      <div className="stat-cards">
-        <article>
-          <small>{t("charged")}</small>
-          <strong>{gel(r.charged)}</strong>
-        </article>
-        <article>
-          <small>{t("paidSum")}</small>
-          <strong>{gel(r.paid)}</strong>
-        </article>
-        <article>
-          <small>{t("outstanding")}</small>
-          <strong>{gel(r.outstanding)}</strong>
-        </article>
-      </div>
-      <h4>{t("revenueByMonth")}</h4>
-      {r.monthly.length ? (
-        <ul className="bars">
-          {[...r.monthly].reverse().map((m: Row) => (
-            <li key={m.month}>
-              <span>{m.month}</span>
-              <i style={{ width: (m.total / max) * 100 + "%" }} />
-              <b>{gel(m.total)}</b>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <Notice>{t("noDebts")}</Notice>
-      )}
-      <h4>{t("byMethod")}</h4>
-      <ul className="bars">
-        {r.methods.map((m: Row) => (
-          <li key={m.method}>
-            <span>
-              {t("method" + m.method[0].toUpperCase() + m.method.slice(1))}
-            </span>
-            <b>{gel(m.total)}</b>
-          </li>
-        ))}
-      </ul>
       <h4>
         {t("studentsStats")}: {r.students.total}
       </h4>

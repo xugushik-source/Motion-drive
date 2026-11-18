@@ -108,11 +108,16 @@ export const yardPrice = (n: number, individual: boolean, single: number) =>
 export function priceKit(kit: Kit, packages: Item[], locale: string) {
   const T = KIT_TEXT[locale] || KIT_TEXT.ru!;
   const p = (id: string) => Number(packages.find((x) => x.id === id)?.price);
-  const parts: { label: string; cost: number }[] = [];
+  const parts: {
+    label: string;
+    cost: number;
+    kind: "theory" | "city" | "yard";
+  }[] = [];
   if (kit.theory !== "none")
     parts.push({
       label: T.theory + " · " + T[kit.theory],
       cost: p("theory-" + kit.theory + "-" + locale),
+      kind: "theory",
     });
   if (kit.gear !== "none")
     parts.push({
@@ -124,11 +129,13 @@ export function priceKit(kit: Kit, packages: Item[], locale: string) {
               `individual-${kit.gear === "automatic" ? "auto" : "manual"}-${locale}`,
             )
           : p(`city-${kit.gear}-${locale}`)),
+      kind: "city",
     });
   if (kit.yard > 0)
     parts.push({
       label: `${T.yardWord} ×${kit.yard}`,
       cost: yardPrice(kit.yard, kit.priv, p("yard-" + locale)),
+      kind: "yard",
     });
   const total = parts.reduce((a, x) => a + x.cost, 0);
   const ok =

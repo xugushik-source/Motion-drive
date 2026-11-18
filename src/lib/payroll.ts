@@ -218,3 +218,41 @@ export function lessonKindOf(
   if (id.startsWith("exam") || program === "exam") return "exam";
   return "city";
 }
+
+/**
+ * Splits a month's pay by direction so the school can see what each kind of teaching really costs:
+ * per-lesson items go to their lesson kind (yard, city, theory, exam), per-student items to theory,
+ * and fixed parts (salary, bonuses, premiums) are kept apart as "fixed".
+ */
+export function payByDirection(
+  items: PayItem[],
+  month: string,
+  counts: PayCounts = {},
+) {
+  const out: Record<string, number> = {
+    yard: 0,
+    city: 0,
+    theory: 0,
+    exam: 0,
+    other: 0,
+    fixed: 0,
+  };
+  const total = computePay(items, month, counts);
+  const lessons = counts.lessons || {};
+  let direct = 0;
+  for (const i of items.filter((x) => itemActive(x, month))) {
+    if (i.kind === "per_lesson") {
+      const n = Math.max(0, Math.round(lessons[i.scope || "all"] ?? 0));
+      const v = Math.round(Number(i.amount) || 0) * n;
+      const key =
+        i.scope && i.scope in out && i.scope !== "fixed" ? i.scope : "other";
+      out[key] = (out[key] || 0) + v;
+      direct += v;
+    }
+  }
+  const perStudent = total.perStudent;
+  out.theory = (out.theory || 0) + perStudent;
+  direct += perStudent;
+  out.fixed = total.total - direct;
+  return out;
+}

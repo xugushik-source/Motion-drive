@@ -2939,3 +2939,15 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .refine { margin-top: 6px; } .refine summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 8px 0; }
 .pay-operator { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: #fff7ed; border: 1px solid #f6d7b0; }
 .pay-operator p { margin: 0; font-size: 14px; } .pay-online-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.money h4 { margin-top: 28px; }
+.money h5 { margin: 14px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.money .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 760px) { .money .two-cols { grid-template-columns: 1fr; } }
+.money .chg { display: block; margin-top: 4px; }
+.money .chg.up { color: #2e7d32; }
+.money .chg.down { color: #b3261e; }
+.money-chart { overflow-x: auto; margin: 10px 0 4px; }
+.money-chart small { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.money-chart small i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.money details { margin: 8px 0; }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { api, Field, Notice } from "./Site";
 import { gel } from "./Finance";
+import { formatPhone } from "../lib/phone";
 import { EXPENSE_CATEGORIES, categoryById } from "../lib/expenses";
 
 type Row = Record<string, any>;
@@ -186,6 +187,7 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
                   category: d.category,
                   amount: d.amount,
                   note: d.note,
+                  method: admin ? d.method : undefined,
                   city: d.city || "",
                   spent_on: d.spent_on || undefined,
                 },
@@ -205,6 +207,16 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
               ))}
             </select>
           </Field>
+          {admin && (
+            <Field label="Чем оплачено">
+              <select name="method" defaultValue="transfer">
+                <option value="cash">Наличные из кассы</option>
+                <option value="card">Карта</option>
+                <option value="transfer">Расчётный счёт / перевод</option>
+                <option value="owners">Деньги руководства</option>
+              </select>
+            </Field>
+          )}
           <Field label="Сумма, ₾">
             <input
               name="amount"
@@ -365,25 +377,227 @@ export function ExpensesTab({ admin, myId }: { admin: boolean; myId: string }) {
   );
 }
 
-/** Administrator report for any interval: money received, money expected, expenses, salaries, dividends. */
-export function PeriodReport() {
+const DIR: Record<string, string> = {
+  theory: "Теория",
+  yard: "Площадка",
+  city: "Город",
+  exam: "Экзамен",
+  other: "Прочее",
+};
+const ACC: Record<string, string> = {
+  cash: "Касса (наличные)",
+  card: "Карта",
+  transfer: "Расчётный счёт и переводы",
+  owners: "У руководства (инкассация)",
+};
+const METHOD: Record<string, string> = {
+  cash: "Наличные",
+  card: "Карта",
+  transfer: "Перевод",
+};
+const CITYN: Record<string, string> = {
+  akhalkalaki: "Ахалкалаки",
+  ninotsminda: "Ниноцминда",
+  common: "Общие",
+};
+const Change = ({ v }: { v: number | null }) =>
+  v === null ? null : (
+    <small className={v >= 0 ? "chg up" : "chg down"}>
+      {v >= 0 ? "▲" : "▼"} {Math.abs(v)}% к прошлому периоду
+    </small>
+  );
+function Bars({ rows, max }: { rows: [string, number][]; max?: number }) {
+  const top = max || Math.max(1, ...rows.map((r) => r[1]));
+  return (
+    <ul className="bars">
+      {rows.map(([k, n]) => (
+        <li key={k}>
+          <span>{k}</span>
+          <i style={{ width: Math.max(2, (n / top) * 100) + "%" }} />
+          <b>{gel(n)}</b>
+        </li>
+      ))}
+    </ul>
+  );
+}
+function Chart({ series }: { series: Row[] }) {
+  if (!series.length) return null;
+  const max = Math.max(1, ...series.flatMap((x) => [x.received, x.expenses]));
+  const w = Math.max(320, series.length * 26);
+  return (
+    <div className="money-chart" role="img" aria-label="Получено и расходы">
+      <svg
+        viewBox={`0 0 ${w} 140`}
+        width="100%"
+        height="140"
+        preserveAspectRatio="none"
+      >
+        {series.map((x, i) => (
+          <g key={x.label} transform={`translate(${i * 26 + 4} 0)`}>
+            <rect
+              y={120 - (x.received / max) * 110}
+              width="9"
+              height={(x.received / max) * 110}
+              fill="#2e7d32"
+              rx="2"
+            >
+              <title>{`${x.label}: получено ${gel(x.received)}`}</title>
+            </rect>
+            <rect
+              x="10"
+              y={120 - (x.expenses / max) * 110}
+              width="9"
+              height={(x.expenses / max) * 110}
+              fill="#d6192b"
+              rx="2"
+            >
+              <title>{`${x.label}: расходы ${gel(x.expenses)}`}</title>
+            </rect>
+          </g>
+        ))}
+      </svg>
+      <small>
+        <i style={{ background: "#2e7d32" }} /> получено{" "}
+        <i style={{ background: "#d6192b" }} /> расходы · {series[0]!.label} —{" "}
+        {series.at(-1)!.label}
+      </small>
+    </div>
+  );
+}
+
+/**
+ * The administrator's whole picture of the school's money for any interval and branch: where the
+ * money lies, what came in, who owes (aged), what went out, what is owed to staff and the result
+ * in two ways: real money and what was earned.
+ */
+export function MoneyOverview() {
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(today());
+  const [city, setCity] = useState("");
   const [r, setR] = useState<Row | null>(null);
   const [error, setError] = useState("");
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     if (from > to) return;
-    api("finance/period", { from, to })
+    api("finance/overview", { from, to, city })
       .then((x) => {
         setR(x);
         setError("");
       })
       .catch(() => setError("Не удалось загрузить отчёт."));
-  }, [from, to]);
+  }, [from, to, city, tick]);
+  async function adjust(account: string, balance: number) {
+    const fact = prompt(
+      `Сколько на самом деле в «${ACC[account]}»? Сейчас по учёту: ${(balance / 100).toFixed(2)} ₾.\nВведите фактическую сумму в лари (для первого ввода остатка — начальную).`,
+    );
+    if (fact === null || fact.trim() === "") return;
+    const diff =
+      Math.round((Number(fact.replace(",", ".")) - balance / 100) * 100) / 100;
+    if (!Number.isFinite(diff) || diff === 0) return;
+    const note = prompt(
+      `Разница ${diff > 0 ? "+" : ""}${diff} ₾. Причина (например: «начальный остаток», «пересчёт кассы»):`,
+    );
+    if (!note || note.trim().length < 3) return;
+    try {
+      await api("finance/adjust", { account, amount: diff, note });
+      setTick((x) => x + 1);
+    } catch {
+      setError("Не удалось записать корректировку.");
+    }
+  }
+  function csv() {
+    if (!r) return;
+    const rows: (string | number)[][] = [
+      [
+        "Motion Drive: деньги",
+        `${r.from} — ${r.to}`,
+        r.city ? CITYN[r.city] : "все филиалы",
+      ],
+      [],
+      ["Раздел", "Показатель", "₾"],
+      ["Итог", "Получено − расходы − выплаты", r.result.cash / 100],
+      [
+        "Итог",
+        "Заработано − расходы − начисленные зарплаты",
+        r.result.accrual / 100,
+      ],
+      ["Итог", "После дивидендов", r.result.afterDividends / 100],
+      ["Доходы", "Выставлено", r.income.charged / 100],
+      ["Доходы", "Получено", r.income.received / 100],
+      ...Object.entries(r.income.byKind).map(([k, n]) => [
+        "Выставлено по направлениям",
+        DIR[k] || k,
+        (n as number) / 100,
+      ]),
+      ...Object.entries(r.income.byMethod).map(([k, n]) => [
+        "Получено по способам",
+        METHOD[k] || k,
+        (n as number) / 100,
+      ]),
+      ["Долги", "Всего", r.receivables.total / 100],
+      ["Долги", "До 7 дней", r.receivables.current / 100],
+      ["Долги", "8–30 дней", r.receivables.month / 100],
+      ["Долги", "Свыше 30 дней", r.receivables.old / 100],
+      ...r.receivables.top.map((d: Row) => ["Должники", d.name, d.total / 100]),
+      ["Расходы", "Всего", r.expenses.total / 100],
+      ...(r.categories as Row[])
+        .filter((c) => r.expenses.byCategory[c.id])
+        .map((c) => [
+          "Расходы по статьям",
+          c.label,
+          r.expenses.byCategory[c.id] / 100,
+        ]),
+      ["Зарплаты", "Начислено", r.payroll.accrued / 100],
+      ["Зарплаты", "Выплачено", r.payroll.paid / 100],
+      ["Зарплаты", "Долг школы сотрудникам", r.payroll.owed / 100],
+      ...r.payroll.rows.map((x: Row) => [
+        "Сотрудники",
+        x.name,
+        x.accrued / 100,
+      ]),
+      ...Object.entries(r.accounts).map(([k, x]) => [
+        "Остатки",
+        ACC[k] || k,
+        (x as Row).balance / 100,
+      ]),
+    ];
+    const text = rows
+      .map((row) =>
+        row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"),
+      )
+      .join("\r\n");
+    const url = URL.createObjectURL(
+      new Blob(["\ufeff" + text], { type: "text/csv;charset=utf-8" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `motion-drive-dengi-${r.from}-${r.to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   return (
-    <div className="finance">
-      <h4>Деньги за период</h4>
+    <div className="finance money">
+      <h3>Деньги</h3>
       <Interval from={from} to={to} setFrom={setFrom} setTo={setTo} />
+      <div className="finance-toolbar">
+        <select
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          aria-label="Филиал"
+        >
+          <option value="">Все филиалы</option>
+          <option value="akhalkalaki">Ахалкалаки</option>
+          <option value="ninotsminda">Ниноцминда</option>
+        </select>
+        <button
+          type="button"
+          className="button small outline-dark"
+          onClick={csv}
+          disabled={!r}
+        >
+          Скачать для Excel / Google Таблиц
+        </button>
+      </div>
       {error && (
         <p className="error" role="alert">
           {error}
@@ -393,57 +607,254 @@ export function PeriodReport() {
       {r && (
         <>
           <div className="stat-cards">
-            <article>
-              <small>Пришло денег</small>
-              <strong>{gel(r.received)}</strong>
+            <article className={r.result.cash < 0 ? "owe" : ""}>
+              <small>Реальные деньги за период</small>
+              <strong>{gel(r.result.cash)}</strong>
+              <small>получено − расходы − выплаты сотрудникам</small>
+            </article>
+            <article className={r.result.accrual < 0 ? "owe" : ""}>
+              <small>Заработано за период</small>
+              <strong>{gel(r.result.accrual)}</strong>
+              <small>выставлено − расходы − начисленные зарплаты</small>
             </article>
             <article>
-              <small>Ожидается (долги учеников)</small>
-              <strong>{gel(r.expected)}</strong>
-            </article>
-            <article>
-              <small>Расходы</small>
-              <strong>{gel(r.expenses)}</strong>
-            </article>
-            <article>
-              <small>Выплачено сотрудникам</small>
-              <strong>{gel(r.salaries)}</strong>
-            </article>
-            <article className={r.net < 0 ? "owe" : ""}>
-              <small>Итого: пришло − расходы − зарплаты</small>
-              <strong>{gel(r.net)}</strong>
-            </article>
-            <article>
-              <small>Дивиденды (отдельно)</small>
-              <strong>{gel(r.dividends)}</strong>
+              <small>Остаётся после дивидендов</small>
+              <strong>{gel(r.result.afterDividends)}</strong>
+              <small>дивиденды: {gel(r.expenses.dividends)}</small>
             </article>
           </div>
-          <h4>По способу оплаты</h4>
-          <ul className="bars">
-            {r.byMethod.map((m: Row) => (
-              <li key={m.method}>
-                <span>
-                  {m.method === "cash"
-                    ? "Наличные"
-                    : m.method === "card"
-                      ? "Карта"
-                      : "Перевод"}
-                </span>
-                <b>{gel(m.total)}</b>
-              </li>
+
+          <h4>Где деньги сейчас</h4>
+          <div className="stat-cards">
+            {Object.entries(r.accounts as Record<string, Row>).map(([k, x]) => (
+              <article key={k} className={x.balance < 0 ? "owe" : ""}>
+                <small>{ACC[k]}</small>
+                <strong>{gel(x.balance)}</strong>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => adjust(k, x.balance)}
+                >
+                  Сверить / ввести остаток
+                </button>
+              </article>
             ))}
-          </ul>
-          <h4>Расходы по статьям</h4>
-          <ul className="bars">
-            {(r.categories as { id: string; label: string }[])
-              .filter((c) => r.byCategory[c.id])
-              .map((c) => (
-                <li key={c.id}>
-                  <span>{c.label}</span>
-                  <b>{gel(r.byCategory[c.id])}</b>
+            <article>
+              <small>Всего на счетах</small>
+              <strong>
+                {gel(
+                  Object.values(r.accounts as Record<string, Row>).reduce(
+                    (s, x) => s + x.balance,
+                    0,
+                  ),
+                )}
+              </strong>
+              <small>ещё должны ученики: {gel(r.receivables.total)}</small>
+            </article>
+          </div>
+          {r.adjustments.length > 0 && (
+            <details>
+              <summary>Корректировки остатков ({r.adjustments.length})</summary>
+              <ul className="ledger">
+                {r.adjustments.map((x: Row) => (
+                  <li key={x.id}>
+                    <span>
+                      {String(x.created)
+                        .slice(0, 10)
+                        .split("-")
+                        .reverse()
+                        .join(".")}
+                    </span>
+                    <span>
+                      {ACC[x.account]} · {x.note}
+                    </span>
+                    <b>
+                      {x.amount >= 0 ? "+" : "−"}
+                      {gel(Math.abs(x.amount))}
+                    </b>
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={async () => {
+                        await api("finance/adjust-void", { id: x.id });
+                        setTick((n) => n + 1);
+                      }}
+                    >
+                      отменить
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          <h4>Доходы</h4>
+          <div className="stat-cards">
+            <article>
+              <small>Получено</small>
+              <strong>{gel(r.income.received)}</strong>
+              <Change v={r.income.change.received} />
+            </article>
+            <article>
+              <small>Выставлено ученикам</small>
+              <strong>{gel(r.income.charged)}</strong>
+              <Change v={r.income.change.charged} />
+            </article>
+          </div>
+          <Chart series={r.series} />
+          <div className="two-cols">
+            <div>
+              <h5>Выставлено по направлениям</h5>
+              <Bars
+                rows={Object.entries(
+                  r.income.byKind as Record<string, number>,
+                ).map(([k, n]) => [DIR[k] || k, n])}
+              />
+            </div>
+            <div>
+              <h5>Получено по способам</h5>
+              <Bars
+                rows={Object.entries(
+                  r.income.byMethod as Record<string, number>,
+                ).map(([k, n]) => [METHOD[k] || k, n])}
+              />
+              {!r.city && (
+                <>
+                  <h5>Получено по филиалам</h5>
+                  <Bars
+                    rows={Object.entries(
+                      r.income.byCity as Record<string, number>,
+                    ).map(([k, n]) => [CITYN[k] || k, n])}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+
+          <h4>Кто должен ({r.receivables.count})</h4>
+          <div className="stat-cards">
+            <article>
+              <small>Всего должны</small>
+              <strong>{gel(r.receivables.total)}</strong>
+            </article>
+            <article>
+              <small>До 7 дней</small>
+              <strong>{gel(r.receivables.current)}</strong>
+            </article>
+            <article>
+              <small>8–30 дней</small>
+              <strong>{gel(r.receivables.month)}</strong>
+            </article>
+            <article className={r.receivables.old ? "owe" : ""}>
+              <small>Больше 30 дней</small>
+              <strong>{gel(r.receivables.old)}</strong>
+            </article>
+          </div>
+          {r.receivables.top.length > 0 && (
+            <ul className="ledger">
+              {r.receivables.top.map((d: Row) => (
+                <li key={d.id}>
+                  <span>{d.name}</span>
+                  <span>
+                    {d.phone ? (
+                      <a href={"tel:" + d.phone}>{formatPhone(d.phone)}</a>
+                    ) : (
+                      ""
+                    )}{" "}
+                    · долг {d.oldestDays} дн.
+                  </span>
+                  <b>{gel(d.total)}</b>
                 </li>
               ))}
-          </ul>
+            </ul>
+          )}
+
+          <h4>Расходы</h4>
+          <div className="stat-cards">
+            <article>
+              <small>Расходы за период</small>
+              <strong>{gel(r.expenses.total)}</strong>
+              <Change v={r.expenses.change} />
+            </article>
+          </div>
+          <div className="two-cols">
+            <div>
+              <h5>По статьям</h5>
+              <Bars
+                rows={(r.categories as Row[])
+                  .filter((c) => r.expenses.byCategory[c.id])
+                  .map((c) => [c.label, r.expenses.byCategory[c.id]])}
+              />
+            </div>
+            <div>
+              <h5>По филиалам</h5>
+              <Bars
+                rows={Object.entries(
+                  r.expenses.byCity as Record<string, number>,
+                ).map(([k, n]) => [CITYN[k] || k, n])}
+              />
+            </div>
+          </div>
+
+          <h4>Зарплаты</h4>
+          <div className="stat-cards">
+            <article>
+              <small>Начислено за месяцы периода</small>
+              <strong>{gel(r.payroll.accrued)}</strong>
+            </article>
+            <article>
+              <small>Выплачено в периоде</small>
+              <strong>{gel(r.payroll.paid)}</strong>
+            </article>
+            <article className={r.payroll.owed ? "owe" : ""}>
+              <small>Школа должна сотрудникам сейчас</small>
+              <strong>{gel(r.payroll.owed)}</strong>
+            </article>
+          </div>
+          {r.payroll.rows.length > 0 && (
+            <ul className="ledger">
+              {r.payroll.rows.map((x: Row) => (
+                <li key={x.id}>
+                  <span>{x.name}</span>
+                  <span>
+                    начислено {gel(x.accrued)} · выплачено {gel(x.paid)}
+                  </span>
+                  <b>
+                    {x.debt
+                      ? "долг " + gel(x.debt)
+                      : x.advance
+                        ? "аванс вперёд " + gel(x.advance)
+                        : "в расчёте"}
+                  </b>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {r.directions.length > 0 && (
+            <>
+              <h4>Что выгодно: по направлениям</h4>
+              <p className="muted">
+                Выставлено минус оплата преподавателей этого направления. Оклады
+                ({gel(r.payroll.fixed)}) считаются общими и сюда не входят.
+              </p>
+              <ul className="ledger">
+                {r.directions.map((d: Row) => (
+                  <li key={d.kind}>
+                    <span>{DIR[d.kind]}</span>
+                    <span>
+                      выставлено {gel(d.charged)} · преподавателям{" "}
+                      {gel(d.teachers)}
+                      {d.lessons ? ` · уроков ${d.lessons}` : ""}
+                    </span>
+                    <b className={d.margin < 0 ? "debt-left" : ""}>
+                      {gel(d.margin)}
+                    </b>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </>
       )}
     </div>

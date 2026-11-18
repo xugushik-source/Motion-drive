@@ -383,6 +383,7 @@ export function PayrollReport() {
                       user_id: r.id,
                       amount: x.amount,
                       kind: x.kind,
+                      method: x.method || "cash",
                       note: x.note || "",
                     })
                   )
@@ -392,6 +393,16 @@ export function PayrollReport() {
                 <select name="kind" defaultValue="salary">
                   <option value="salary">Зарплата</option>
                   <option value="advance">Аванс</option>
+                </select>
+                <select
+                  name="method"
+                  defaultValue="cash"
+                  aria-label="Чем выплачено"
+                >
+                  <option value="cash">Из кассы (наличные)</option>
+                  <option value="card">С карты</option>
+                  <option value="transfer">С расчётного счёта</option>
+                  <option value="owners">Из денег руководства</option>
                 </select>
                 <input
                   name="amount"
