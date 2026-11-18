@@ -623,3 +623,77 @@ test("personal number: 11 digits for Georgian citizens, a passport number only w
     "no spaces or symbols",
   );
 });
+
+test("auto plan: one instructor, the same hour, more lessons on the same days when a week is short, whatever exists when there is little room", async () => {
+  const { autoPlan, georgiaHour, georgiaDay } =
+    await import("../src/lib/schedule.ts");
+  const mk = (id: string, day: number, hourUtc: number, ins: string) => ({
+    id,
+    start: `2026-12-${String(day).padStart(2, "0")}T${String(hourUtc).padStart(2, "0")}:00:00.000Z`,
+    end: `2026-12-${String(day).padStart(2, "0")}T${String(hourUtc + 1).padStart(2, "0")}:00:00.000Z`,
+    instructor_id: ins,
+  });
+  // Mon 7 Dec … Sat 12 Dec 2026; instructor A has 10:00, 11:00, 12:00 (local) every day, B only two slots
+  const slots: any[] = [];
+  for (let d = 7; d <= 12; d++)
+    for (const h of [6, 7, 8]) slots.push(mk(`a${d}-${h}`, d, h, "A"));
+  slots.push(mk("b7-6", 7, 6, "B"), mk("b8-6", 8, 6, "B"));
+  const week = autoPlan(slots, {
+    count: 10,
+    weekdays: [],
+    parts: [],
+    weeks: 1,
+  });
+  assert.equal(week.picked.length, 10);
+  assert.equal(week.missing, 0);
+  assert.equal(
+    week.instructor_id,
+    "A",
+    "the instructor who can take most lessons",
+  );
+  assert.ok(
+    week.picked.every((s) => s.instructor_id === "A"),
+    "one instructor for the whole series",
+  );
+  assert.ok(
+    week.picked.every((s) => georgiaDay(s.start) <= "2026-12-12"),
+    "all inside the week",
+  );
+  const at10 = week.picked.filter((s) => georgiaHour(s.start) === 10).length;
+  assert.equal(at10, 6, "one lesson per day at the usual 10:00 first");
+  assert.equal(
+    week.picked.filter((s) => georgiaHour(s.start) === 11).length,
+    4,
+    "the rest right after, on the same days",
+  );
+  // a chosen instructor is respected
+  const b = autoPlan(slots, {
+    count: 5,
+    weekdays: [],
+    parts: [],
+    weeks: 1,
+    instructor: "B",
+  });
+  assert.equal(b.picked.length, 2);
+  assert.equal(b.missing, 3, "takes what exists and reports the shortfall");
+  // preferences narrow the choice; nothing free gives an empty proposal
+  const evening = autoPlan(slots, {
+    count: 3,
+    weekdays: [],
+    parts: ["evening"],
+    weeks: 1,
+  });
+  assert.deepEqual([evening.picked.length, evening.missing], [0, 3]);
+  assert.deepEqual(
+    autoPlan([], { count: 4, weekdays: [], parts: [], weeks: 2 }).picked,
+    [],
+  );
+  // not enough room inside the window: continues after it rather than giving up
+  const longer = autoPlan(slots, {
+    count: 18,
+    weekdays: [],
+    parts: [],
+    weeks: 1,
+  });
+  assert.equal(longer.picked.length, 18);
+});

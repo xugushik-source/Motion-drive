@@ -167,3 +167,125 @@ export function formatDayMonth(d: Date, locale: string) {
     ? `${names[d.getUTCMonth()]} ${d.getUTCDate()}`
     : `${d.getUTCDate()} ${names[d.getUTCMonth()]}`;
 }
+
+export type PlanPrefs = {
+  count: number;
+  weekdays: number[];
+  parts: DayPart[];
+  /** Lessons should fall within this many weeks from the first free day; 0 means no window. */
+  weeks: number;
+  from?: string;
+  /** A chosen instructor, or empty for "any". */
+  instructor?: string | null;
+};
+const addDays = (day: string, n: number) =>
+  new Date(Date.parse(day + "T00:00:00Z") + n * 86400000)
+    .toISOString()
+    .slice(0, 10);
+function planOne(list: FreeSlot[], count: number, weeks: number) {
+  const byDay = new Map<string, FreeSlot[]>();
+  for (const s of list) {
+    const d = georgiaDay(s.start);
+    byDay.set(d, [...(byDay.get(d) || []), s]);
+  }
+  const days = [...byDay.keys()].sort();
+  const picked: FreeSlot[] = [];
+  if (!days.length) return picked;
+  // The hour that is free on the most days: the same time every day is the most convenient.
+  const freq = new Map<number, number>();
+  for (const d of days)
+    for (const h of new Set(byDay.get(d)!.map((s) => georgiaHour(s.start))))
+      freq.set(h, (freq.get(h) || 0) + 1);
+  const anchor = [...freq.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0] - b[0],
+  )[0]![0];
+  const used = new Set<string>();
+  const take = (s: FreeSlot) => {
+    used.add(s.id);
+    picked.push(s);
+  };
+  const free = (d: string) => byDay.get(d)!.filter((s) => !used.has(s.id));
+  // one lesson per day at the usual hour, then more on the same days next to the first
+  const fill = (scope: string[]) => {
+    for (const d of scope) {
+      if (picked.length >= count) return;
+      const f = free(d);
+      if (!f.length) continue;
+      take(
+        f.reduce((a, b) =>
+          Math.abs(georgiaHour(b.start) - anchor) <
+          Math.abs(georgiaHour(a.start) - anchor)
+            ? b
+            : a,
+        ),
+      );
+    }
+    let progress = true;
+    while (picked.length < count && progress) {
+      progress = false;
+      for (const d of scope) {
+        if (picked.length >= count) return;
+        const f = free(d);
+        if (!f.length) continue;
+        const have = picked
+          .filter((p) => georgiaDay(p.start) === d)
+          .map((p) => georgiaHour(p.start));
+        const dist = (s: FreeSlot) =>
+          have.length
+            ? Math.min(...have.map((h) => Math.abs(h - georgiaHour(s.start))))
+            : Math.abs(georgiaHour(s.start) - anchor);
+        take(f.reduce((a, b) => (dist(b) < dist(a) ? b : a)));
+        progress = true;
+      }
+    }
+  };
+  const end = weeks > 0 ? addDays(days[0]!, weeks * 7) : null;
+  const inside = end ? days.filter((d) => d < end) : days;
+  const outside = end ? days.filter((d) => d >= end) : [];
+  fill(inside);
+  if (picked.length < count && outside.length) fill(outside);
+  return picked.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+}
+/**
+ * Proposes a whole series the way a good administrator would: with one instructor (the one who
+ * can take the most lessons), at the same hour on consecutive days, adding more lessons on the
+ * same days when the week is short of days, and taking whatever exists when there is not enough
+ * room. The student can then remove or replace any proposed lesson.
+ */
+export function autoPlan(slots: FreeSlot[], prefs: PlanPrefs) {
+  const count = Math.max(1, Math.min(30, Math.floor(prefs.count)));
+  const groups = new Map<string, FreeSlot[]>();
+  for (const slot of [...slots].sort(
+    (a, b) => Date.parse(a.start) - Date.parse(b.start),
+  )) {
+    if (prefs.instructor && slot.instructor_id !== prefs.instructor) continue;
+    if (
+      prefs.weekdays.length &&
+      !prefs.weekdays.includes(georgiaWeekday(slot.start))
+    )
+      continue;
+    if (prefs.parts.length && !prefs.parts.includes(dayPart(slot.start)))
+      continue;
+    if (prefs.from && georgiaDay(slot.start) < prefs.from) continue;
+    const key = slot.instructor_id || "";
+    groups.set(key, [...(groups.get(key) || []), slot]);
+  }
+  let best: { key: string; picked: FreeSlot[] } | null = null;
+  for (const [key, list] of groups) {
+    const picked = planOne(list, count, Math.max(0, Math.floor(prefs.weeks)));
+    const better =
+      !best ||
+      picked.length > best.picked.length ||
+      (picked.length === best.picked.length &&
+        picked.length > 0 &&
+        Date.parse(picked.at(-1)!.start) <
+          Date.parse(best.picked.at(-1)!.start));
+    if (better) best = { key, picked };
+  }
+  const picked = best?.picked || [];
+  return {
+    picked,
+    missing: count - picked.length,
+    instructor_id: best?.key || null,
+  };
+}

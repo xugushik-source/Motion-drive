@@ -24,7 +24,8 @@ import AvailabilityPicker from "./AvailabilityPicker";
 import Packages, { sortPackages } from "./Packages";
 import { ApplyForm } from "./Programs";
 import PayPanel from "./PayPanel";
-import { autoPick, type DayPart } from "../lib/schedule";
+import { autoPlan, type DayPart } from "../lib/schedule";
+import { pick } from "../lib/pick";
 type Common = { locale: string; t: (k: string) => string };
 
 /** Phone + password fields shared by the account page and the booking form. */
@@ -278,7 +279,7 @@ export function Booking({
     [mode, setMode] = useState<"auto" | "manual">("auto"),
     [weekdays, setWeekdays] = useState<number[]>([]),
     [parts, setParts] = useState<DayPart[]>([]),
-    [perWeek, setPerWeek] = useState(2),
+    [weeks, setWeeks] = useState(2),
     [picked, setPicked] = useState<string[]>([]),
     [missing, setMissing] = useState(0),
     [autoDone, setAutoDone] = useState(false),
@@ -350,10 +351,46 @@ export function Booking({
     setAutoDone(false);
   };
   const runAuto = () => {
-    const r = autoPick(available as any, { count, weekdays, parts, perWeek });
+    const r = autoPlan(available as any, {
+      count,
+      weekdays,
+      parts,
+      weeks,
+      instructor: instructor || null,
+    });
     setPicked(r.picked.map((s) => s.id));
     setMissing(r.missing);
     setAutoDone(true);
+  };
+  // Lessons are proposed as soon as there is something to propose, and again whenever the wish changes.
+  const hasSlots = available.length > 0;
+  useEffect(() => {
+    if (chosen && hasSlots && mode === "auto") runAuto();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    chosen,
+    hasSlots,
+    mode,
+    pack?.id,
+    count,
+    instructor,
+    city,
+    weeks,
+    weekdays,
+    parts,
+  ]);
+  const insName = (id?: string | null) => {
+    const i = (content.instructors || []).find((x) => x.userId === id);
+    return i ? pick(i, "title", locale) : "";
+  };
+  const removeLesson = (id: string) => {
+    const next = picked.filter((x) => x !== id);
+    setPicked(next);
+    setMissing(Math.max(0, count - next.length));
+  };
+  const replaceLesson = (id: string, withId: string) => {
+    if (!withId) return;
+    setPicked(picked.map((x) => (x === id ? withId : x)));
   };
   const toggle = <T,>(list: T[], v: T) =>
     list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
@@ -427,7 +464,7 @@ export function Booking({
           const text = [
             t("waBooking"),
             `${sentBy?.name || ""} · ${sentBy?.phone || sentBy?.email || ""}`,
-            pack ? pack.title : t("customPackage"),
+            pack ? pack.title : custom ? t("customPackage") : t("notChosen"),
             ...sent.map((s) => "• " + slotLabel(locale, s.start)),
           ].join("\n");
           return (
@@ -470,7 +507,13 @@ export function Booking({
           <div className="order-summary">
             <div className="order-row">
               <small>{t("package")}</small>
-              <strong>{pack ? pack.title : t("customPackage")}</strong>
+              <strong>
+                {pack
+                  ? pack.title
+                  : custom
+                    ? t("customPackage")
+                    : t("notChosen")}
+              </strong>
             </div>
             <div className="order-row">
               <small>{t("lessonsWord")}</small>
@@ -698,7 +741,7 @@ export function Booking({
                   .filter((i) => i.userId)
                   .map((i) => (
                     <option key={i.id} value={i.userId}>
-                      {i.title}
+                      {pick(i, "title", locale)}
                     </option>
                   ))}
               </select>
@@ -769,48 +812,51 @@ export function Booking({
           ) : mode === "auto" ? (
             <div className="auto-pick">
               <p>{t("autoPickText")}</p>
-              <span className="chip-label">{t("preferredDays")}</span>
+              <span className="chip-label">{t("withinWeeks")}</span>
               <div className="chips">
-                {WEEKDAYS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={weekdays.includes(d)}
-                    className={weekdays.includes(d) ? "on" : ""}
-                    onClick={() => setWeekdays(toggle(weekdays, d))}
-                  >
-                    {weekdayName(locale, d)}
-                  </button>
-                ))}
-              </div>
-              <span className="chip-label">{t("preferredTime")}</span>
-              <div className="chips">
-                {PARTS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    aria-pressed={parts.includes(p)}
-                    className={parts.includes(p) ? "on" : ""}
-                    onClick={() => setParts(toggle(parts, p))}
-                  >
-                    {t(p)}
-                  </button>
-                ))}
-              </div>
-              <span className="chip-label">{t("perWeek")}</span>
-              <div className="chips">
-                {[1, 2, 3, 4, 5].map((n) => (
+                {[1, 2, 3, 4].map((n) => (
                   <button
                     key={n}
                     type="button"
-                    aria-pressed={perWeek === n}
-                    className={perWeek === n ? "on" : ""}
-                    onClick={() => setPerWeek(n)}
+                    aria-pressed={weeks === n}
+                    className={weeks === n ? "on" : ""}
+                    onClick={() => setWeeks(n)}
                   >
-                    {n}
+                    {n} {t("weeksUnit")}
                   </button>
                 ))}
               </div>
+              <details className="refine">
+                <summary>{t("refine")}</summary>
+                <span className="chip-label">{t("preferredDays")}</span>
+                <div className="chips">
+                  {WEEKDAYS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={weekdays.includes(d)}
+                      className={weekdays.includes(d) ? "on" : ""}
+                      onClick={() => setWeekdays(toggle(weekdays, d))}
+                    >
+                      {weekdayName(locale, d)}
+                    </button>
+                  ))}
+                </div>
+                <span className="chip-label">{t("preferredTime")}</span>
+                <div className="chips">
+                  {PARTS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      aria-pressed={parts.includes(p)}
+                      className={parts.includes(p) ? "on" : ""}
+                      onClick={() => setParts(toggle(parts, p))}
+                    >
+                      {t(p)}
+                    </button>
+                  ))}
+                </div>
+              </details>
               <motion.button
                 type="button"
                 className="button auto-button"
@@ -818,7 +864,7 @@ export function Booking({
                 onClick={runAuto}
               >
                 <Sparkles size={18} />
-                {t(autoDone ? "autoAgain" : "autoRun")}
+                {t("autoAgain")}
               </motion.button>
               <AnimatePresence>
                 {autoDone && (
@@ -849,6 +895,56 @@ export function Booking({
                 setMissing(Math.max(0, count - ids.length));
               }}
             />
+          )}
+          {pickedSlots.length > 0 && (
+            <div className="picked-list">
+              <h4>
+                {t("yourLessons")} · {pickedSlots.length} / {count}
+              </h4>
+              <ol>
+                {pickedSlots.map((s) => (
+                  <li key={s.id}>
+                    <span className="pl-when">
+                      {slotLabel(locale, s.start)}
+                    </span>
+                    {insName(s.instructor_id) && (
+                      <span className="pl-ins">{insName(s.instructor_id)}</span>
+                    )}
+                    <select
+                      aria-label={t("replaceLesson")}
+                      value=""
+                      onChange={(e) => replaceLesson(s.id, e.target.value)}
+                    >
+                      <option value="">{t("replaceLesson")}</option>
+                      {available
+                        .filter((o) => !picked.includes(o.id))
+                        .slice(0, 80)
+                        .map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {slotLabel(locale, o.start)}
+                            {insName(o.instructor_id)
+                              ? " · " + insName(o.instructor_id)
+                              : ""}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="pl-remove"
+                      aria-label={t("removeLesson")}
+                      onClick={() => removeLesson(s.id)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              {missing > 0 && (
+                <p className="auto-result warn" role="status">
+                  {t("autoMissing")}
+                </p>
+              )}
+            </div>
           )}
           <small>{t("availabilityRefresh")}</small>
           {picked.length > 0 && (

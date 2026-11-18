@@ -86,6 +86,25 @@ export default function PayPanel({ t }: { t: T }) {
           </button>
         ))}
       </div>
+      {d.awaiting && <Notice>{t("payAfterConfirm")}</Notice>}
+      {d.payLinks?.length > 0 && (
+        <div className="pay-online">
+          <p>{t("payOnlineText")}</p>
+          <div className="pay-online-buttons">
+            {d.payLinks.map((l: { name: string; url: string }) => (
+              <a
+                key={l.name}
+                className="button"
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("payOnline")}: {l.name}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
       {d.method && (
         <p className="pay-next" role="status">
           {t(d.method === "cash" ? "payCashNext" : "payNoncashNext")}

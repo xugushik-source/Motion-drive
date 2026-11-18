@@ -2923,3 +2923,16 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .pay-option span { display: grid; gap: 2px; flex: 1; } .pay-option small { opacity: .7; font-size: 12px; }
 .pay-next { margin: 0; padding: 12px 14px; border-radius: 10px; background: #eef7ee; color: #1f5f2a; font-size: 14px; }
 .foreign-id { font-size: 12.5px; } .id-help { margin: 0; font-size: 12px; }
+/* chosen lessons */
+.picked-list { margin-top: 18px; padding: 18px; border-radius: 16px; background: white; border: 1px solid var(--line); }
+.picked-list h4 { margin: 0 0 12px; font-size: 17px; }
+.picked-list ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.picked-list li { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: #f6f7f2; }
+.picked-list .pl-when { font-weight: 600; font-size: 14px; }
+.picked-list .pl-ins { grid-column: 1 / 2; color: var(--muted); font-size: 12px; }
+.picked-list select { grid-column: 1 / 2; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: white; font: inherit; font-size: 12.5px; min-height: 40px; max-width: 100%; }
+.picked-list .pl-remove { grid-column: 2; grid-row: 1 / 4; align-self: center; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: white; display: grid; place-items: center; cursor: pointer; }
+.picked-list .pl-remove:hover { background: #ffe3dd; border-color: #ff6b52; }
+.refine { margin-top: 6px; } .refine summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 8px 0; }
+.pay-online { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: #f0f6ff; border: 1px solid #c9dcf7; }
+.pay-online p { margin: 0; font-size: 14px; } .pay-online-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
