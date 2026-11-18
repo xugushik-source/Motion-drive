@@ -87,21 +87,30 @@ export default function PayPanel({ t }: { t: T }) {
         ))}
       </div>
       {d.awaiting && <Notice>{t("payAfterConfirm")}</Notice>}
-      {d.payLinks?.length > 0 && (
-        <div className="pay-online">
-          <p>{t("payOnlineText")}</p>
+      {d.operator && (
+        <div className="pay-operator">
+          <p>{t("payOperatorText")}</p>
           <div className="pay-online-buttons">
-            {d.payLinks.map((l: { name: string; url: string }) => (
+            {d.operator.whatsapp && (
               <a
-                key={l.name}
                 className="button"
-                href={l.url}
+                href={`https://wa.me/${String(d.operator.whatsapp).replace(/\D/g, "")}?text=${encodeURIComponent(
+                  `${t("payOperatorMsg")} ${d.due > 0 ? gel(d.due) : ""}`.trim(),
+                )}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {t("payOnline")}: {l.name}
+                {t("payWriteOperator")}
               </a>
-            ))}
+            )}
+            {d.operator.phone && (
+              <a
+                className="button outline-dark"
+                href={`tel:${d.operator.phone.replace(/\s/g, "")}`}
+              >
+                {d.operator.phone}
+              </a>
+            )}
           </div>
         </div>
       )}

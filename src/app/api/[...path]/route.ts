@@ -1373,18 +1373,11 @@ export async function POST(
                 "site_description",
                 "exam_minutes",
                 "exam_question_count",
-                "pay_link_tbc",
-                "pay_link_bog",
               ]),
               value: z.string().min(1).max(1000),
               status: z.enum(["draft", "published"]),
               locale: localeSchema,
             })
-            .refine((d) =>
-              d.key.startsWith("pay_link_")
-                ? /^https:\/\/[^\s]+$/.test(d.value)
-                : true,
-            )
             .refine((d) =>
               d.key === "booking_enabled"
                 ? ["true", "false"].includes(d.value)
@@ -1785,22 +1778,30 @@ async function myPay(p: string[], body: any, user: Row) {
       )
     )?.n || 0,
   );
-  // Bank payment links are shown only once the administrator has confirmed the booking and something is due.
-  const links: { name: string; url: string }[] = [];
-  if (confirmedCount > 0 && charged - paid > 0)
-    for (const [key, name] of [
-      ["pay_link_tbc", "TBC"],
-      ["pay_link_bog", "Bank of Georgia"],
-    ] as const) {
-      const rec = (await records("settings")).find(
-        (x) => x.key === key && x.status === "published" && x.value,
-      );
-      if (rec) links.push({ name, url: String(rec.value) });
-    }
+  // Payment goes through the operator: the branch contact is shown only once the administrator has
+  // confirmed the booking and something is due.
+  let operator: { whatsapp: string; phone: string } | null = null;
+  if (confirmedCount > 0 && charged - paid > 0) {
+    const last = await one(
+      "SELECT city FROM bookings WHERE user_id=? AND status IN ('confirmed','completed') ORDER BY created DESC",
+      user.id,
+    );
+    const branch = (await records("branches")).find(
+      (x) =>
+        x.city === (last?.city || "akhalkalaki") &&
+        x.status === "published" &&
+        (x.whatsapp || x.phone),
+    );
+    if (branch)
+      operator = {
+        whatsapp: String(branch.whatsapp || ""),
+        phone: String(branch.phone || ""),
+      };
+  }
   return json({
     confirmed: confirmedCount > 0,
     awaiting: confirmedCount === 0 && pendingCount > 0,
-    payLinks: links,
+    operator,
     charged,
     paid,
     due: Math.max(charged - paid, 0),
