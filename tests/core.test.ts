@@ -697,3 +697,78 @@ test("auto plan: one instructor, the same hour, more lessons on the same days wh
   });
   assert.equal(longer.picked.length, 18);
 });
+
+test("the school's rates: instructor 15/20 per yard/city lesson; lecturer per student by group, 50% for individual", async () => {
+  const { computePay, DEFAULT_RATES, lessonKindOf } =
+    await import("../src/lib/payroll.ts");
+  const items = (role: string) =>
+    DEFAULT_RATES[role]!.map((r) => ({ ...r, from_month: "2026-11" })) as any[];
+  // instructor: 10 yard lessons and 20 city lessons
+  const ins = computePay(items("instructor"), "2026-11", {
+    lessons: { all: 30, yard: 10, city: 20 },
+  });
+  assert.equal(ins.perLesson, 10 * 1500 + 20 * 2000);
+  assert.equal(ins.total, 55000, "550 ₾");
+  // lecturer: Akhalkalaki 12 × 50, Ninotsminda 8 × 60, visiting 5 × 60, individual/mini-groups 50% of 3 × 300
+  const lec = computePay(items("lecturer"), "2026-11", {
+    students: {
+      akhalkalaki: { n: 12, price: 12 * 15000 },
+      ninotsminda: { n: 8, price: 8 * 15000 },
+      visiting: { n: 5, price: 5 * 15000 },
+      individual: { n: 3, price: 3 * 30000 },
+    },
+  });
+  assert.equal(lec.perStudent, 12 * 5000 + 8 * 6000 + 5 * 6000 + 45000);
+  assert.equal(lec.total, 183000, "1830 ₾");
+  // no counts, no pay; an older call with a plain number still works for "all lessons"
+  assert.equal(computePay(items("instructor"), "2026-11", {}).total, 0);
+  assert.equal(
+    computePay(
+      [{ kind: "per_lesson", amount: 2000, from_month: "2026-11" }] as any,
+      "2026-11",
+      4,
+    ).total,
+    8000,
+  );
+  // what kind of lesson a booking is
+  assert.equal(lessonKindOf("yard-ru"), "yard");
+  assert.equal(lessonKindOf("individual-yard2-ru"), "yard");
+  assert.equal(lessonKindOf("city-manual-ru"), "city");
+  assert.equal(lessonKindOf("individual-auto-ru"), "city");
+  assert.equal(lessonKindOf("exam-automatic-ru"), "exam");
+  assert.equal(lessonKindOf("theory-individual-ru"), "theory");
+  assert.equal(lessonKindOf(null, "practice"), "city");
+});
+
+test("driving hours follow the daylight in Akhalkalaki", async () => {
+  const { sunsetUtc, daylightLessons, AKHALKALAKI } =
+    await import("../src/lib/sun.ts");
+  const local = (d: Date) =>
+    ((d.getUTCHours() + 4) % 24) + d.getUTCMinutes() / 60;
+  const nov = sunsetUtc(2026, 11, 18, AKHALKALAKI.lat, AKHALKALAKI.lon)!;
+  assert.ok(
+    local(nov) > 17.4 && local(nov) < 18.1,
+    "mid-November sunset about 17:45: " + local(nov),
+  );
+  const jun = sunsetUtc(2026, 6, 21, AKHALKALAKI.lat, AKHALKALAKI.lon)!;
+  assert.ok(
+    local(jun) > 19.8 && local(jun) < 21.2,
+    "midsummer sunset after 20:00: " + local(jun),
+  );
+  // November: lessons from 09:00 and the last one ends before sunset; summer gives more lessons
+  const winter = daylightLessons(2026, 11, 18);
+  const summer = daylightLessons(2026, 6, 21);
+  assert.equal(winter[0]!.start, "2026-11-18T05:00:00.000Z", "09:00 local");
+  assert.ok(Date.parse(winter.at(-1)!.end) <= nov.getTime());
+  assert.ok(
+    winter.length >= 7 && winter.length <= 8,
+    "winter lessons " + winter.length,
+  );
+  assert.ok(
+    summer.length > winter.length + 2,
+    "summer lessons " + summer.length,
+  );
+  // lessons are back to back, one hour each
+  for (let i = 1; i < winter.length; i++)
+    assert.equal(winter[i]!.start, winter[i - 1]!.end);
+});

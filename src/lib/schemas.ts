@@ -57,6 +57,7 @@ export const bookingSchema = z.object({
   slot_id: z.string().max(80).nullable().optional(),
   slot_ids: z.array(z.string().max(80)).min(1).max(30).optional(),
   package_id: z.string().max(100).nullable().optional(),
+  lesson_kind: z.enum(["yard", "city", "theory", "exam"]).optional(),
   name: z.string().trim().min(2).max(100),
   contact: z.string().trim().min(5).max(180),
   note: z.string().max(1200).default(""),

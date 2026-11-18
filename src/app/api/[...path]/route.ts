@@ -1,3 +1,4 @@
+import { daylightLessons } from "../../../lib/sun";
 import {
   monthRange,
   currentMonth,
@@ -5,7 +6,10 @@ import {
   computePay,
   accrualSince,
   balanceOf,
+  DEFAULT_RATES,
+  lessonKindOf,
   type PayItem,
+  type PayCounts,
 } from "../../../lib/payroll";
 import {
   isStaff,
@@ -318,6 +322,13 @@ export async function GET(
                 user.id,
               )
             : [],
+        enrollments: staff
+          ? (
+              await all(
+                "SELECT id,user_id,lecturer_id,scope,price,created FROM theory_enrollments WHERE voided=0 ORDER BY created DESC",
+              )
+            ).map((e) => ({ ...e, price: Number(e.price) }))
+          : [],
         records: staff
           ? Object.fromEntries(
               await Promise.all(
@@ -639,7 +650,7 @@ export async function POST(
             try {
               await db
                 .prepare(
-                  "INSERT INTO bookings(id,user_id,city,program,gearbox,instructor_id,slot_id,name,contact,note,series_id,package_title) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                  "INSERT INTO bookings(id,user_id,city,program,gearbox,instructor_id,slot_id,name,contact,note,series_id,package_title,lesson_kind,package_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 )
                 .run(
                   id,
@@ -656,6 +667,9 @@ export async function POST(
                   v.note,
                   seriesId,
                   pack ? packageSnapshot(pack, slotIds.length) : "",
+                  v.lesson_kind ||
+                    lessonKindOf(pack?.id, pack?.program || v.program),
+                  pack?.id || null,
                 );
             } catch {
               return fail("slotUnavailable", 409);
@@ -1055,6 +1069,151 @@ export async function POST(
       return json({ personal_id: row.personal_id || "" });
     }
     if (p[0] === "finance") return await finance(p, body, user);
+    if (p[0] === "schedule" && p[1] === "daylight") {
+      // Opens driving lessons in Akhalkalaki hour by hour from the morning until it gets dark.
+      if (!isStaff(user.role)) return fail("forbidden", 403);
+      const v = z
+        .object({
+          weeks: z.coerce.number().int().min(1).max(8).default(4),
+          startHour: z.coerce.number().int().min(6).max(14).default(9),
+          cars: z.coerce.number().int().min(1).max(10).default(1),
+        })
+        .parse(body || {});
+      const teachers = await all(
+        "SELECT id FROM users WHERE role='instructor' AND active=1",
+      );
+      const streams: (string | null)[] = teachers.length
+        ? teachers.map((t) => String(t.id))
+        : Array.from({ length: v.cars }, () => null);
+      const local = new Date(Date.now() + 4 * 3600 * 1000);
+      const base = Date.UTC(
+        local.getUTCFullYear(),
+        local.getUTCMonth(),
+        local.getUTCDate(),
+      );
+      let created = 0;
+      let days = 0;
+      for (let i = 0; i < v.weeks * 7; i++) {
+        const day = new Date(base + i * 86400000);
+        if (day.getUTCDay() === 0) continue; // Sunday is off
+        const lessons = daylightLessons(
+          day.getUTCFullYear(),
+          day.getUTCMonth() + 1,
+          day.getUTCDate(),
+          { startHour: v.startHour },
+        );
+        let any = false;
+        for (const l of lessons) {
+          if (Date.parse(l.start) <= Date.now()) continue;
+          for (let k = 0; k < streams.length; k++) {
+            const who = streams[k];
+            const have = who
+              ? await one(
+                  "SELECT id FROM slots WHERE instructor_id=? AND start=?",
+                  who,
+                  l.start,
+                )
+              : Number(
+                  (
+                    await one(
+                      "SELECT count(*) AS n FROM slots WHERE instructor_id IS NULL AND city='akhalkalaki' AND start=?",
+                      l.start,
+                    )
+                  )?.n || 0,
+                ) > k;
+            if (have) continue;
+            await db
+              .prepare(
+                'INSERT INTO slots(id,instructor_id,city,start,"end",available) VALUES(?,?,?,?,?,1)',
+              )
+              .run(randomUUID(), who, "akhalkalaki", l.start, l.end);
+            created++;
+            any = true;
+          }
+        }
+        if (any) days++;
+      }
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(
+          user.id,
+          "schedule:daylight",
+          JSON.stringify({ weeks: v.weeks, created }),
+        );
+      return json({ created, days });
+    }
+    if (p[0] === "theory") {
+      // Students signed into a theory group (or taught individually) by the office; the lecturer's pay follows from it.
+      if (!isStaff(user.role)) return fail("forbidden", 403);
+      if (p[1] === "enroll") {
+        const v = z
+          .object({
+            user_id: z.string().max(80),
+            scope: z.enum([
+              "akhalkalaki",
+              "ninotsminda",
+              "visiting",
+              "individual",
+            ]),
+            lecturer_id: z.string().max(80).nullable().optional(),
+            price: z.coerce
+              .number()
+              .min(0)
+              .max(100000)
+              .multipleOf(0.01)
+              .default(0),
+          })
+          .parse(body);
+        if (
+          !(await one(
+            "SELECT id FROM users WHERE id=? AND role='student'",
+            v.user_id,
+          ))
+        )
+          return fail("invalid");
+        const lecturer = v.lecturer_id
+          ? await one(
+              "SELECT id FROM users WHERE id=? AND role='lecturer' AND active=1",
+              v.lecturer_id,
+            )
+          : await one(
+              "SELECT id FROM users WHERE role='lecturer' AND active=1 ORDER BY name",
+            );
+        const id = randomUUID();
+        await db
+          .prepare(
+            "INSERT INTO theory_enrollments(id,user_id,lecturer_id,scope,price,created,created_by) VALUES(?,?,?,?,?,?,?)",
+          )
+          .run(
+            id,
+            v.user_id,
+            lecturer?.id || null,
+            v.scope,
+            tetri(v.price),
+            new Date().toISOString(),
+            user.id,
+          );
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(
+            user.id,
+            "theory:enroll",
+            JSON.stringify({ id, user: v.user_id, scope: v.scope }),
+          );
+        return json({ id });
+      }
+      if (p[1] === "unenroll") {
+        const v = z.object({ id: z.string().max(80) }).parse(body);
+        await db
+          .prepare("UPDATE theory_enrollments SET voided=1 WHERE id=?")
+          .run(v.id);
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(user.id, "theory:unenroll", JSON.stringify({ id: v.id }));
+        return json({ ok: true });
+      }
+      return fail("notFound", 404);
+    }
     if (p[0] === "applications") {
       if (!isStaff(user.role)) return fail("forbidden", 403);
       if (p[1] === "list")
@@ -1329,6 +1488,7 @@ export async function POST(
           .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
           .run(user.id, "staff:create", JSON.stringify({ id, role: v.role }));
         await linkTeacherCard({ id, name: v.name, role: v.role }, user.id);
+        await addDefaultRates(id, v.role, user.id);
         // Shown once; the employee must change it at the first sign-in.
         return json({ id, password });
       }
@@ -1352,6 +1512,7 @@ export async function POST(
           .prepare("UPDATE users SET role=? WHERE id=?")
           .run(v.role, v.id);
         await linkTeacherCard({ ...u, role: v.role }, user.id);
+        await addDefaultRates(v.id, v.role, user.id);
         return json({ ok: true });
       }
       if (p[1] === "record") {
@@ -1539,24 +1700,69 @@ export async function POST(
 // Uploaded files and the site's own static media folders.
 const localFile =
   /^\/(api\/files\/[a-f0-9-]+|(media|images)\/[\w.-]+(\/[\w.-]+)*)$/;
+/** Accepted lessons per month and kind, and students enrolled per month and scope, for pay by KPI. */
+async function countsByMonth(userId: string) {
+  const out: Record<string, PayCounts> = {};
+  const bump = (m: string) => (out[m] ||= { lessons: {}, students: {} });
+  for (const r of await all(
+    "SELECT accepted_at, lesson_kind FROM bookings WHERE instructor_id=? AND accepted_at IS NOT NULL",
+    userId,
+  )) {
+    const c = bump(currentMonth(new Date(String(r.accepted_at)))).lessons!;
+    c.all = (c.all || 0) + 1;
+    if (r.lesson_kind) c[r.lesson_kind] = (c[r.lesson_kind] || 0) + 1;
+  }
+  for (const r of await all(
+    "SELECT scope, price, created FROM theory_enrollments WHERE lecturer_id=? AND voided=0",
+    userId,
+  )) {
+    const st = bump(currentMonth(new Date(String(r.created)))).students!;
+    for (const k of ["all", String(r.scope)]) {
+      st[k] ||= { n: 0, price: 0 };
+      st[k]!.n++;
+      st[k]!.price += Number(r.price || 0);
+    }
+  }
+  return out;
+}
+/** The school's standard rates are added when an instructor or lecturer account appears. */
+async function addDefaultRates(userId: string, role: string, actor: string) {
+  const rates = DEFAULT_RATES[role];
+  if (!rates) return;
+  if (
+    await one(
+      "SELECT id FROM pay_items WHERE user_id=? AND kind IN ('per_lesson','per_student') AND voided=0",
+      userId,
+    )
+  )
+    return;
+  for (const r of rates)
+    await db
+      .prepare(
+        "INSERT INTO pay_items(id,user_id,kind,title,amount,percent,scope,from_month,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        randomUUID(),
+        userId,
+        r.kind,
+        r.title,
+        r.amount ?? null,
+        r.percent ?? null,
+        r.scope,
+        currentMonth(),
+        actor,
+      );
+}
 /** Earned so far, confirmed payouts and what is still owed (or paid ahead) for one employee. */
 async function ledgerFor(userId: string) {
   const items = (await all(
     "SELECT * FROM pay_items WHERE user_id=? AND voided=0 ORDER BY created",
     userId,
   )) as unknown as PayItem[];
-  const lessonsByMonth: Record<string, number> = {};
-  for (const r of await all(
-    "SELECT accepted_at FROM bookings WHERE instructor_id=? AND accepted_at IS NOT NULL",
-    userId,
-  )) {
-    const m = currentMonth(new Date(String(r.accepted_at)));
-    lessonsByMonth[m] = (lessonsByMonth[m] || 0) + 1;
-  }
   const { accrued, months } = accrualSince(
     items,
     currentMonth(),
-    lessonsByMonth,
+    await countsByMonth(userId),
   );
   const payouts = await all(
     "SELECT id,amount,kind,note,created,confirmed_at FROM payouts WHERE user_id=? AND voided=0 ORDER BY created DESC",
@@ -1664,16 +1870,8 @@ async function lessons(p: string[], body: any, user: Row) {
       "SELECT * FROM pay_items WHERE user_id=? AND voided=0 ORDER BY created",
       user.id,
     )) as unknown as PayItem[];
-    const done = Number(
-      (
-        await one(
-          "SELECT count(*) AS n FROM bookings WHERE instructor_id=? AND accepted_at>=? AND accepted_at<?",
-          user.id,
-          from,
-          to,
-        )
-      )?.n || 0,
-    );
+    const counts = (await countsByMonth(user.id))[month] || {};
+    const done = counts.lessons?.all || 0;
     const pending = Number(
       (
         await one(
@@ -1682,11 +1880,12 @@ async function lessons(p: string[], body: any, user: Row) {
         )
       )?.n || 0,
     );
-    const pay = computePay(items, month, done);
+    const pay = computePay(items, month, counts);
     return json({
       month,
       ...pay,
       lessons: done,
+      students: counts.students?.all?.n || 0,
       pending,
       ledger: await ledgerFor(user.id),
     });
@@ -1991,31 +2190,25 @@ async function finance(p: string[], body: any, user: Row) {
       })
       .parse(body || {});
     const month = v.month || currentMonth();
-    const [from, to] = monthRange(month);
     const people = await all(
       "SELECT id,name,role,active FROM users WHERE role<>'student' ORDER BY CASE role WHEN 'admin' THEN 3 ELSE 0 END, name",
     );
     const items = (await all(
       "SELECT * FROM pay_items WHERE voided=0 ORDER BY created",
     )) as unknown as (PayItem & { user_id: string })[];
-    const done = await all(
-      "SELECT instructor_id, count(*) AS n FROM bookings WHERE accepted_at>=? AND accepted_at<? GROUP BY instructor_id",
-      from,
-      to,
-    );
     const rows = await Promise.all(
       people.map(async (u) => {
         const mine = items.filter((i) => i.user_id === u.id);
-        const lessonsDone = Number(
-          done.find((x) => x.instructor_id === u.id)?.n || 0,
-        );
-        const pay = computePay(mine, month, lessonsDone);
+        const counts = (await countsByMonth(u.id))[month] || {};
+        const lessonsDone = counts.lessons?.all || 0;
+        const pay = computePay(mine, month, counts);
         return {
           id: u.id,
           name: u.name,
           role: u.role,
           active: Number(u.active) !== 0,
           lessons: lessonsDone,
+          students: counts.students?.all?.n || 0,
           ...pay,
           ledger: await ledgerFor(u.id),
         };
@@ -2080,7 +2273,26 @@ async function finance(p: string[], body: any, user: Row) {
     const v = z
       .object({
         user_id: z.string().max(80),
-        kind: z.enum(["bonus", "percent", "per_lesson", "premium"]),
+        kind: z.enum([
+          "bonus",
+          "percent",
+          "per_lesson",
+          "per_student",
+          "premium",
+        ]),
+        scope: z
+          .enum([
+            "",
+            "yard",
+            "city",
+            "theory",
+            "exam",
+            "akhalkalaki",
+            "ninotsminda",
+            "visiting",
+            "individual",
+          ])
+          .default(""),
         title: z.string().trim().max(200).default(""),
         amount: z.coerce
           .number()
@@ -2106,7 +2318,24 @@ async function finance(p: string[], body: any, user: Row) {
       ))
     )
       return fail("invalid");
-    if (v.kind === "percent" ? v.percent === undefined : v.amount === undefined)
+    const lessonScopes = ["", "yard", "city", "theory", "exam"];
+    const groupScopes = [
+      "",
+      "akhalkalaki",
+      "ninotsminda",
+      "visiting",
+      "individual",
+    ];
+    if (v.kind === "per_lesson" && !lessonScopes.includes(v.scope))
+      return fail("invalid");
+    if (v.kind === "per_student" && !groupScopes.includes(v.scope))
+      return fail("invalid");
+    if (!["per_lesson", "per_student"].includes(v.kind) && v.scope)
+      return fail("invalid");
+    const byPercent =
+      v.kind === "percent" ||
+      (v.kind === "per_student" && v.percent !== undefined);
+    if (byPercent ? v.percent === undefined : v.amount === undefined)
       return fail("invalid");
     const from = v.from_month || currentMonth();
     // a premium is one month only
@@ -2115,15 +2344,16 @@ async function finance(p: string[], body: any, user: Row) {
     const id = randomUUID();
     await db
       .prepare(
-        "INSERT INTO pay_items(id,user_id,kind,title,amount,percent,from_month,to_month,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO pay_items(id,user_id,kind,title,amount,percent,scope,from_month,to_month,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",
       )
       .run(
         id,
         v.user_id,
         v.kind,
         v.title,
-        v.kind === "percent" ? null : tetri(v.amount!),
-        v.kind === "percent" ? v.percent! : null,
+        byPercent ? null : tetri(v.amount!),
+        byPercent ? v.percent! : null,
+        v.scope || null,
         from,
         to,
         user.id,

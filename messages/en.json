@@ -417,6 +417,7 @@
   "payOperatorText": "Your booking is confirmed. To pay, write to the operator: they will tell you how to pay and record the payment.",
   "payOperatorMsg": "Hello! I would like to pay for my lessons. Amount due:",
   "payWriteOperator": "Write to the operator",
+  "lessonKind": "What you practise",
   "backHome": "Back to home",
   "practiceAkhalkalaki": "Driving practice and exam routes start only from the Akhalkalaki branch",
   "whatsapp": "Message on WhatsApp",

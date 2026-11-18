@@ -17,6 +17,7 @@ const KIND: Record<string, string> = {
   bonus: "Бонус (каждый месяц)",
   percent: "Процент от оклада",
   per_lesson: "За каждый принятый урок",
+  per_student: "За ученика",
   premium: "Разовая премия",
 };
 const PAYKIND: Record<string, string> = {
@@ -31,8 +32,30 @@ const monthName = (m: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
+const SCOPE: Record<string, string> = {
+  yard: "площадка",
+  city: "город",
+  theory: "теория",
+  exam: "экзамен",
+  akhalkalaki: "группа, Ахалкалаки",
+  ninotsminda: "группа, Ниноцминда",
+  visiting: "выездная группа",
+  individual: "индивидуально и мини-группы",
+};
+/** What a pay item is called, with the kind of lesson or group it applies to. */
+const itemName = (i: Row) =>
+  `${KIND[i.kind]}${i.scope ? ` · ${SCOPE[i.scope] || i.scope}` : ""}`;
 const itemText = (i: Row) =>
-  i.kind === "percent" ? `${i.percent}% от оклада` : gel(Number(i.amount || 0));
+  i.kind === "percent"
+    ? `${i.percent}% от оклада`
+    : i.percent
+      ? `${i.percent}% от стоимости курса`
+      : gel(Number(i.amount || 0)) +
+        (i.kind === "per_lesson"
+          ? " за урок"
+          : i.kind === "per_student"
+            ? " за ученика"
+            : "");
 
 /** Own pay for a month: salary and every extra, so the person sees how the total is made up. */
 export function MySalary() {
@@ -163,8 +186,10 @@ export function MySalary() {
         <ul className="ledger">
           {d.items.map((i: Row) => (
             <li key={i.id} className="payment">
-              <span>{KIND[i.kind]}</span>
-              <span>{i.title && i.title !== "Оклад" ? i.title : ""}</span>
+              <span>{itemName(i)}</span>
+              <span>
+                {i.title && i.title !== "Оклад" && !i.scope ? i.title : ""}
+              </span>
               <b>{itemText(i)}</b>
             </li>
           ))}
@@ -290,8 +315,9 @@ export function PayrollReport() {
               .map((i: Row) => (
                 <p key={i.id} className="pay-line">
                   <span>
-                    {KIND[i.kind]}
-                    {i.title ? ` · ${i.title}` : ""}: <b>{itemText(i)}</b>
+                    {itemName(i)}
+                    {i.title && !i.scope ? ` · ${i.title}` : ""}:{" "}
+                    <b>{itemText(i)}</b>
                   </span>
                   <button
                     type="button"
@@ -412,13 +438,17 @@ export function PayrollReport() {
                   e.preventDefault();
                   const f = e.currentTarget;
                   const x = Object.fromEntries(new FormData(f));
+                  const [kindRaw, scope = ""] = String(x.kind).split("|");
+                  const byPercent =
+                    kindRaw === "percent" || kindRaw.endsWith("%");
                   const body: Row = {
                     user_id: r.id,
-                    kind: x.kind,
+                    kind: kindRaw.replace("%", ""),
+                    scope,
                     title: x.title || "",
                     from_month: d.month,
                   };
-                  if (x.kind === "percent") body.percent = x.value;
+                  if (byPercent) body.percent = x.value;
                   else body.amount = x.value;
                   if (await call("finance/pay-add", body)) f.reset();
                 }}
@@ -429,9 +459,31 @@ export function PayrollReport() {
                   </option>
                   <option value="bonus">Бонус каждый месяц (₾)</option>
                   <option value="percent">Процент от оклада (%)</option>
-                  <option value="per_lesson">
-                    За каждый принятый урок (₾)
-                  </option>
+                  <optgroup label="За принятый урок (₾)">
+                    <option value="per_lesson|yard">Урок на площадке</option>
+                    <option value="per_lesson|city">Урок в городе</option>
+                    <option value="per_lesson|theory">Урок теории</option>
+                    <option value="per_lesson|exam">
+                      Экзаменационный урок
+                    </option>
+                    <option value="per_lesson|">Любой урок</option>
+                  </optgroup>
+                  <optgroup label="За ученика в группе (₾)">
+                    <option value="per_student|akhalkalaki">
+                      Группа, Ахалкалаки
+                    </option>
+                    <option value="per_student|ninotsminda">
+                      Группа, Ниноцминда
+                    </option>
+                    <option value="per_student|visiting">
+                      Выездная группа
+                    </option>
+                  </optgroup>
+                  <optgroup label="Процент от стоимости курса (%)">
+                    <option value="per_student%|individual">
+                      Индивидуально и мини-группы
+                    </option>
+                  </optgroup>
                 </select>
                 <input
                   name="title"

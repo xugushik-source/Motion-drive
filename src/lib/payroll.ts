@@ -43,10 +43,13 @@ export function monthRange(month?: string, now = new Date()) {
  */
 export type PayItem = {
   id?: string;
-  kind: "salary" | "bonus" | "percent" | "per_lesson" | "premium";
+  kind:
+    "salary" | "bonus" | "percent" | "per_lesson" | "per_student" | "premium";
   title?: string;
   amount?: number | null;
   percent?: number | null;
+  /** per_lesson: lesson kind (yard, city, theory, exam); per_student: group scope. Empty means all. */
+  scope?: string | null;
   from_month: string;
   to_month?: string | null;
   voided?: number;
@@ -55,7 +58,19 @@ export const itemActive = (it: PayItem, month: string) =>
   !Number(it.voided) &&
   it.from_month <= month &&
   (!it.to_month || it.to_month >= month);
-export function computePay(items: PayItem[], month: string, lessons = 0) {
+/** Lessons accepted per kind, and students enrolled per scope with the course prices they paid. */
+export type PayCounts = {
+  lessons?: Record<string, number>;
+  students?: Record<string, { n: number; price: number }>;
+};
+export function computePay(
+  items: PayItem[],
+  month: string,
+  counts: number | PayCounts = 0,
+) {
+  const lessons: Record<string, number> =
+    typeof counts === "number" ? { all: counts } : counts.lessons || {};
+  const students = typeof counts === "number" ? {} : counts.students || {};
   const active = items.filter((i) => itemActive(i, month));
   const sum = (kind: PayItem["kind"]) =>
     active
@@ -69,15 +84,36 @@ export function computePay(items: PayItem[], month: string, lessons = 0) {
       (a, i) => a + Math.round((salary * (Number(i.percent) || 0)) / 100),
       0,
     );
-  const perLesson = sum("per_lesson") * Math.max(0, Math.round(lessons));
+  const perLesson = active
+    .filter((i) => i.kind === "per_lesson")
+    .reduce(
+      (a, i) =>
+        a +
+        Math.round(Number(i.amount) || 0) *
+          Math.max(0, Math.round(lessons[i.scope || "all"] ?? 0)),
+      0,
+    );
+  const perStudent = active
+    .filter((i) => i.kind === "per_student")
+    .reduce((a, i) => {
+      const st = students[i.scope || "all"] || { n: 0, price: 0 };
+      // a percent is taken from what the students paid for the course, an amount is paid per student
+      return (
+        a +
+        (i.percent
+          ? Math.round((st.price * Number(i.percent)) / 100)
+          : Math.round(Number(i.amount) || 0) * st.n)
+      );
+    }, 0);
   const premium = sum("premium");
   return {
     salary,
     bonus,
     percent,
     perLesson,
+    perStudent,
     premium,
-    total: salary + bonus + percent + perLesson + premium,
+    total: salary + bonus + percent + perLesson + perStudent + premium,
     items: active,
   };
 }
@@ -94,7 +130,7 @@ export const nextMonth = (month: string) => {
 export function accrualSince(
   items: PayItem[],
   nowMonth: string,
-  lessonsByMonth: Record<string, number> = {},
+  countsByMonth: Record<string, number | PayCounts> = {},
 ) {
   const live = items.filter((i) => !Number(i.voided));
   const first = live.map((i) => i.from_month).sort()[0];
@@ -106,7 +142,7 @@ export function accrualSince(
       m <= nowMonth && months.length < 600;
       m = nextMonth(m)
     ) {
-      const total = computePay(live, m, lessonsByMonth[m] || 0).total;
+      const total = computePay(live, m, countsByMonth[m] || 0).total;
       months.push({ month: m, total });
       accrued += total;
     }
@@ -122,3 +158,63 @@ export const balanceOf = (accrued: number, paidConfirmed: number) => ({
   advance: Math.max(paidConfirmed - accrued, 0),
   closed: accrued - paidConfirmed === 0,
 });
+
+/** The default rates the school pays (2026-11-18). Added automatically when an account is created. */
+export const DEFAULT_RATES: Record<
+  string,
+  {
+    kind: PayItem["kind"];
+    scope: string;
+    amount?: number;
+    percent?: number;
+    title: string;
+  }[]
+> = {
+  instructor: [
+    {
+      kind: "per_lesson",
+      scope: "yard",
+      amount: 1500,
+      title: "Урок на площадке",
+    },
+    { kind: "per_lesson", scope: "city", amount: 2000, title: "Урок в городе" },
+  ],
+  lecturer: [
+    {
+      kind: "per_student",
+      scope: "akhalkalaki",
+      amount: 5000,
+      title: "Группа, Ахалкалаки (за ученика)",
+    },
+    {
+      kind: "per_student",
+      scope: "ninotsminda",
+      amount: 6000,
+      title: "Группа, Ниноцминда (за ученика)",
+    },
+    {
+      kind: "per_student",
+      scope: "visiting",
+      amount: 6000,
+      title: "Выездная группа (за ученика)",
+    },
+    {
+      kind: "per_student",
+      scope: "individual",
+      percent: 50,
+      title: "Индивидуально или мини-группа до 3 человек (50% от стоимости)",
+    },
+  ],
+};
+/** Lesson kind of a booking, from the package it came from (or the program when there is none). */
+export function lessonKindOf(
+  packageId?: string | null,
+  program?: string | null,
+) {
+  const id = String(packageId || "");
+  if (id.includes("yard")) return "yard";
+  if (id.startsWith("theory") || program === "theory" || program === "group")
+    return "theory";
+  if (id.startsWith("exam") || program === "exam") return "exam";
+  return "city";
+}

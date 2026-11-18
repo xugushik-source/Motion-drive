@@ -80,6 +80,8 @@ function localDb() {
       ["accepted_at", "TEXT"],
       ["accepted_by", "TEXT"],
       ["pay_amount", "INTEGER"],
+      ["lesson_kind", "TEXT"],
+      ["package_id", "TEXT"],
     ])
       if (!bookingColumns.some((c) => c.name === name))
         sqlite.exec(`ALTER TABLE bookings ADD COLUMN ${name} ${ddl}`);

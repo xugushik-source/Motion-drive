@@ -612,6 +612,7 @@ export function Booking({
               instructor_id: instructor || null,
               slot_ids: pickedSlots.map((s) => s.id),
               package_id: pack?.id || null,
+              lesson_kind: !pack ? f.lesson_kind || "city" : undefined,
               name: me!.name,
               contact: me!.phone || me!.email || f.phone,
               note: [
@@ -746,6 +747,15 @@ export function Booking({
                   ))}
               </select>
             </Field>
+            {!pack && (
+              <Field label={t("lessonKind")}>
+                <select name="lesson_kind" defaultValue="city">
+                  <option value="city">{t("stage_city")}</option>
+                  <option value="yard">{t("stage_yard")}</option>
+                  <option value="exam">{t("exam")}</option>
+                </select>
+              </Field>
+            )}
             {!pack && (
               <Field label={t("program")}>
                 <select name="program" defaultValue="practice">

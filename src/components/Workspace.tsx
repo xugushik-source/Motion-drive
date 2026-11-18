@@ -747,6 +747,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                           )}
                         </p>
                       )}
+                      <EnrollGroup
+                        student={u}
+                        enrollments={data.enrollments || []}
+                        lecturers={data.users.filter(
+                          (x: Item) => x.role === "lecturer",
+                        )}
+                        act={act}
+                      />
                       <ShowId
                         id={u.id}
                         has={!!Number(u.has_personal_id)}
@@ -894,6 +902,52 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         )}
         {tab === "schedule" && (
           <>
+            {staff && (
+              <form
+                className="form-card"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const x = Object.fromEntries(new FormData(e.currentTarget));
+                  const r = await act("schedule/daylight", x);
+                  if (r)
+                    setNotice(
+                      r.created
+                        ? `Открыто занятий: ${r.created} (дней: ${r.days})`
+                        : "Всё уже открыто на этот срок.",
+                    );
+                }}
+              >
+                <h3>Открыть вождение до заката</h3>
+                <p className="muted">
+                  Ахалкалаки, с понедельника по субботу, с 9:00, урок 60 минут.
+                  Последнее занятие заканчивается до темноты: закат считается
+                  сам для каждого дня, зимой занятий меньше, летом больше.
+                  Расписание можно открыть повторно: уже открытое не
+                  дублируется.
+                </p>
+                <div className="form-grid">
+                  <Field label="На сколько недель">
+                    <select name="weeks" defaultValue="4">
+                      {[1, 2, 4, 8].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Если инструкторов ещё нет: сколько машин ездит одновременно">
+                    <input
+                      name="cars"
+                      type="number"
+                      min="1"
+                      max="10"
+                      defaultValue="3"
+                    />
+                  </Field>
+                </div>
+                <button className="button small">Открыть расписание</button>
+              </form>
+            )}
             <form
               className="form-card"
               onSubmit={async (e) => {
@@ -1938,5 +1992,99 @@ function ShowId({
     <p className="muted">
       {t("personalId")}: <b>{value}</b>
     </p>
+  );
+}
+
+const GROUP_SCOPE: Record<string, string> = {
+  akhalkalaki: "Группа, Ахалкалаки",
+  ninotsminda: "Группа, Ниноцминда",
+  visiting: "Выездная группа",
+  individual: "Индивидуально / мини-группа до 3",
+};
+/** Writes a student into a theory group (or individual theory); the lecturer's pay follows from it. */
+function EnrollGroup({
+  student,
+  enrollments,
+  lecturers,
+  act,
+}: {
+  student: Item;
+  enrollments: Item[];
+  lecturers: Item[];
+  act: (path: string, body: any) => Promise<any>;
+}) {
+  const mine = enrollments.find((e) => e.user_id === student.id);
+  const [scope, setScope] = useState("akhalkalaki");
+  if (mine)
+    return (
+      <p className="muted">
+        Теория: <b>{GROUP_SCOPE[mine.scope]}</b>
+        {lecturers.find((l) => l.id === mine.lecturer_id)
+          ? ` · лектор ${lecturers.find((l) => l.id === mine.lecturer_id)!.name}`
+          : ""}{" "}
+        <button
+          type="button"
+          className="link-button"
+          onClick={() =>
+            confirm("Убрать из группы?") &&
+            act("theory/unenroll", { id: mine.id })
+          }
+        >
+          убрать
+        </button>
+      </p>
+    );
+  return (
+    <details className="pay-add">
+      <summary>Записать в группу теории</summary>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const x = Object.fromEntries(new FormData(e.currentTarget));
+          await act("theory/enroll", {
+            user_id: student.id,
+            scope: x.scope,
+            price: x.price || 0,
+            lecturer_id: x.lecturer_id || null,
+          });
+        }}
+      >
+        <select
+          name="scope"
+          value={scope}
+          onChange={(e) => setScope(e.target.value)}
+        >
+          {Object.entries(GROUP_SCOPE).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <input
+          name="price"
+          type="number"
+          step="0.01"
+          min="0"
+          inputMode="decimal"
+          placeholder={
+            scope === "individual"
+              ? "Стоимость курса, ₾ (например, 300)"
+              : "Стоимость курса, ₾ (например, 150)"
+          }
+          key={scope}
+        />
+        {lecturers.length > 0 && (
+          <select name="lecturer_id" defaultValue="">
+            <option value="">Лектор: по умолчанию</option>
+            {lecturers.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <button className="button small">Записать</button>
+      </form>
+    </details>
   );
 }

@@ -42,6 +42,8 @@ ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS conducted_at TEXT;
 ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS accepted_at TEXT;
 ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS accepted_by TEXT;
 ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS pay_amount INTEGER;
+ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS lesson_kind TEXT;
+ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS package_id TEXT;
 CREATE INDEX IF NOT EXISTS bookings_series ON motion_drive.bookings(series_id);
 CREATE TABLE IF NOT EXISTS motion_drive.charges(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),series_id TEXT,title TEXT NOT NULL,amount INTEGER NOT NULL CHECK(amount>=0),created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided INTEGER NOT NULL DEFAULT 0,void_reason TEXT NOT NULL DEFAULT '');
 CREATE INDEX IF NOT EXISTS charges_user ON motion_drive.charges(user_id);
@@ -53,6 +55,11 @@ CREATE TABLE IF NOT EXISTS motion_drive.pay_items(id TEXT PRIMARY KEY,user_id TE
 CREATE INDEX IF NOT EXISTS pay_items_user ON motion_drive.pay_items(user_id);
 CREATE TABLE IF NOT EXISTS motion_drive.payouts(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id) ON DELETE CASCADE,amount INTEGER NOT NULL CHECK(amount>0),kind TEXT NOT NULL CHECK(kind IN ('salary','advance')),note TEXT NOT NULL DEFAULT '',created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,confirmed_at TEXT,voided INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS payouts_user ON motion_drive.payouts(user_id);
+CREATE TABLE IF NOT EXISTS motion_drive.theory_enrollments(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id) ON DELETE CASCADE,lecturer_id TEXT REFERENCES motion_drive.users(id) ON DELETE SET NULL,scope TEXT NOT NULL CHECK(scope IN ('akhalkalaki','ninotsminda','visiting','individual')),price INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by TEXT NOT NULL,voided INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS theory_enrollments_lecturer ON motion_drive.theory_enrollments(lecturer_id);
+ALTER TABLE motion_drive.pay_items ADD COLUMN IF NOT EXISTS scope TEXT;
+ALTER TABLE motion_drive.pay_items DROP CONSTRAINT IF EXISTS pay_items_kind_check;
+ALTER TABLE motion_drive.pay_items ADD CONSTRAINT pay_items_kind_check CHECK(kind IN ('salary','bonus','percent','per_lesson','per_student','premium'));
 CREATE TABLE IF NOT EXISTS motion_drive.results(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),answers TEXT NOT NULL,score INTEGER NOT NULL,total INTEGER NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS motion_drive.attempts(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),questions TEXT NOT NULL,deadline BIGINT NOT NULL,finished INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS motion_drive.messages(id TEXT PRIMARY KEY,user_id TEXT REFERENCES motion_drive.users(id),guest_id TEXT,locale TEXT NOT NULL,text TEXT NOT NULL,answer TEXT NOT NULL,admin_reply TEXT NOT NULL DEFAULT '',escalated INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -65,7 +72,7 @@ CREATE TABLE IF NOT EXISTS motion_drive.uploads(id TEXT PRIMARY KEY,user_id TEXT
 -- RLS is defense in depth, including for the private schema. An app-only role is
 -- granted DML and policies separately; no browser key can access this schema.
 DO $$ DECLARE t text; BEGIN
- FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications','pay_items','payouts'] LOOP
+ FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications','pay_items','payouts','theory_enrollments'] LOOP
  EXECUTE format('ALTER TABLE motion_drive.%I ENABLE ROW LEVEL SECURITY',t);
  END LOOP;
 END $$;
