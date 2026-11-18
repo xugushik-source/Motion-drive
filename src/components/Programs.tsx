@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { api, Field, type Item } from "./Site";
+import ProgramArt, { type ArtVariant } from "./ProgramArt";
 
 type T = (k: string) => string;
 type Cat = "B" | "C";
@@ -24,6 +25,13 @@ const stageIcon = { theory: BookOpen, yard: Route, city: CarFront };
 const PHOTO: Record<string, string> = {
   "B-yard": "/media/yard-1-poster.jpg",
   "B-city": "/media/street-car.webp",
+};
+/** Cards without a photo get a drawn illustration in the logo's colours. */
+const ART: Record<string, ArtVariant> = {
+  "B-theory": "signs-b",
+  "C-theory": "signs-c",
+  "C-yard": "dock",
+  "C-city": "truck-city",
 };
 const day = (iso?: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
@@ -111,7 +119,7 @@ export default function Programs({
                 {photo ? (
                   <img src={photo} alt="" loading="lazy" />
                 ) : (
-                  <Icon size={64} strokeWidth={1} />
+                  <ProgramArt variant={ART[`${active}-${st}`] || "signs-b"} />
                 )}
                 <span className="pg-num">0{i + 1}</span>
                 <span className="pg-chip">{t("stage_" + st)}</span>
