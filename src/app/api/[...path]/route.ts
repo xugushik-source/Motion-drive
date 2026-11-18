@@ -51,6 +51,7 @@ import {
   temporaryPassword,
 } from "../../../lib/auth";
 import { normalizePhone } from "../../../lib/phone";
+import { priceKit } from "../../../lib/kit";
 import {
   registerSchema,
   phoneSchema,
@@ -600,6 +601,78 @@ export async function POST(
           .run(user.id, "password:change:" + user.id);
       });
       return json({ ok: true });
+    }
+    if (p[0] === "orders" && p[1] === "create") {
+      // A "build your own package" order: priced on the server from the public price list, recorded as a
+      // charge on the student's account and as an application the office sees at once.
+      if (user.role !== "student") return fail("forbidden", 403);
+      if (!(await limit("order:" + user.id, 10, 3600)))
+        return fail("rateLimit", 429);
+      const v = z
+        .object({
+          theory: z.enum(["none", "group", "individual"]),
+          gear: z.enum(["none", "automatic", "manual"]),
+          hours: z.coerce.number().int().min(1).max(40),
+          yard: z.coerce.number().int().min(0).max(20),
+          priv: z.boolean(),
+          city: z.enum(["akhalkalaki", "ninotsminda"]).default("akhalkalaki"),
+          note: z.string().max(500).default(""),
+          locale: localeSchema,
+          consent: z.literal(true),
+          website: z.string().max(0).default(""),
+        })
+        .parse(body);
+      const price = priceKit(v, await approved("packages"), "ru");
+      const priceLoc = priceKit(v, await approved("packages"), v.locale);
+      const ready = priceLoc.ok ? priceLoc : price;
+      if (!ready.ok || ready.total <= 0) return fail("invalid");
+      // driving practice runs only from Akhalkalaki
+      const city =
+        v.theory !== "none" && v.gear === "none" && v.yard === 0
+          ? v.city
+          : "akhalkalaki";
+      const title =
+        "Свой пакет: " + price.parts.map((x) => x.label).join(" + ");
+      const course =
+        v.gear !== "none" ? "city" : v.yard > 0 ? "yard" : "theory";
+      const id = randomUUID();
+      await transaction(async () => {
+        await db
+          .prepare(
+            "INSERT INTO charges(id,user_id,title,amount,created_by) VALUES(?,?,?,?,?)",
+          )
+          .run(id, user.id, title.slice(0, 200), tetri(ready.total), user.id);
+        await db
+          .prepare(
+            "INSERT INTO applications(id,category,course,city,name,phone,note,locale,created) VALUES(?,?,?,?,?,?,?,?,?)",
+          )
+          .run(
+            randomUUID(),
+            "B",
+            course,
+            city,
+            user.name,
+            user.phone || "",
+            (
+              "ЗАКАЗ (свой пакет, " +
+              ready.total +
+              " ₾): " +
+              title +
+              (v.priv ? " · с выбором инструктора" : "") +
+              (v.note ? "\n" + v.note : "")
+            ).slice(0, 500),
+            v.locale,
+            new Date().toISOString(),
+          );
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(
+            user.id,
+            "order:kit",
+            JSON.stringify({ id, total: ready.total }),
+          );
+      });
+      return json({ id, total: ready.total, parts: ready.parts, city });
     }
     if (p[0] === "booking")
       return await transaction(async () => {

@@ -1206,7 +1206,8 @@ blockquote cite {
 .booking-layout {
   display: grid;
   grid-template-columns: 1fr 1.1fr;
-  gap: 10%;
+  column-gap: 10%;
+  row-gap: 28px;
   max-width: 1150px;
   margin: auto;
 }
@@ -1774,7 +1775,7 @@ pre {
   }
   .auth-layout,
   .booking-layout {
-    gap: 6%;
+    column-gap: 6%;
   }
   .cta-arrow {
     right: -60px;
@@ -2579,7 +2580,7 @@ h3 {
 .package-soon-note { grid-column: 1 / -1; text-align: center; font-size: 13px; margin: 6px 0 0; }
 
 /* ===== Booking wizard ===== */
-.booking-wizard { grid-template-columns: minmax(260px, .8fr) 1.4fr; gap: 5%; max-width: 1240px; }
+.booking-wizard { grid-template-columns: minmax(260px, .8fr) 1.4fr; column-gap: 5%; row-gap: 28px; max-width: 1240px; }
 .booking-sticky { position: sticky; top: 110px; }
 .booking-wizard > aside h2 { font-size: 36px; margin: 10px 0 24px; }
 .order-summary { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: grid; gap: 14px; }

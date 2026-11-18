@@ -25,6 +25,7 @@ import Packages, { sortPackages } from "./Packages";
 import { ApplyForm } from "./Programs";
 import PayPanel from "./PayPanel";
 import { autoPlan, type DayPart } from "../lib/schedule";
+import { kitFromQuery, priceKit, type Kit } from "../lib/kit";
 import { pick } from "../lib/pick";
 type Common = { locale: string; t: (k: string) => string };
 
@@ -234,6 +235,234 @@ export function Auth({
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 const PARTS: DayPart[] = ["morning", "day", "evening"];
+/**
+ * Order page for a "build your own package" selection: the choice arrives in the address, the person
+ * registers (or signs in) in the same form, the order is recorded, and the hand-over to the school's
+ * WhatsApp and the payment instructions follow at once.
+ */
+function KitOrder({
+  kit,
+  user,
+  content,
+  locale,
+  t,
+}: {
+  kit: Kit;
+  user: Item | null | undefined;
+  content: Record<string, Item[]>;
+  locale: string;
+  t: (k: string) => string;
+}) {
+  const priced = useMemo(
+    () => priceKit(kit, content.packages || [], locale),
+    [kit, content.packages, locale],
+  );
+  const theoryOnly =
+    kit.theory !== "none" && kit.gear === "none" && kit.yard === 0;
+  const [localUser, setLocalUser] = useState(user),
+    [registerMode, setRegisterMode] = useState(true),
+    [city, setCity] = useState("akhalkalaki"),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [done, setDone] = useState<{ total: number; city: string } | null>(null);
+  useEffect(() => setLocalUser(user), [user]);
+  const bookCity = theoryOnly ? city : "akhalkalaki";
+  if (done) {
+    const branch = (content.branches || []).find(
+      (b) => b.city === done.city && b.whatsapp,
+    );
+    const text = [
+      t("waBooking"),
+      `${localUser?.name || ""} · ${localUser?.phone || ""}`,
+      ...priced.parts.map((x) => "• " + x.label + ": " + x.cost + " ₾"),
+      `${t("priceTotal")}: ${done.total} ₾`,
+    ].join("\n");
+    return (
+      <motion.div
+        className="success-card"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <motion.span
+          className="success-check"
+          initial={{ scale: 0, rotate: -90 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }}
+        >
+          <Check size={44} />
+        </motion.span>
+        <h2>{t("kitDone")}</h2>
+        <ul className="sent-list">
+          {priced.parts.map((x) => (
+            <li key={x.label}>
+              <Check size={15} />
+              {x.label}: {x.cost} ₾
+            </li>
+          ))}
+        </ul>
+        <p>{t("kitSchedule")}</p>
+        {branch && (
+          <div className="wa-handoff">
+            <p>{t("waHandoffText")}</p>
+            <a
+              className="whatsapp-button"
+              href={`https://wa.me/${branch.whatsapp}?text=${encodeURIComponent(text)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MessageCircle size={17} />
+              {t("waSend")}
+            </a>
+          </div>
+        )}
+        <PayPanel t={t} />
+        <div className="success-actions">
+          <Link className="button" href={"/" + locale + "/account"}>
+            {t("account")}
+            <ArrowUpRight />
+          </Link>
+          <Link className="button outline-dark" href={"/" + locale}>
+            <ArrowLeft />
+            {t("backHome")}
+          </Link>
+        </div>
+      </motion.div>
+    );
+  }
+  if (!priced.ok)
+    return (
+      <Notice>
+        {t("kitBroken")}{" "}
+        <Link href={"/" + locale + "/courses"}>{t("backToPackages")}</Link>
+      </Notice>
+    );
+  return (
+    <div className="booking-layout booking-wizard">
+      <aside>
+        <div className="order-card">
+          <h3>{t("kitTitle")}</h3>
+          <ul className="picked-list">
+            {priced.parts.map((x) => (
+              <li key={x.label}>
+                <span>{x.label}</span>
+                <b>{x.cost} ₾</b>
+              </li>
+            ))}
+          </ul>
+          <div className="order-row total">
+            <small>{t("priceTotal")}</small>
+            <strong>{priced.total.toLocaleString("ru-RU")} ₾</strong>
+          </div>
+        </div>
+        <div className="booking-summary">
+          <ShieldCheck size={22} />
+          <p>{t("operatorConfirms")}</p>
+          <p>{t("kitSchedule")}</p>
+        </div>
+      </aside>
+      <form
+        className="form-card wizard-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError("");
+          setBusy(true);
+          const f = Object.fromEntries(new FormData(e.currentTarget)) as Record<
+            string,
+            any
+          >;
+          try {
+            let me = localUser;
+            if (!me) {
+              me = await signIn(registerMode, f, locale);
+              setLocalUser(me);
+            }
+            const r = await api("orders/create", {
+              ...kit,
+              city: bookCity,
+              note: f.note || "",
+              locale,
+              consent: true,
+              website: f.website || "",
+            });
+            setLocalUser(me);
+            setDone({ total: r.total, city: r.city });
+            window.scrollTo({ top: 0 });
+          } catch (e) {
+            setError(t((e as Error).message));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <section>
+          {theoryOnly && (
+            <Field label={t("applyBranch")}>
+              <select value={city} onChange={(e) => setCity(e.target.value)}>
+                <option value="akhalkalaki">{t("city1")}</option>
+                <option value="ninotsminda">{t("city2")}</option>
+              </select>
+            </Field>
+          )}
+          {localUser ? (
+            <p className="signed-in">
+              <Check size={16} /> {localUser.name} ·{" "}
+              {localUser.phone || localUser.email}
+            </p>
+          ) : (
+            <>
+              <div className="tabs">
+                <button
+                  type="button"
+                  className={registerMode ? "selected" : ""}
+                  onClick={() => setRegisterMode(true)}
+                >
+                  {t("newStudent")}
+                </button>
+                <button
+                  type="button"
+                  className={!registerMode ? "selected" : ""}
+                  onClick={() => setRegisterMode(false)}
+                >
+                  {t("haveAccount")}
+                </button>
+              </div>
+              <p className="hint">
+                {t(registerMode ? "accountAutoText" : "loginText")}
+              </p>
+              <div className="form-grid">
+                <AccountFields register={registerMode} t={t} />
+              </div>
+              {!registerMode && <Forgot t={t} />}
+            </>
+          )}
+          <p className="late-rule">{t("lateRule")}</p>
+          <Field label={t("note")}>
+            <textarea name="note" maxLength={400} rows={2} />
+          </Field>
+          <div className="honeypot" aria-hidden="true">
+            <input name="website" tabIndex={-1} autoComplete="off" />
+          </div>
+          <label className="checkbox">
+            <input type="checkbox" name="consent" required />
+            <span>
+              {t("consent")} ·{" "}
+              <Link href={"/" + locale + "/privacy"}>{t("privacy")}</Link>
+            </span>
+          </label>
+        </section>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button className="button submit-order" disabled={busy}>
+          {t(busy ? "loading" : "kitSubmit")} · {priced.total} ₾
+          <ArrowUpRight size={20} />
+        </button>
+      </form>
+    </div>
+  );
+}
 const weekdayName = (locale: string, i: number) =>
   new Date(Date.UTC(2026, 10, 2 + i)).toLocaleDateString(locale, {
     weekday: "short",
@@ -287,8 +516,10 @@ export function Booking({
     [error, setError] = useState(""),
     [sent, setSent] = useState<Item[] | null>(null),
     [sentBy, setSentBy] = useState<Item | null | undefined>(null),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [kit, setKit] = useState<Kit | null | undefined>(undefined);
   useEffect(() => setLocalUser(user), [user]);
+  useEffect(() => setKit(kitFromQuery(window.location.search)), []);
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("package");
     const found = packages.find((p) => p.id === id);
@@ -426,7 +657,12 @@ export function Booking({
       </button>
     </div>
   );
-  if (user === undefined) return <Notice>{t("loading")}</Notice>;
+  if (user === undefined || kit === undefined)
+    return <Notice>{t("loading")}</Notice>;
+  if (kit)
+    return (
+      <KitOrder kit={kit} user={user} content={content} locale={locale} t={t} />
+    );
   if (sent)
     return (
       <motion.div
