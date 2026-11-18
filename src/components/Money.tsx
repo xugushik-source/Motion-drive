@@ -561,7 +561,11 @@ function Chart({ series }: { series: Row[] }) {
  * money lies, what came in, who owes (aged), what went out, what is owed to staff and the result
  * in two ways: real money and what was earned.
  */
-export function MoneyOverview() {
+export function MoneyOverview({
+  onOpenStudent,
+}: {
+  onOpenStudent?: (id: string, name: string) => void;
+}) {
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(today());
   const [city, setCity] = useState("");
@@ -920,7 +924,19 @@ export function MoneyOverview() {
             <ul className="ledger">
               {r.receivables.top.map((d: Row) => (
                 <li key={d.id}>
-                  <span>{d.name}</span>
+                  <span>
+                    {onOpenStudent ? (
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => onOpenStudent(d.id, d.name)}
+                      >
+                        {d.name}
+                      </button>
+                    ) : (
+                      d.name
+                    )}
+                  </span>
                   <span>
                     {d.phone ? (
                       <a href={"tel:" + d.phone}>{formatPhone(d.phone)}</a>

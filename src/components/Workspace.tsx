@@ -35,6 +35,7 @@ import Staff from "./Staff";
 import PayPanel from "./PayPanel";
 import { MySalary, PayrollReport } from "./Payroll";
 import Roles from "./Roles";
+import Today from "./Today";
 import { ExpensesTab, MoneyOverview } from "./Money";
 type Props = {
   user: Item;
@@ -69,9 +70,44 @@ const modules = [
   "settings",
   "audit",
 ];
+/** The side menu in sections, so that 30 items are never one flat list. */
+const SECTIONS: [string, string[]][] = [
+  ["Сегодня", ["today"]],
+  ["Работа", ["bookings", "applications", "students", "schedule", "lessons"]],
+  ["Деньги", ["payments", "expenses", "finance", "payroll", "salary", "mypay"]],
+  ["Люди", ["staff", "roles", "instructors"]],
+  [
+    "Сайт",
+    [
+      "programs",
+      "packages",
+      "services",
+      "courses",
+      "branches",
+      "media",
+      "reviews",
+      "faq",
+      "translations",
+      "materials",
+    ],
+  ],
+  [
+    "Обращения и обучение",
+    ["messages", "knowledge", "questions", "results", "imports", "progress"],
+  ],
+  ["Система", ["usage", "settings", "audit", "security"]],
+];
 export default function Workspace({ user, locale, t, page, onLogout }: Props) {
+  const startsOnToday =
+    (user.role === "admin" && page === "admin") ||
+    ((user.role === "operator" || user.role === "manager") &&
+      page === user.role);
+  const initialTab = startsOnToday ? "today" : "bookings";
   const [data, setData] = useState<Item | null>(null),
-    [tab, setTab] = useState("bookings"),
+    [tab, setTab] = useState(initialTab),
+    [payFocus, setPayFocus] = useState<{ id: string; name: string } | null>(
+      null,
+    ),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [editing, setEditing] = useState<Item | null>(null),
@@ -96,6 +132,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
   const canEdit = (kind: string) =>
     admin || (operator && STAFF_KINDS.includes(kind));
   const tabs = [
+    ...(staff ? ["today"] : []),
     ...(admin
       ? [
           ...modules.slice(0, 3),
@@ -137,6 +174,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             ]),
     "security",
   ];
+  // From a student (or a debtor in the money report) straight to his account of charges and payments.
+  const openLedger = (id: string, name: string) => {
+    setPayFocus({ id, name });
+    setTab("payments");
+    setEditing(null);
+    setNotice("");
+    window.scrollTo({ top: 0 });
+  };
   // Staff get new orders and applications without reloading the page.
   useEffect(() => {
     if (!["admin", "manager", "operator"].includes(user.role)) return;
@@ -243,45 +288,67 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             <small>{t(user.role)}</small>
           </div>
         </div>
-        {tabs.map((k) => (
-          <button
-            key={k}
-            className={tab === k ? "selected" : ""}
-            onClick={() => {
-              setTab(k);
-              setEditing(null);
-              setNotice("");
-              if (k === "audit")
-                act("admin/audit", {}).then((r) => r && setAudit(r));
-            }}
-          >
-            {["bookings", "schedule", "lessons"].includes(k) ? (
-              <CalendarDays size={16} />
-            ) : ["students", "instructors"].includes(k) ? (
-              <Users size={16} />
-            ) : ["knowledge", "faq", "messages"].includes(k) ? (
-              <MessageCircle size={16} />
-            ) : k === "payments" || k === "expenses" ? (
-              <Wallet size={16} />
-            ) : k === "finance" ? (
-              <BarChart3 size={16} />
-            ) : (
-              <BookOpen size={16} />
-            )}
-            {t(k)}
-            {k === "applications" && data.newApplications > 0 && (
-              <span>{data.newApplications}</span>
-            )}
-            {k === "bookings" && (
-              <span>
-                {
-                  data.bookings.filter((b: Item) => b.status === "pending")
-                    .length
-                }
-              </span>
-            )}
-          </button>
-        ))}
+        {(tabs.length > 10
+          ? [
+              ...SECTIONS.map(([title, keys]) => [
+                title,
+                tabs.filter((k) => keys.includes(k)),
+              ]),
+              [
+                "Прочее",
+                tabs.filter(
+                  (k) => !SECTIONS.some(([, keys]) => keys.includes(k)),
+                ),
+              ],
+            ]
+          : [["", tabs]]
+        )
+          .filter(([, list]) => (list as string[]).length)
+          .map(([title, list]) => (
+            <div className="nav-section" key={title as string}>
+              {title && <h5 className="nav-title">{title as string}</h5>}
+              {(list as string[]).map((k) => (
+                <button
+                  key={k}
+                  className={tab === k ? "selected" : ""}
+                  onClick={() => {
+                    setTab(k);
+                    setEditing(null);
+                    setNotice("");
+                    if (k === "audit")
+                      act("admin/audit", {}).then((r) => r && setAudit(r));
+                  }}
+                >
+                  {["bookings", "schedule", "lessons"].includes(k) ? (
+                    <CalendarDays size={16} />
+                  ) : ["students", "instructors"].includes(k) ? (
+                    <Users size={16} />
+                  ) : ["knowledge", "faq", "messages"].includes(k) ? (
+                    <MessageCircle size={16} />
+                  ) : k === "payments" || k === "expenses" ? (
+                    <Wallet size={16} />
+                  ) : k === "finance" ? (
+                    <BarChart3 size={16} />
+                  ) : (
+                    <BookOpen size={16} />
+                  )}
+                  {t(k)}
+                  {k === "applications" && data.newApplications > 0 && (
+                    <span>{data.newApplications}</span>
+                  )}
+                  {k === "bookings" && (
+                    <span>
+                      {
+                        data.bookings.filter(
+                          (b: Item) => b.status === "pending",
+                        ).length
+                      }
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          ))}
         <div className="workspace-links">
           <Link href={"/" + locale}>
             <ArrowLeft size={16} />
@@ -734,6 +801,20 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         )}
         {tab === "mypay" && !staff && !instructor && <PayPanel t={t} />}
         {tab === "applications" && staff && <Applications t={t} />}
+        {tab === "today" && staff && (
+          <Today
+            data={data}
+            freeSlots={freeSlots}
+            owner={admin}
+            myId={user.id}
+            go={(k) => {
+              setTab(k);
+              setEditing(null);
+              setNotice("");
+              window.scrollTo({ top: 0 });
+            }}
+          />
+        )}
         {tab === "roles" && admin && <Roles />}
         {tab === "staff" && admin && (
           <Staff
@@ -745,20 +826,35 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         )}
         {tab === "payroll" && admin && <PayrollReport />}
         {tab === "salary" && (instructor || operator) && <MySalary />}
-        {tab === "payments" && staff && <PaymentsTab t={t} />}
+        {tab === "payments" && staff && <PaymentsTab t={t} focus={payFocus} />}
         {tab === "expenses" && staff && (
           <ExpensesTab admin={admin} myId={user.id} />
         )}
         {tab === "finance" && admin && (
           <>
-            <MoneyOverview />
+            <MoneyOverview onOpenStudent={openLedger} />
             <FinanceReport t={t} />
           </>
         )}
         {tab === "students" && (
           <div className="data-list">
+            <input
+              type="search"
+              className="list-search"
+              placeholder="Найти ученика по имени или телефону"
+              aria-label="Поиск"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
             {data.users
-              .filter((u: Item) => admin || u.role !== "admin")
+              .filter((u: Item) => u.role === "student")
+              .filter(
+                (u: Item) =>
+                  !search ||
+                  (u.name + " " + (u.phone || "") + " " + (u.email || ""))
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+              )
               .map((u: Item) => (
                 <article key={u.id}>
                   <strong>{u.name}</strong>
@@ -768,49 +864,48 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                     ) : (
                       u.email
                     )}
-                    {!admin && u.role !== "student" && <> · {t(u.role)}</>}
                   </p>
-                  {u.role === "student" && (
-                    <>
-                      {u.pay_method && (
-                        <p className="muted">
-                          {t("payHowShort")}:{" "}
-                          {t(
-                            u.pay_method === "cash" ? "payCash" : "payNoncash",
-                          )}
-                        </p>
-                      )}
-                      <EnrollGroup
-                        student={u}
-                        enrollments={data.enrollments || []}
-                        lecturers={data.users.filter(
-                          (x: Item) => x.role === "lecturer",
-                        )}
-                        act={act}
-                      />
-                      <ShowId
-                        id={u.id}
-                        has={!!Number(u.has_personal_id)}
-                        t={t}
-                      />
-                    </>
+                  {u.pay_method && (
+                    <p className="muted">
+                      {t("payHowShort")}:{" "}
+                      {t(u.pay_method === "cash" ? "payCash" : "payNoncash")}
+                    </p>
                   )}
-                  {staff && (admin || u.role === "student") && (
+                  <EnrollGroup
+                    student={u}
+                    enrollments={data.enrollments || []}
+                    lecturers={data.users.filter(
+                      (x: Item) => x.role === "lecturer",
+                    )}
+                    act={act}
+                  />
+                  <ShowId id={u.id} has={!!Number(u.has_personal_id)} t={t} />
+                  <div className="row-actions">
                     <button
                       type="button"
-                      className="button small outline-dark"
-                      onClick={async () => {
-                        if (!confirm(t("resetConfirm"))) return;
-                        const r = await act("admin/reset-password", {
-                          id: u.id,
-                        });
-                        if (r) setIssued({ id: u.id, password: r.password });
-                      }}
+                      className="button small"
+                      onClick={() => openLedger(u.id, u.name)}
                     >
-                      <KeyRound size={15} />
-                      {t("resetPassword")}
+                      <Wallet size={15} />
+                      Оплаты и долг
                     </button>
-                  )}
+                    {staff && (
+                      <button
+                        type="button"
+                        className="button small outline-dark"
+                        onClick={async () => {
+                          if (!confirm(t("resetConfirm"))) return;
+                          const r = await act("admin/reset-password", {
+                            id: u.id,
+                          });
+                          if (r) setIssued({ id: u.id, password: r.password });
+                        }}
+                      >
+                        <KeyRound size={15} />
+                        {t("resetPassword")}
+                      </button>
+                    )}
+                  </div>
                   {issued && issued.id === u.id && (
                     <div className="temp-password" role="status">
                       <small>{t("tempPasswordText")}</small>
@@ -827,32 +922,11 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                       </button>
                     </div>
                   )}
-                  {admin && (
-                    <>
-                      <code>{u.id}</code>
-                      <Field label={t("role")}>
-                        <select
-                          value={u.role}
-                          onChange={(e) =>
-                            act("admin/role", {
-                              id: u.id,
-                              role: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="student">{t("student")}</option>
-                          <option value="instructor">{t("instructor")}</option>
-                          <option value="lecturer">{t("lecturer")}</option>
-                          <option value="operator">{t("operator")}</option>
-                          <option value="manager">{t("manager")}</option>
-                          <option value="admin">{t("admin")}</option>
-                        </select>
-                      </Field>
-                    </>
-                  )}
                 </article>
               ))}
-            {!data.users.length && <Empty t={t} />}
+            {!data.users.some((u: Item) => u.role === "student") && (
+              <Empty t={t} />
+            )}
           </div>
         )}
         {tab === "results" && (

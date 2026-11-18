@@ -26,7 +26,13 @@ const day = (iso?: string) => (iso || "").slice(0, 10);
  * Payments and debts for all staff: who owes how much, partial payments, a ledger per student.
  * There are deliberately no grand totals here; totals live in the administrator report.
  */
-export function PaymentsTab({ t }: { t: T }) {
+export function PaymentsTab({
+  t,
+  focus,
+}: {
+  t: T;
+  focus?: { id: string; name: string } | null;
+}) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [students, setStudents] = useState<Row[]>([]);
   const [onlyDebt, setOnlyDebt] = useState(true);
@@ -60,6 +66,10 @@ export function PaymentsTab({ t }: { t: T }) {
   useEffect(() => {
     load();
   }, [load]);
+  // opened from a student card or from the money report
+  useEffect(() => {
+    if (focus) setOpen(focus);
+  }, [focus]);
   useEffect(() => {
     if (open) loadLedger(open.id);
   }, [open, loadLedger]);

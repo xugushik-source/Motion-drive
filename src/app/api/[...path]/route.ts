@@ -245,13 +245,15 @@ export async function GET(
             : [],
       );
     }
-    if (p[0] === "slots")
+    if (p[0] === "slots") {
+      await autoOpenSchedule();
       return json(
         await all(
           "SELECT s.id,s.city,s.start,s.end,s.instructor_id,s.kind FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
           new Date().toISOString(),
         ),
       );
+    }
     if (p[0] === "files" && p[1]) {
       const f = await one("SELECT * FROM uploads WHERE id=?", p[1]);
       if (!f) return fail("notFound", 404);
@@ -1239,64 +1241,15 @@ export async function POST(
             .default(Number(saved?.cityUntil ?? 21)),
         })
         .parse(body || {});
-      const teachers = await all(
-        "SELECT id FROM users WHERE role='instructor' AND active=1",
-      );
-      const streams: (string | null)[] = teachers.length
-        ? teachers.map((t) => String(t.id))
-        : Array.from({ length: v.cars }, () => null);
-      const local = new Date(Date.now() + 4 * 3600 * 1000);
-      const base = Date.UTC(
-        local.getUTCFullYear(),
-        local.getUTCMonth(),
-        local.getUTCDate(),
-      );
-      let created = 0;
-      let days = 0;
-      for (let i = 0; i < v.weeks * 7; i++) {
-        const day = new Date(base + i * 86400000);
-        if (day.getUTCDay() === 0) continue; // Sunday is off
-        const lessons = daylightLessons(
-          day.getUTCFullYear(),
-          day.getUTCMonth() + 1,
-          day.getUTCDate(),
-          {
-            startHour: v.startHour,
-            lastYardStart: v.lastYardStart,
-            cityUntil: v.cityUntil,
-          },
-        );
-        let any = false;
-        for (const l of lessons) {
-          if (Date.parse(l.start) <= Date.now()) continue;
-          for (let k = 0; k < streams.length; k++) {
-            const who = streams[k];
-            const have = who
-              ? await one(
-                  "SELECT id FROM slots WHERE instructor_id=? AND start=?",
-                  who,
-                  l.start,
-                )
-              : Number(
-                  (
-                    await one(
-                      "SELECT count(*) AS n FROM slots WHERE instructor_id IS NULL AND city='akhalkalaki' AND start=?",
-                      l.start,
-                    )
-                  )?.n || 0,
-                ) > k;
-            if (have) continue;
-            await db
-              .prepare(
-                'INSERT INTO slots(id,instructor_id,city,start,"end",available,kind) VALUES(?,?,?,?,?,1,?)',
-              )
-              .run(randomUUID(), who, "akhalkalaki", l.start, l.end, l.kind);
-            created++;
-            any = true;
-          }
-        }
-        if (any) days++;
-      }
+      const today = localDay(0);
+      const { created, days } = await openSchedule({
+        from: today,
+        to: localDay(v.weeks * 7 - 1),
+        startHour: v.startHour,
+        lastYardStart: v.lastYardStart,
+        cityUntil: v.cityUntil,
+        cars: v.cars,
+      });
       await db
         .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
         .run(
@@ -1748,13 +1701,14 @@ export async function POST(
                 "site_description",
                 "exam_minutes",
                 "exam_question_count",
+                "auto_schedule",
               ]),
               value: z.string().min(1).max(1000),
               status: z.enum(["draft", "published"]),
               locale: localeSchema,
             })
             .refine((d) =>
-              d.key === "booking_enabled"
+              ["booking_enabled", "auto_schedule"].includes(d.key)
                 ? ["true", "false"].includes(d.value)
                 : ["exam_minutes", "exam_question_count"].includes(d.key)
                   ? Number.isInteger(Number(d.value)) &&
@@ -2297,6 +2251,145 @@ async function myPay(p: string[], body: any, user: Row) {
 }
 const tetri = (lari: number) => Math.round(lari * 100);
 const lariAmount = z.coerce.number().positive().max(100000).multipleOf(0.01);
+/** The local (Georgian, UTC+4) calendar day n days from today as YYYY-MM-DD. */
+const localDay = (n: number) =>
+  new Date(Date.now() + 4 * 3600e3 + n * 86400e3).toISOString().slice(0, 10);
+/**
+ * Opens hourly driving lessons for every active instructor (or for the given ones) from `from` to `to`:
+ * yard lessons in daylight, city lessons in the evening. Never duplicates an existing lesson; Sundays are off.
+ */
+async function openSchedule(o: {
+  from: string;
+  to: string;
+  startHour: number;
+  lastYardStart: number;
+  cityUntil: number;
+  cars?: number;
+  only?: string[];
+}) {
+  const teachers = o.only
+    ? o.only.map((id) => ({ id }))
+    : await all("SELECT id FROM users WHERE role='instructor' AND active=1");
+  const streams: (string | null)[] = teachers.length
+    ? teachers.map((t) => String(t.id))
+    : o.only
+      ? []
+      : Array.from({ length: o.cars || 1 }, () => null);
+  let created = 0;
+  let days = 0;
+  for (
+    let t = Date.parse(o.from + "T00:00:00Z");
+    t <= Date.parse(o.to + "T00:00:00Z");
+    t += 86400000
+  ) {
+    const day = new Date(t);
+    if (day.getUTCDay() === 0) continue; // Sunday is off
+    const lessons = daylightLessons(
+      day.getUTCFullYear(),
+      day.getUTCMonth() + 1,
+      day.getUTCDate(),
+      {
+        startHour: o.startHour,
+        lastYardStart: o.lastYardStart,
+        cityUntil: o.cityUntil,
+      },
+    );
+    let any = false;
+    for (const l of lessons) {
+      if (Date.parse(l.start) <= Date.now()) continue;
+      for (let k = 0; k < streams.length; k++) {
+        const who = streams[k];
+        const have = who
+          ? await one(
+              "SELECT id FROM slots WHERE instructor_id=? AND start=?",
+              who,
+              l.start,
+            )
+          : Number(
+              (
+                await one(
+                  "SELECT count(*) AS n FROM slots WHERE instructor_id IS NULL AND city='akhalkalaki' AND start=?",
+                  l.start,
+                )
+              )?.n || 0,
+            ) > k;
+        if (have) continue;
+        await db
+          .prepare(
+            'INSERT INTO slots(id,instructor_id,city,start,"end",available,kind) VALUES(?,?,?,?,?,1,?)',
+          )
+          .run(randomUUID(), who, "akhalkalaki", l.start, l.end, l.kind);
+        created++;
+        any = true;
+      }
+    }
+    if (any) days++;
+  }
+  return { created, days };
+}
+/** The working hours the owner set on the "Должности" screen (or the school's usual ones). */
+async function driveHours() {
+  const saved = (await records("settings")).find((x) => x.id === "drive-hours");
+  return {
+    startHour: Number(saved?.startHour ?? 9),
+    lastYardStart: Number(saved?.lastYardStart ?? 18),
+    cityUntil: Number(saved?.cityUntil ?? 21),
+  };
+}
+/**
+ * The timetable keeps itself full: while there are instructors, lessons are open three weeks ahead.
+ * Days that were already opened are not opened again (so a lesson the office removed stays removed);
+ * an instructor who has no lessons yet gets his own right away. Throttled, switch off with the setting
+ * "auto_schedule" = "false".
+ */
+async function autoOpenSchedule() {
+  try {
+    const settings = await records("settings");
+    if (settings.some((x) => x.key === "auto_schedule" && x.value === "false"))
+      return;
+    if (!(await limit("auto-schedule", 1, 1800))) return;
+    const teachers = await all(
+      "SELECT id FROM users WHERE role='instructor' AND active=1",
+    );
+    if (!teachers.length) return;
+    const hours = await driveHours();
+    const to = localDay(20);
+    const mark = String(
+      settings.find((x) => x.id === "schedule-until")?.value || "",
+    );
+    const today = localDay(0);
+    const from =
+      mark >= today
+        ? localDay(
+            1 + Math.round((Date.parse(mark) - Date.parse(today)) / 86400000),
+          )
+        : today;
+    if (from <= to) await openSchedule({ from, to, ...hours });
+    // newcomers: an instructor with no future lessons at all
+    const now = new Date().toISOString();
+    const empty: string[] = [];
+    for (const t of teachers)
+      if (
+        !(await one(
+          "SELECT id FROM slots WHERE instructor_id=? AND start>? LIMIT 1",
+          t.id,
+          now,
+        ))
+      )
+        empty.push(String(t.id));
+    if (empty.length)
+      await openSchedule({ from: today, to, ...hours, only: empty });
+    if (from <= to)
+      await saveRecord(
+        "settings",
+        "schedule-until",
+        { key: "schedule_until", value: to, status: "published" },
+        "system",
+      );
+  } catch {
+    // opening lessons must never break the page that asked for them
+  }
+}
 /** Balance of every money account: opening/adjusted figures + money in − money out. */
 async function accountBalances() {
   const sum = async (sql: string, ...a: unknown[]) =>
