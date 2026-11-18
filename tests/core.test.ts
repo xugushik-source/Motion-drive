@@ -458,8 +458,8 @@ test("people and photos are one record each, with names in every language inside
   const { publicRecords } = await import("../src/lib/public-content.ts");
   const { pick, pickText } = await import("../src/lib/pick.ts");
   const people = publicRecords.instructors!;
-  assert.equal(people.length, 4);
-  assert.equal(new Set(people.map((p) => p.id)).size, 4);
+  assert.equal(people.length, 6);
+  assert.equal(new Set(people.map((p) => p.id)).size, 6);
   for (const p of people) {
     assert.ok(!p.locale, "a person is not tied to one language");
     for (const l of ["ru", "en", "ka", "hy"])
@@ -469,6 +469,10 @@ test("people and photos are one record each, with names in every language inside
   assert.deepEqual(
     people.filter((p) => p.role === "lecturer").map((p) => p.id),
     ["lecturer-levon"],
+  );
+  assert.deepEqual(
+    people.filter((p) => p.role === "administrator").map((p) => p.id),
+    ["admin-elena", "admin-arevik"],
   );
   const media = publicRecords.media!;
   assert.equal(media.length, 10);

@@ -1587,6 +1587,7 @@ function RecordEditor({
             >
               <option value="instructor">Инструктор по вождению</option>
               <option value="lecturer">Лектор по теории</option>
+              <option value="administrator">Администратор</option>
             </select>
           ) : ["category", "stage"].includes(key) ? (
             <select

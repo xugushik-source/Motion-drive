@@ -393,6 +393,7 @@ export default function Site({
     const groups = [
       ["instructor", "instructorsGroup"],
       ["lecturer", "lecturersGroup"],
+      ["administrator", "administratorsGroup"],
     ] as const;
     return team.length ? (
       <>

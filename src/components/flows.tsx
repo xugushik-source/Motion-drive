@@ -975,7 +975,10 @@ export function Booking({
               >
                 <option value="">{t("any")}</option>
                 {(content.instructors || [])
-                  .filter((i) => i.userId)
+                  .filter(
+                    (i) =>
+                      i.userId && (i.role || "instructor") === "instructor",
+                  )
                   .map((i) => (
                     <option key={i.id} value={i.userId}>
                       {pick(i, "title", locale)}
