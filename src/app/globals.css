@@ -2778,3 +2778,12 @@ h3 {
 .builder-step b { min-width: 24px; text-align: center; }
 .builder-total { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 12px; }
 .builder-total strong { font-size: 22px; }
+.team-group { margin-bottom: 48px; }
+.team-group h2 { margin: 0 0 20px; }
+.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; }
+.team-card { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 14px 14px 20px; display: flex; flex-direction: column; gap: 6px; }
+.team-card h3 { margin: 10px 0 0; font-size: 20px; }
+.team-card p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.team-photo { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 25%; border-radius: 10px; background: #eceee5; }
+.team-initial { display: grid; place-items: center; font-size: 72px; font-weight: 600; color: var(--green); }
+.lightbox video { max-height: 80svh; max-width: 100%; border-radius: 8px; }

@@ -379,28 +379,62 @@ export default function Site({
       )}
     </>
   );
-  const instructors = () =>
-    list("instructors").length ? (
-      <div className="program-grid">
-        {list("instructors").map((x) => (
-          <article className="contact-card" key={x.id}>
-            {x.image && (
-              <img className="profile-photo" alt={x.title} src={x.image} />
-            )}
-            <h3>{x.title}</h3>
-            <p>{x.description}</p>
-            <p>{x.languages}</p>
-            <p>{x.vehicle}</p>
-            <Link className="text-link" href={href("booking")}>
-              {t("book")}
-              <ArrowUpRight />
-            </Link>
-          </article>
-        ))}
-      </div>
+  const instructors = () => {
+    const team = list("instructors");
+    const groups = [
+      ["instructor", "instructorsGroup"],
+      ["lecturer", "lecturersGroup"],
+    ] as const;
+    return team.length ? (
+      <>
+        {groups.map(([role, label]) => {
+          const people = team
+            .filter((x) => (x.role || "instructor") === role)
+            .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+          return people.length ? (
+            <section className="team-group" key={role}>
+              <h2>{t(label)}</h2>
+              <div className="team-grid">
+                {people.map((x) => (
+                  <article className="team-card" key={x.id}>
+                    {x.image ? (
+                      <img
+                        className="team-photo"
+                        alt={x.title}
+                        src={x.image}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div
+                        className="team-photo team-initial"
+                        aria-hidden="true"
+                      >
+                        {String(x.title || "?")
+                          .trim()
+                          .charAt(0)}
+                      </div>
+                    )}
+                    <h3>{x.title}</h3>
+                    {x.description && <p>{x.description}</p>}
+                    {x.languages && <p>{x.languages}</p>}
+                    {x.vehicle && <p>{x.vehicle}</p>}
+                    {role === "instructor" && (
+                      <Link className="text-link" href={href("booking")}>
+                        {t("book")}
+                        <ArrowUpRight />
+                      </Link>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null;
+        })}
+      </>
     ) : (
       <Notice>{t("instructorsPending")}</Notice>
     );
+  };
   const reviews = () =>
     list("reviews").length ? (
       <div className="program-grid">
@@ -981,8 +1015,15 @@ export default function Site({
           </button>
           <div onClick={(e) => e.stopPropagation()}>
             {activeMedia.type === "video" ? (
-              activeMedia.url.startsWith("/api/files/") ? (
-                <video src={activeMedia.url} controls autoPlay playsInline />
+              /^\/(api\/files|media)\//.test(activeMedia.url) ? (
+                <video
+                  src={activeMedia.url}
+                  poster={activeMedia.poster}
+                  controls
+                  autoPlay
+                  muted
+                  playsInline
+                />
               ) : (
                 <iframe
                   src={activeMedia.url}
