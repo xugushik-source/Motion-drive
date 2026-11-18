@@ -29,8 +29,10 @@ import { api, Field, Notice, type Item } from "./Site";
 import { georgiaDay } from "./AvailabilityPicker";
 import { formatPhone } from "../lib/phone";
 import { STAFF_KINDS } from "../lib/roles";
-import { PaymentsTab, FinanceReport } from "./Finance";
+import { PaymentsTab, FinanceReport, gel } from "./Finance";
 import Applications from "./Applications";
+import Staff from "./Staff";
+import { MySalary, PayrollReport } from "./Payroll";
 type Props = {
   user: Item;
   locale: string;
@@ -92,7 +94,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
     admin || (operator && STAFF_KINDS.includes(kind));
   const tabs = [
     ...(admin
-      ? [...modules.slice(0, 3), "payments", "finance", ...modules.slice(3)]
+      ? [
+          ...modules.slice(0, 3),
+          "payments",
+          "finance",
+          "payroll",
+          "staff",
+          ...modules.slice(3),
+        ]
       : operator
         ? [
             "bookings",
@@ -110,7 +119,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             "faq",
           ]
         : instructor
-          ? ["bookings", "students", "schedule", "lessons"]
+          ? ["bookings", "students", "schedule", "lessons", "salary"]
           : ["bookings", "progress", "results", "materials", "messages"]),
     "security",
   ];
@@ -483,6 +492,68 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                           )}
                         </p>
                         <div className="record-actions">
+                          {b.status === "confirmed" &&
+                            b.slot_start &&
+                            Date.parse(b.slot_start) <= Date.now() &&
+                            !b.accepted_at && (
+                              <>
+                                {instructor && !b.conducted_at && (
+                                  <button
+                                    className="button small"
+                                    onClick={() =>
+                                      act("teach/conducted", { id: b.id })
+                                    }
+                                  >
+                                    Урок проведён
+                                    <Check size={16} />
+                                  </button>
+                                )}
+                                {instructor && b.conducted_at && (
+                                  <span className="status pending">
+                                    Ждёт принятия
+                                  </span>
+                                )}
+                                {staff && !instructor && (
+                                  <>
+                                    <button
+                                      className="button small"
+                                      onClick={async () => {
+                                        const r = await act("teach/accept", {
+                                          id: b.id,
+                                        });
+                                        if (r?.noRate)
+                                          setError(
+                                            "Урок принят, но у преподавателя не задана ставка: оплата за него 0. Ставку задаёт администратор.",
+                                          );
+                                      }}
+                                    >
+                                      {b.conducted_at
+                                        ? "Принять урок"
+                                        : "Урок проведён, принять"}
+                                      <CheckCheck size={16} />
+                                    </button>
+                                    {b.conducted_at && (
+                                      <button
+                                        className="button small outline-dark"
+                                        onClick={() =>
+                                          act("teach/unconduct", { id: b.id })
+                                        }
+                                      >
+                                        Вернуть
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </>
+                            )}
+                          {b.accepted_at && (
+                            <span className="status completed">
+                              Урок принят
+                              {instructor && b.pay_amount !== undefined
+                                ? ` · ${gel(Number(b.pay_amount || 0))}`
+                                : ""}
+                            </span>
+                          )}
                           {["pending", "confirmed"].includes(b.status) && (
                             <>
                               {!instructor && (
@@ -621,58 +692,19 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
           </>
         )}
         {tab === "applications" && staff && <Applications t={t} />}
+        {tab === "staff" && admin && (
+          <Staff users={data.users} me={user.id} onChange={refresh} />
+        )}
+        {tab === "payroll" && admin && (
+          <PayrollReport
+            onRate={async (id, rate) => {
+              await act("admin/rate", { id, rate });
+            }}
+          />
+        )}
+        {tab === "salary" && instructor && <MySalary />}
         {tab === "payments" && staff && <PaymentsTab t={t} />}
         {tab === "finance" && admin && <FinanceReport t={t} />}
-        {tab === "students" && admin && (
-          <form
-            className="form-card staff-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const f = e.currentTarget;
-              const d = Object.fromEntries(new FormData(f));
-              const r = await act("admin/staff", d);
-              if (r) {
-                setIssued({ id: r.id, password: r.password });
-                f.reset();
-              }
-            }}
-          >
-            <h3>{t("addStaff")}</h3>
-            <div className="form-grid">
-              <Field label={t("name")}>
-                <input name="name" minLength={2} maxLength={100} required />
-              </Field>
-              <Field label={t("phone")}>
-                <input name="phone" type="tel" inputMode="tel" required />
-              </Field>
-              <Field label={t("role")}>
-                <select name="role" defaultValue="operator">
-                  {[
-                    "operator",
-                    "manager",
-                    "instructor",
-                    "lecturer",
-                    "admin",
-                  ].map((r) => (
-                    <option key={r} value={r}>
-                      {t(r)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <button className="button small">
-              <Plus size={16} />
-              {t("addStaff")}
-            </button>
-            {issued && !data.users.some((u: Item) => u.id === issued.id) && (
-              <div className="temp-password" role="status">
-                <small>{t("staffCreated")}</small>
-                <code>{issued.password}</code>
-              </div>
-            )}
-          </form>
-        )}
         {tab === "students" && (
           <div className="data-list">
             {data.users
@@ -1267,6 +1299,32 @@ function RecordEditor({
   onSave: (r: Item) => Promise<void>;
 }) {
   const { id, ...initial } = item;
+  // People and photos are one record for every language: names in all languages live inside it.
+  const oneRecord = ["instructors", "media"].includes(kind);
+  const RU: Record<string, string> = {
+    title_en:
+      kind === "media"
+        ? "Подпись по-английски (необязательно)"
+        : "Имя по-английски (необязательно)",
+    title_ka:
+      kind === "media"
+        ? "Подпись по-грузински (необязательно)"
+        : "Имя по-грузински (необязательно)",
+    title_hy:
+      kind === "media"
+        ? "Подпись по-армянски (необязательно)"
+        : "Имя по-армянски (необязательно)",
+    role: "Должность",
+    photo: "Фото",
+    ...(kind === "instructors"
+      ? {
+          title: "Имя и фамилия (по-русски)",
+          description: "Описание (по-русски, необязательно)",
+        }
+      : {}),
+    ...(kind === "media" ? { title: "Подпись (по-русски)" } : {}),
+  };
+  const label = (k: string) => RU[k] || t(k === "group" ? "packageGroup" : k);
   const [record, setRecord] = useState<Item>({
       locale,
       status: "draft",
@@ -1330,8 +1388,9 @@ function RecordEditor({
                   ...(kind === "courses" ? ["price", "duration"] : []),
                   ...(kind === "branches" ? ["city", "address", "phone"] : []),
                   ...(kind === "instructors"
-                    ? ["userId", "languages", "vehicle"]
+                    ? ["role", "languages", "vehicle", "order", "userId"]
                     : []),
+                  ...(oneRecord ? ["title_en", "title_ka", "title_hy"] : []),
                   ...(["media", "materials"].includes(kind) ? ["url"] : []),
                 ];
   const update = (key: string, value: any) =>
@@ -1344,7 +1403,7 @@ function RecordEditor({
         setBusy(true);
         setError("");
         try {
-          await onSave(record);
+          await onSave(oneRecord ? { ...record, locale: "" } : record);
         } catch {
           setError(t("invalid"));
         } finally {
@@ -1353,16 +1412,18 @@ function RecordEditor({
       }}
     >
       <div className="form-grid">
-        <Field label={t("language")}>
-          <select
-            value={record.locale}
-            onChange={(e) => update("locale", e.target.value)}
-          >
-            {["ka", "hy", "ru", "en"].map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-          </select>
-        </Field>
+        {!oneRecord && (
+          <Field label={t("language")}>
+            <select
+              value={record.locale}
+              onChange={(e) => update("locale", e.target.value)}
+            >
+              {["ka", "hy", "ru", "en"].map((l) => (
+                <option key={l}>{l}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label={t("status")}>
           <select
             value={record.status}
@@ -1374,7 +1435,7 @@ function RecordEditor({
         </Field>
       </div>
       {fields.map((key) => (
-        <Field key={key} label={t(key === "group" ? "packageGroup" : key)}>
+        <Field key={key} label={label(key)}>
           {[
             "answer",
             "description",
@@ -1406,6 +1467,14 @@ function RecordEditor({
                 )
               }
             />
+          ) : key === "role" ? (
+            <select
+              value={record.role || "instructor"}
+              onChange={(e) => update("role", e.target.value)}
+            >
+              <option value="instructor">Инструктор по вождению</option>
+              <option value="lecturer">Лектор по теории</option>
+            </select>
           ) : ["category", "stage"].includes(key) ? (
             <select
               value={record[key] || (key === "category" ? "B" : "theory")}
@@ -1562,6 +1631,35 @@ function RecordEditor({
             />
           </Field>
         </>
+      )}
+      {["instructors", "programs"].includes(kind) && (
+        <Field label={label("photo")}>
+          {record.image && (
+            <img className="editor-photo" src={record.image} alt="" />
+          )}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setError("");
+              try {
+                const data = new FormData();
+                data.set("file", file);
+                const res = await fetch("/api/upload", {
+                  method: "POST",
+                  body: data,
+                });
+                const result = await res.json();
+                if (!res.ok) throw Error(result.error);
+                setRecord((r) => ({ ...r, image: result.url }));
+              } catch (e) {
+                setError(t((e as Error).message));
+              }
+            }}
+          />
+        </Field>
       )}
       {kind === "packages" && (
         <label className="checkbox">

@@ -452,3 +452,50 @@ test("group start dates are formatted from a fixed table, identical on server an
   assert.equal(formatDayMonth(d, "ka"), "23 ნოემბერი");
   assert.equal(formatDayMonth(d, "hy"), "23 նոյեմբերի");
 });
+
+test("people and photos are one record each, with names in every language inside it", async () => {
+  const { publicRecords } = await import("../src/lib/public-content.ts");
+  const { pick, pickText } = await import("../src/lib/pick.ts");
+  const people = publicRecords.instructors!;
+  assert.equal(people.length, 4);
+  assert.equal(new Set(people.map((p) => p.id)).size, 4);
+  for (const p of people) {
+    assert.ok(!p.locale, "a person is not tied to one language");
+    for (const l of ["ru", "en", "ka", "hy"])
+      assert.ok(pick(p, "title", l).trim(), `${p.id} ${l}`);
+    assert.notEqual(pick(p, "title", "ka"), pick(p, "title", "ru"));
+  }
+  assert.deepEqual(
+    people.filter((p) => p.role === "lecturer").map((p) => p.id),
+    ["lecturer-levon"],
+  );
+  const media = publicRecords.media!;
+  assert.equal(media.length, 10);
+  for (const m of media) assert.ok(!m.locale && pick(m, "title", "hy"));
+  // fallbacks: a missing translation shows the Russian name, free text only in the language written
+  assert.equal(pick({ title: "Иван" }, "title", "en"), "Иван");
+  assert.equal(pickText({ description: "Текст" }, "description", "en"), "");
+  assert.equal(
+    pickText({ description: "Текст" }, "description", "ru"),
+    "Текст",
+  );
+});
+
+test("payroll: Georgian local day and month ranges, flat rate per accepted lesson", async () => {
+  const { dayRange, monthRange, lessonPay } =
+    await import("../src/lib/payroll.ts");
+  // 2026-11-18 22:30 UTC is already 02:30 on the 19th in Georgia (UTC+4)
+  const [d0, d1] = dayRange(new Date("2026-11-18T22:30:00Z"));
+  assert.equal(d0, "2026-11-18T20:00:00.000Z");
+  assert.equal(d1, "2026-11-19T20:00:00.000Z");
+  const [m0, m1] = monthRange("2026-11", new Date("2026-11-18T10:00:00Z"));
+  assert.equal(m0, "2026-10-31T20:00:00.000Z");
+  assert.equal(m1, "2026-11-30T20:00:00.000Z");
+  assert.deepEqual(
+    monthRange(undefined, new Date("2026-12-31T21:00:00Z")),
+    monthRange("2027-01"),
+  );
+  assert.equal(lessonPay(2500, 3), 7500);
+  assert.equal(lessonPay(null, 5), 0);
+  assert.equal(lessonPay(-100), 0);
+});

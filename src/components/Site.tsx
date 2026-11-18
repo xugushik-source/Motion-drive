@@ -39,6 +39,7 @@ import Packages, { Services } from "./Packages";
 import PackageBuilder from "./PackageBuilder";
 import Intro from "./Intro";
 import Programs from "./Programs";
+import { pick, pickText } from "../lib/pick";
 import { DEMO } from "../lib/demo";
 export type Item = Record<string, any>;
 export async function api(path: string, data?: any) {
@@ -367,12 +368,16 @@ export default function Site({
                       {m.poster && <img src={m.poster} alt="" />}
                       <Play />
                     </div>
-                    <span>{m.title}</span>
+                    <span>{pick(m, "title", locale)}</span>
                   </>
                 ) : (
                   <>
-                    <img src={m.url} alt={m.title || ""} loading="lazy" />
-                    <span>{m.title}</span>
+                    <img
+                      src={m.url}
+                      alt={pick(m, "title", locale)}
+                      loading="lazy"
+                    />
+                    <span>{pick(m, "title", locale)}</span>
                   </>
                 )}
               </button>
@@ -404,7 +409,7 @@ export default function Site({
                     {x.image ? (
                       <img
                         className="team-photo"
-                        alt={x.title}
+                        alt={pick(x, "title", locale)}
                         src={x.image}
                         loading="lazy"
                       />
@@ -413,13 +418,16 @@ export default function Site({
                         className="team-photo team-initial"
                         aria-hidden="true"
                       >
-                        {String(x.title || "?")
+                        {String(pick(x, "title", locale) || "?")
                           .trim()
                           .charAt(0)}
                       </div>
                     )}
-                    <h3>{x.title}</h3>
-                    {x.description && <p>{x.description}</p>}
+                    <h3>{pick(x, "title", locale)}</h3>
+                    {pickText(x, "description", locale) && (
+                      <p>{pickText(x, "description", locale)}</p>
+                    )}
+                    {role === "lecturer" && <p>{t("lecturerSchedule")}</p>}
                     {x.languages && <p>{x.languages}</p>}
                     {x.vehicle && <p>{x.vehicle}</p>}
                     {role === "instructor" && (
@@ -1015,7 +1023,7 @@ export default function Site({
           className="lightbox"
           role="dialog"
           aria-modal="true"
-          aria-label={activeMedia.title || t("gallery")}
+          aria-label={pick(activeMedia, "title", locale) || t("gallery")}
           onClick={() => setActiveMedia(null)}
         >
           <button
@@ -1040,15 +1048,18 @@ export default function Site({
               ) : (
                 <iframe
                   src={activeMedia.url}
-                  title={activeMedia.title}
+                  title={pick(activeMedia, "title", locale)}
                   allow="fullscreen"
                   allowFullScreen
                 />
               )
             ) : (
-              <img src={activeMedia.url} alt={activeMedia.title || ""} />
+              <img
+                src={activeMedia.url}
+                alt={pick(activeMedia, "title", locale)}
+              />
             )}
-            <p>{activeMedia.title}</p>
+            <p>{pick(activeMedia, "title", locale)}</p>
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ export async function currentUser() {
   if (!token) return null;
   return (
     (await one(
-      "SELECT u.id,u.email,u.phone,u.name,u.role,u.locale,u.must_change_password FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.id=? AND s.expires>?",
+      "SELECT u.id,u.email,u.phone,u.name,u.role,u.locale,u.must_change_password FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.id=? AND s.expires>? AND u.active=1",
       token,
       Date.now(),
     )) || null

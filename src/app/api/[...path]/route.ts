@@ -1,3 +1,4 @@
+import { dayRange, monthRange, lessonPay } from "../../../lib/payroll";
 import {
   isStaff,
   isTeacher,
@@ -271,7 +272,11 @@ export async function GET(
       );
       return json({
         user,
-        bookings,
+        bookings: bookings.map((b: Row) =>
+          admin || (instructor && b.instructor_id === user.id)
+            ? b
+            : { ...b, pay_amount: undefined },
+        ),
         lessons,
         results: instructor
           ? []
@@ -299,7 +304,9 @@ export async function GET(
             : [],
         users: staff
           ? await all(
-              "SELECT id,name,email,phone,role,gender,birth_year FROM users",
+              admin
+                ? "SELECT id,name,email,phone,role,gender,birth_year,active,lesson_rate FROM users"
+                : "SELECT id,name,email,phone,role,gender,birth_year FROM users",
             )
           : instructor
             ? await all(
@@ -531,6 +538,7 @@ export async function POST(
         );
         if (!u || !checkPassword(v.password, u.password))
           return fail("badCredentials", 401);
+        if (Number(u.active) === 0) return fail("accountClosed", 403);
         await startSession(u.id);
         return json({ user: safe(u) });
       }
@@ -836,7 +844,7 @@ export async function POST(
       if (!b || (isTeacher(user.role) && b.instructor_id !== user.id))
         return fail("forbidden", 403);
       if (
-        b.status !== "confirmed" ||
+        !["confirmed", "completed"].includes(b.status) ||
         !b.start ||
         Date.parse(b.start) > Date.now()
       )
@@ -1022,6 +1030,8 @@ export async function POST(
       }
     }
     // Money entries and debts: all staff. Reports and statistics: administrators.
+    if (p[0] === "teach" || p[0] === "payroll")
+      return await lessons(p, body, user);
     if (p[0] === "finance") return await finance(p, body, user);
     if (p[0] === "applications") {
       if (!isStaff(user.role)) return fail("forbidden", 403);
@@ -1097,6 +1107,158 @@ export async function POST(
         await db
           .prepare("UPDATE messages SET admin_reply=?,escalated=0 WHERE id=?")
           .run(v.answer, v.id);
+        return json({ ok: true });
+      }
+      if (p[1] === "staff-update") {
+        const v = z
+          .object({
+            id: z.string().max(80),
+            name: z.string().trim().min(2).max(100).optional(),
+            phone: phoneSchema.optional(),
+            active: z.boolean().optional(),
+          })
+          .parse(body);
+        const target = await one("SELECT * FROM users WHERE id=?", v.id);
+        if (!target) return fail("notFound", 404);
+        if (v.active === false) {
+          if (target.id === user.id) return fail("invalid");
+          if (
+            target.role === "admin" &&
+            Number(
+              (
+                await one(
+                  "SELECT count(*) AS n FROM users WHERE role='admin' AND active=1 AND id<>?",
+                  target.id,
+                )
+              )?.n,
+            ) < 1
+          )
+            return fail("lastAdmin", 409);
+        }
+        if (
+          v.phone &&
+          (await one(
+            "SELECT id FROM users WHERE phone=? AND id<>?",
+            v.phone,
+            v.id,
+          ))
+        )
+          return fail("accountExists", 409);
+        await transaction(async () => {
+          await db
+            .prepare("UPDATE users SET name=?,phone=?,active=? WHERE id=?")
+            .run(
+              v.name ?? target.name,
+              v.phone ?? target.phone,
+              v.active === undefined
+                ? Number(target.active ?? 1)
+                : v.active
+                  ? 1
+                  : 0,
+              v.id,
+            );
+          if (v.active === false)
+            await db.prepare("DELETE FROM sessions WHERE user_id=?").run(v.id);
+          await db
+            .prepare(
+              "INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)",
+            )
+            .run(
+              user.id,
+              "staff:update",
+              JSON.stringify({
+                id: v.id,
+                active: v.active,
+                renamed: !!v.name,
+                phone: !!v.phone,
+              }),
+            );
+        });
+        return json({ ok: true });
+      }
+      if (p[1] === "set-password") {
+        const v = z
+          .object({
+            id: z.string().max(80),
+            password: z.string().min(8).max(128),
+          })
+          .parse(body);
+        const target = await one("SELECT * FROM users WHERE id=?", v.id);
+        // An administrator's password changes only through their own account.
+        if (!target || (target.role === "admin" && target.id !== user.id))
+          return fail("forbidden", 403);
+        await transaction(async () => {
+          await db
+            .prepare(
+              "UPDATE users SET password=?,must_change_password=? WHERE id=?",
+            )
+            .run(hashPassword(v.password), target.id === user.id ? 0 : 1, v.id);
+          if (target.id !== user.id)
+            await db.prepare("DELETE FROM sessions WHERE user_id=?").run(v.id);
+          await db
+            .prepare("INSERT INTO audit(actor,action) VALUES(?,?)")
+            .run(user.id, "password:set:" + v.id);
+        });
+        return json({ ok: true });
+      }
+      if (p[1] === "delete-user") {
+        const v = z.object({ id: z.string().max(80) }).parse(body);
+        const target = await one("SELECT * FROM users WHERE id=?", v.id);
+        if (!target) return fail("notFound", 404);
+        if (target.id === user.id || target.role === "admin")
+          return fail("forbidden", 403);
+        for (const [table, col] of [
+          ["bookings", "user_id"],
+          ["bookings", "instructor_id"],
+          ["slots", "instructor_id"],
+          ["charges", "user_id"],
+          ["payments", "user_id"],
+          ["results", "user_id"],
+          ["attempts", "user_id"],
+          ["messages", "user_id"],
+          ["uploads", "user_id"],
+        ])
+          if (
+            await one(
+              `SELECT 1 AS x FROM ${table} WHERE ${col}=? LIMIT 1`,
+              v.id,
+            )
+          )
+            return fail("hasHistory", 409);
+        await transaction(async () => {
+          await db.prepare("DELETE FROM sessions WHERE user_id=?").run(v.id);
+          await db.prepare("DELETE FROM users WHERE id=?").run(v.id);
+          await db
+            .prepare(
+              "INSERT INTO audit(actor,action,before_value) VALUES(?,?,?)",
+            )
+            .run(
+              user.id,
+              "user:delete",
+              JSON.stringify({ id: v.id, role: target.role }),
+            );
+        });
+        return json({ ok: true });
+      }
+      if (p[1] === "rate") {
+        const v = z
+          .object({
+            id: z.string().max(80),
+            rate: z.coerce.number().min(0).max(10000).multipleOf(0.01),
+          })
+          .parse(body);
+        const target = await one("SELECT role FROM users WHERE id=?", v.id);
+        if (!target || !isTeacher(target.role)) return fail("invalid");
+        await db
+          .prepare("UPDATE users SET lesson_rate=? WHERE id=?")
+          .run(tetri(v.rate), v.id);
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(
+            user.id,
+            "payroll:rate",
+            JSON.stringify({ id: v.id, rate: v.rate }),
+          );
         return json({ ok: true });
       }
       if (p[1] === "staff") {
@@ -1334,6 +1496,107 @@ export async function POST(
 // Uploaded files and the site's own static media folders.
 const localFile =
   /^\/(api\/files\/[a-f0-9-]+|(media|images)\/[\w.-]+(\/[\w.-]+)*)$/;
+/** Lessons conducted by teachers and accepted by the office; pay is a flat rate per accepted lesson. */
+async function lessons(p: string[], body: any, user: Row) {
+  if (p[0] === "payroll") {
+    if (p[1] !== "me" || !isTeacher(user.role)) return fail("forbidden", 403);
+    const me = await one("SELECT lesson_rate FROM users WHERE id=?", user.id);
+    const [monthStart, monthEnd] = monthRange();
+    const [dayStart, dayEnd] = dayRange();
+    const rows = await all(
+      `SELECT b.id,b.program,b.accepted_at,b.pay_amount,s.start FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id
+       WHERE b.instructor_id=? AND b.accepted_at IS NOT NULL AND b.accepted_at>=? AND b.accepted_at<? ORDER BY b.accepted_at DESC`,
+      user.id,
+      monthStart,
+      monthEnd,
+    );
+    const pending = Number(
+      (
+        await one(
+          "SELECT count(*) AS n FROM bookings WHERE instructor_id=? AND conducted_at IS NOT NULL AND accepted_at IS NULL",
+          user.id,
+        )
+      )?.n || 0,
+    );
+    const sum = (list: Row[]) =>
+      list.reduce((a, r) => a + Number(r.pay_amount || 0), 0);
+    const today = rows.filter(
+      (r) => r.accepted_at >= dayStart && r.accepted_at < dayEnd,
+    );
+    return json({
+      rate:
+        me?.lesson_rate === null || me?.lesson_rate === undefined
+          ? null
+          : Number(me.lesson_rate),
+      today: { lessons: today.length, amount: sum(today) },
+      month: { lessons: rows.length, amount: sum(rows) },
+      pending,
+      pendingAmount: lessonPay(me?.lesson_rate, pending),
+      items: rows.map((r) => ({
+        id: r.id,
+        program: r.program,
+        at: r.accepted_at,
+        start: r.start,
+        amount: Number(r.pay_amount || 0),
+      })),
+    });
+  }
+  const v = z.object({ id: z.string().max(80) }).parse(body);
+  const b = await one(
+    "SELECT b.*,s.start AS slot_start FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id=?",
+    v.id,
+  );
+  if (!b) return fail("notFound", 404);
+  const started = !!b.slot_start && Date.parse(b.slot_start) <= Date.now();
+  const now = new Date().toISOString();
+  if (p[1] === "conducted") {
+    const own = isTeacher(user.role) && b.instructor_id === user.id;
+    if (!own && !isStaff(user.role)) return fail("forbidden", 403);
+    if (b.status !== "confirmed" || b.accepted_at) return fail("invalid");
+    if (!started) return fail("lessonNotStarted", 409);
+    await db
+      .prepare(
+        "UPDATE bookings SET conducted_at=? WHERE id=? AND conducted_at IS NULL",
+      )
+      .run(now, v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "lesson:conducted", JSON.stringify({ id: v.id }));
+    return json({ ok: true });
+  }
+  if (!isStaff(user.role)) return fail("forbidden", 403);
+  if (p[1] === "accept") {
+    if (b.accepted_at || b.status === "cancelled" || !b.instructor_id)
+      return fail("invalid");
+    if (!b.conducted_at && !started) return fail("lessonNotStarted", 409);
+    const teacher = await one(
+      "SELECT lesson_rate FROM users WHERE id=?",
+      b.instructor_id,
+    );
+    const pay = lessonPay(teacher?.lesson_rate);
+    await db
+      .prepare(
+        "UPDATE bookings SET conducted_at=COALESCE(conducted_at,?),accepted_at=?,accepted_by=?,pay_amount=?,status='completed' WHERE id=? AND accepted_at IS NULL",
+      )
+      .run(now, now, user.id, pay, v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "lesson:accepted", JSON.stringify({ id: v.id }));
+    // Only whether a rate exists is shown to the office, never the amount.
+    return json({ ok: true, noRate: pay === 0 });
+  }
+  if (p[1] === "unconduct") {
+    if (b.accepted_at) return fail("invalid");
+    await db
+      .prepare("UPDATE bookings SET conducted_at=NULL WHERE id=?")
+      .run(v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "lesson:unconduct", JSON.stringify({ id: v.id }));
+    return json({ ok: true });
+  }
+  return fail("notFound", 404);
+}
 const tetri = (lari: number) => Math.round(lari * 100);
 const lariAmount = z.coerce.number().positive().max(100000).multipleOf(0.01);
 /** Charges and payments. Staff see per-student balances; totals and reports are admin-only. */
@@ -1502,6 +1765,50 @@ async function finance(p: string[], body: any, user: Row) {
         JSON.stringify({ id: v.id, reason: v.reason }),
       );
     return json({ ok: true });
+  }
+  if (p[1] === "payroll") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        month: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+      })
+      .parse(body || {});
+    const [from, to] = monthRange(v.month);
+    const teachers = await all(
+      "SELECT id,name,role,lesson_rate,active FROM users WHERE role IN ('instructor','lecturer') ORDER BY name",
+    );
+    const done = await all(
+      "SELECT instructor_id, count(*) AS n, COALESCE(SUM(pay_amount),0) AS amount FROM bookings WHERE accepted_at>=? AND accepted_at<? GROUP BY instructor_id",
+      from,
+      to,
+    );
+    const waiting = await all(
+      "SELECT instructor_id, count(*) AS n FROM bookings WHERE conducted_at IS NOT NULL AND accepted_at IS NULL GROUP BY instructor_id",
+    );
+    const rows = teachers.map((t) => {
+      const d = done.find((x) => x.instructor_id === t.id);
+      return {
+        id: t.id,
+        name: t.name,
+        role: t.role,
+        active: Number(t.active) !== 0,
+        rate:
+          t.lesson_rate === null || t.lesson_rate === undefined
+            ? null
+            : Number(t.lesson_rate),
+        lessons: Number(d?.n || 0),
+        amount: Number(d?.amount || 0),
+        waiting: Number(waiting.find((x) => x.instructor_id === t.id)?.n || 0),
+      };
+    });
+    return json({
+      month: from,
+      rows,
+      total: rows.reduce((a, r) => a + r.amount, 0),
+    });
   }
   if (p[1] === "report") {
     if (!canSeeFinance(user.role)) return fail("forbidden", 403);

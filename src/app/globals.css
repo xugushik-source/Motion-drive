@@ -2885,3 +2885,9 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .app-new { border-color: #ff6a55; }
 .app-closed { opacity: .6; }
 @media (max-width: 600px) { .apply-modal { padding: 22px 18px; } .pg-switch button { padding: 14px 16px; } }
+.editor-photo { width: 120px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; display: block; margin-bottom: 10px; }
+.staff-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.staff-actions .button { display: inline-flex; align-items: center; gap: 6px; }
+.staff-edit { display: grid; gap: 10px; }
+.staff-role { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.muted { color: var(--muted); font-size: 13px; margin: 0; }

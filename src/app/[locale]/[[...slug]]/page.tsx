@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { contactOnly, demoMode, siteUrl } from "../../../lib/deployment";
 import Site from "../../../components/Site";
 import { records } from "../../../lib/db";
 import { locales } from "../../../lib/schemas";
 export const dynamic = "force-dynamic";
+const staffPages = ["admin", "operator", "manager", "lecturer", "instructor"];
 const pages = [
   "",
   "about",
@@ -95,6 +96,8 @@ export default async function Page({
   const { locale, slug } = await params;
   const path = slug?.join("/") || "";
   if (!pages.includes(path)) notFound();
+  // Staff cabinets and the admin panel are Russian only.
+  if (staffPages.includes(path) && locale !== "ru") redirect(`/ru/${path}`);
   const content = Object.fromEntries(
     await Promise.all(
       [

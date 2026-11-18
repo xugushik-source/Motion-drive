@@ -45,13 +45,6 @@ function localDb() {
     const userColumns = sqlite.prepare("PRAGMA table_info(users)").all() as {
       name: string;
     }[];
-    if (
-      userColumns.some((c) => c.name === "phone") &&
-      !userColumns.some((c) => c.name === "gender")
-    ) {
-      sqlite.exec("ALTER TABLE users ADD COLUMN gender TEXT");
-      sqlite.exec("ALTER TABLE users ADD COLUMN birth_year INTEGER");
-    }
     if (!userColumns.some((c) => c.name === "phone")) {
       sqlite.exec(`PRAGMA foreign_keys=OFF;
       BEGIN;
@@ -62,11 +55,31 @@ function localDb() {
       COMMIT;
       PRAGMA foreign_keys=ON;`);
     }
+    // Later additions, applied after any table rebuild above.
+    const have = (
+      sqlite.prepare("PRAGMA table_info(users)").all() as { name: string }[]
+    ).map((c) => c.name);
+    for (const [name, ddl] of [
+      ["gender", "TEXT"],
+      ["birth_year", "INTEGER"],
+      ["active", "INTEGER NOT NULL DEFAULT 1"],
+      ["lesson_rate", "INTEGER"],
+    ])
+      if (!have.includes(name))
+        sqlite.exec(`ALTER TABLE users ADD COLUMN ${name} ${ddl}`);
     const bookingColumns = sqlite
       .prepare("PRAGMA table_info(bookings)")
       .all() as { name: string }[];
     if (!bookingColumns.some((c) => c.name === "series_id"))
       sqlite.exec("ALTER TABLE bookings ADD COLUMN series_id TEXT");
+    for (const [name, ddl] of [
+      ["conducted_at", "TEXT"],
+      ["accepted_at", "TEXT"],
+      ["accepted_by", "TEXT"],
+      ["pay_amount", "INTEGER"],
+    ])
+      if (!bookingColumns.some((c) => c.name === name))
+        sqlite.exec(`ALTER TABLE bookings ADD COLUMN ${name} ${ddl}`);
     if (!bookingColumns.some((c) => c.name === "package_title"))
       sqlite.exec(
         "ALTER TABLE bookings ADD COLUMN package_title TEXT NOT NULL DEFAULT ''",
