@@ -2135,6 +2135,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       id: "admin-elena",
       role: "administrator",
+      city: "akhalkalaki",
       image: "/images/team/elena-barbaryan.webp",
       languages: "",
       vehicle: "",
@@ -2148,6 +2149,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       id: "admin-arevik",
       role: "administrator",
+      city: "ninotsminda",
       image: "/images/team/arevik-hambaryan.webp",
       languages: "",
       vehicle: "",

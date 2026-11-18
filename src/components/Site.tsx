@@ -253,6 +253,10 @@ export default function Site({
     <div className="contact-grid">
       {["akhalkalaki", "ninotsminda"].map((city, i) => {
         const b = list("branches").find((x) => x.city === city);
+        // the face of the person who answers the phone in this branch
+        const face = list("instructors").find(
+          (x) => x.role === "administrator" && x.city === city && x.image,
+        );
         return (
           <article className="contact-card" key={city}>
             <MapPin size={25} />
@@ -260,10 +264,21 @@ export default function Site({
             {b?.offer && <p className="branch-offer">{b.offer}</p>}
             <p>{b?.address || t("addressPending")}</p>
             {b?.admin && (
-              <p className="branch-admin">
-                <UserRound size={15} />
-                {t("adminLabel")}: <strong>{b.admin}</strong>
-              </p>
+              <div className="branch-admin">
+                {face ? (
+                  <img
+                    className="branch-admin-photo"
+                    src={face.image}
+                    alt={b.admin}
+                    loading="lazy"
+                  />
+                ) : (
+                  <UserRound size={15} />
+                )}
+                <p>
+                  {t("adminLabel")}: <strong>{b.admin}</strong>
+                </p>
+              </div>
             )}
             {b?.phone && (
               <a
@@ -393,7 +408,6 @@ export default function Site({
     const groups = [
       ["instructor", "instructorsGroup"],
       ["lecturer", "lecturersGroup"],
-      ["administrator", "administratorsGroup"],
     ] as const;
     return team.length ? (
       <>
