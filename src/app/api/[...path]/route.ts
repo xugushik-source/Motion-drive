@@ -61,6 +61,7 @@ import {
 } from "../../../lib/auth";
 import { normalizePhone } from "../../../lib/phone";
 import { priceKit } from "../../../lib/kit";
+import { loginFromName, loginPattern } from "../../../lib/translit";
 import { ACCOUNTS, ageDebt, change, type Account } from "../../../lib/books";
 import {
   registerSchema,
@@ -330,7 +331,7 @@ export async function GET(
         users: staff
           ? await all(
               admin
-                ? "SELECT id,name,email,phone,role,gender,birth_year,active,must_change_password,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users"
+                ? "SELECT id,name,email,phone,username,role,gender,birth_year,active,must_change_password,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users"
                 : // administrators see contacts of students only; colleagues' phones and e-mails stay private
                   "SELECT id,name,CASE WHEN role='student' THEN email END AS email,CASE WHEN role='student' THEN phone END AS phone,role,gender,birth_year,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users",
             )
@@ -568,17 +569,29 @@ export async function POST(
       }
       if (p[1] === "login") {
         const v = loginSchema.parse(body);
-        // Staff may keep their email login; students sign in with a phone number.
-        const key = v.login.includes("@")
-          ? v.login.toLowerCase()
-          : normalizePhone(v.login);
-        if (!key) return fail("badPhone");
+        // Students sign in with a phone number; staff with a name-based login (or an e-mail / phone).
+        const raw = v.login.trim();
+        let column: "email" | "phone" | "username";
+        let key: string;
+        if (raw.includes("@")) {
+          column = "email";
+          key = raw.toLowerCase();
+        } else {
+          const phone = normalizePhone(raw);
+          if (phone) {
+            column = "phone";
+            key = phone;
+          } else if (loginPattern.test(raw.toLowerCase())) {
+            column = "username";
+            key = raw.toLowerCase();
+          } else return fail("badPhone");
+        }
         if (!(await limit("login:" + key, 10, 900)))
           return fail("rateLimit", 429);
         const u = await one(
-          "SELECT * FROM users WHERE " +
-            (key.includes("@") ? "email" : "phone") +
-            "=?",
+          column === "username"
+            ? "SELECT * FROM users WHERE lower(username)=?"
+            : "SELECT * FROM users WHERE " + column + "=?",
           key,
         );
         if (!u || !checkPassword(v.password, u.password))
@@ -1449,6 +1462,12 @@ export async function POST(
             id: z.string().max(80),
             name: z.string().trim().min(2).max(100).optional(),
             phone: phoneSchema.optional(),
+            username: z
+              .string()
+              .trim()
+              .toLowerCase()
+              .regex(loginPattern)
+              .optional(),
             active: z.boolean().optional(),
           })
           .parse(body);
@@ -1478,12 +1497,24 @@ export async function POST(
           ))
         )
           return fail("accountExists", 409);
+        if (
+          v.username &&
+          (await one(
+            "SELECT id FROM users WHERE lower(username)=? AND id<>?",
+            v.username,
+            v.id,
+          ))
+        )
+          return fail("accountExists", 409);
         await transaction(async () => {
           await db
-            .prepare("UPDATE users SET name=?,phone=?,active=? WHERE id=?")
+            .prepare(
+              "UPDATE users SET name=?,phone=?,username=?,active=? WHERE id=?",
+            )
             .run(
               v.name ?? target.name,
               v.phone ?? target.phone,
+              v.username ?? target.username ?? null,
               v.active === undefined
                 ? Number(target.active ?? 1)
                 : v.active
@@ -1616,7 +1647,17 @@ export async function POST(
         const v = z
           .object({
             name: z.string().trim().min(2).max(100),
-            phone: phoneSchema,
+            // staff sign in with a login made from the name; a phone is optional
+            phone: phoneSchema
+              .optional()
+              .or(z.literal("").transform(() => undefined)),
+            username: z
+              .string()
+              .trim()
+              .toLowerCase()
+              .regex(loginPattern)
+              .optional()
+              .or(z.literal("").transform(() => undefined)),
             role: z.enum([
               "instructor",
               "lecturer",
@@ -1626,17 +1667,34 @@ export async function POST(
             ]),
           })
           .parse(body);
-        if (await one("SELECT id FROM users WHERE phone=?", v.phone))
+        if (
+          v.phone &&
+          (await one("SELECT id FROM users WHERE phone=?", v.phone))
+        )
           return fail("accountExists", 409);
+        let username = v.username || loginFromName(v.name);
+        if (v.username) {
+          if (
+            await one("SELECT id FROM users WHERE lower(username)=?", username)
+          )
+            return fail("accountExists", 409);
+        } else
+          for (
+            let n = 2;
+            await one("SELECT id FROM users WHERE lower(username)=?", username);
+            n++
+          )
+            username = loginFromName(v.name) + n;
         const id = randomUUID(),
           password = temporaryPassword();
         await db
           .prepare(
-            "INSERT INTO users(id,phone,name,password,role,locale,must_change_password,started) VALUES(?,?,?,?,?,'ru',1,?)",
+            "INSERT INTO users(id,phone,username,name,password,role,locale,must_change_password,started) VALUES(?,?,?,?,?,?,'ru',1,?)",
           )
           .run(
             id,
-            v.phone,
+            v.phone || null,
+            username,
             v.name,
             hashPassword(password),
             v.role,
@@ -1647,7 +1705,7 @@ export async function POST(
           .run(user.id, "staff:create", JSON.stringify({ id, role: v.role }));
         await linkTeacherCard({ id, name: v.name, role: v.role }, user.id);
         // Shown once; the employee must change it at the first sign-in.
-        return json({ id, password });
+        return json({ id, password, username });
       }
       if (p[1] === "role") {
         const v = z

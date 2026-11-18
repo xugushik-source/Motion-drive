@@ -1,11 +1,17 @@
 import { normalizePhone } from "./phone";
+import { loginFromName, loginPattern } from "./translit";
 
-export type SeedStaff = { name: string; phone: string; role: string };
+export type SeedStaff = {
+  name: string;
+  phone: string | null;
+  username: string;
+  role: string;
+};
 const ROLES = ["admin", "manager", "operator", "instructor", "lecturer"];
 /**
- * SEED_STAFF is a JSON list kept only in the hosting settings (never in the repository), so that
- * staff phone numbers stay private: [{"name":"…","phone":"+995…","role":"admin"}].
- * Invalid entries are skipped.
+ * SEED_STAFF is a JSON list kept only in the hosting settings (never in the repository):
+ * [{"name":"…","role":"admin","login":"optional.login","phone":"+995… (optional)"}].
+ * Without a login one is made from the name. Invalid entries are skipped.
  */
 export function parseSeedStaff(raw?: string): SeedStaff[] {
   if (!raw) return [];
@@ -14,17 +20,25 @@ export function parseSeedStaff(raw?: string): SeedStaff[] {
     if (!Array.isArray(list)) return [];
     const out: SeedStaff[] = [];
     for (const e of list) {
-      const phone = normalizePhone(String(e?.phone || ""));
       const name = String(e?.name || "").trim();
-      if (phone && name.length >= 2 && ROLES.includes(e?.role))
-        out.push({ name, phone, role: e.role });
+      if (name.length < 2 || !ROLES.includes(e?.role)) continue;
+      const phone = e?.phone ? normalizePhone(String(e.phone)) : null;
+      if (e?.phone && !phone) continue;
+      const wanted = String(e?.login || "")
+        .trim()
+        .toLowerCase();
+      out.push({
+        name,
+        phone,
+        username: loginPattern.test(wanted) ? wanted : loginFromName(name),
+        role: e.role,
+      });
     }
     return out;
   } catch {
     return [];
   }
 }
-
 const norm = (x: unknown) =>
   String(x || "")
     .toLowerCase()
@@ -32,7 +46,7 @@ const norm = (x: unknown) =>
     .trim();
 /** The public team card that belongs to this person, tied to the new account (by role and name). */
 export function cardFor(
-  staff: SeedStaff,
+  staff: Pick<SeedStaff, "name" | "role">,
   cards: Record<string, any>[],
   userId: string,
 ) {

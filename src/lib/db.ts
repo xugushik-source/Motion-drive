@@ -68,6 +68,7 @@ function localDb() {
       ["personal_id", "TEXT"],
       ["pay_method", "TEXT"],
       ["started", "TEXT"],
+      ["username", "TEXT"],
     ])
       if (!have.includes(name))
         sqlite.exec(`ALTER TABLE users ADD COLUMN ${name} ${ddl}`);
@@ -110,7 +111,7 @@ function localDb() {
         "ALTER TABLE slots ADD COLUMN kind TEXT NOT NULL DEFAULT 'any'",
       );
     sqlite.exec(
-      "CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON users(phone) WHERE phone IS NOT NULL; CREATE INDEX IF NOT EXISTS bookings_series ON bookings(series_id);",
+      "CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON users(phone) WHERE phone IS NOT NULL; CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(lower(username)) WHERE username IS NOT NULL; CREATE INDEX IF NOT EXISTS bookings_series ON bookings(series_id);",
     );
     const columns = sqlite.prepare("PRAGMA table_info(messages)").all() as {
       name: string;
@@ -273,21 +274,35 @@ async function bootstrapAdmin(client: PoolClient) {
 }
 /** Accounts listed in SEED_STAFF; nobody knows their password until an administrator sets one. */
 async function seedStaff(client: PoolClient) {
+  const taken = async (username: string, except?: string) =>
+    !!(
+      await client.query(
+        "SELECT 1 FROM motion_drive.users WHERE lower(username)=$1 AND ($2::text IS NULL OR id<>$2)",
+        [username, except || null],
+      )
+    ).rowCount;
   for (const s of parseSeedStaff(process.env.SEED_STAFF)) {
-    if (
-      (
-        await client.query("SELECT 1 FROM motion_drive.users WHERE phone=$1", [
-          s.phone,
-        ])
-      ).rowCount
-    )
+    const found = await client.query(
+      "SELECT id,username FROM motion_drive.users WHERE ($1::text IS NOT NULL AND phone=$1) OR lower(username)=$2",
+      [s.phone, s.username],
+    );
+    if (found.rowCount) {
+      // an account made earlier by phone gets its name-based login
+      const row = found.rows[0];
+      if (!row.username && !(await taken(s.username)))
+        await client.query(
+          "UPDATE motion_drive.users SET username=$1 WHERE id=$2",
+          [s.username, row.id],
+        );
       continue;
+    }
     const id = randomUUID();
     await client.query(
-      "INSERT INTO motion_drive.users(id,phone,name,password,role,locale,must_change_password,started) VALUES($1,$2,$3,$4,$5,'ru',1,$6)",
+      "INSERT INTO motion_drive.users(id,phone,username,name,password,role,locale,must_change_password,started) VALUES($1,$2,$3,$4,$5,$6,'ru',1,$7)",
       [
         id,
         s.phone,
+        s.username,
         s.name,
         hashPassword(randomUUID() + randomUUID()),
         s.role,

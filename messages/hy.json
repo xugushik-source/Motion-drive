@@ -192,6 +192,7 @@
   "backToPackages": "Վերադառնալ փաթեթներին",
   "sheetsNotConfigured": "Google աղյուսակը միացված չէ։",
   "sheetsFailed": "Չհաջողվեց գրել Google աղյուսակում։",
+  "loginLabel": "Հեռախոս կամ մուտքանուն",
   "slotUnavailable": "Այս ժամը զբաղված է կամ անհասանելի։",
   "slotRequired": "Հաստատելուց առաջ նշանակեք դասի ժամը։",
   "tooLarge": "Ֆայլը կամ տվյալները չափազանց մեծ են։",

@@ -93,13 +93,13 @@ function AccountFields({
           <p className="hint id-help">{t("personalIdHelp")}</p>
         </>
       )}
-      <Field label={t("phone")}>
+      <Field label={register ? t("phone") : t("loginLabel")}>
         <input
           name={register ? "phone" : "login"}
           type="text"
           inputMode={register ? "tel" : "text"}
           autoComplete={register ? "tel" : "username"}
-          placeholder="+995 5XX XXX XXX"
+          placeholder={register ? "+995 5XX XXX XXX" : ""}
           maxLength={register ? 40 : 180}
           required
         />

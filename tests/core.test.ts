@@ -550,7 +550,12 @@ test("staff accounts can be seeded from a private setting, invalid entries are s
     ]),
   );
   assert.deepEqual(list, [
-    { name: "Имя Фамилия", phone: "+995568000000", role: "admin" },
+    {
+      name: "Имя Фамилия",
+      phone: "+995568000000",
+      username: "imya.familiya",
+      role: "admin",
+    },
   ]);
   assert.deepEqual(parseSeedStaff("not json"), []);
   assert.deepEqual(parseSeedStaff(undefined), []);
@@ -921,43 +926,27 @@ test("seeded staff get their team card tied to the account", async () => {
   const { publicRecords } = await import("../src/lib/public-content.ts");
   const cards = publicRecords.instructors!;
   const anna = cardFor(
-    { name: "Анна  Мурадова", phone: "+995500000000", role: "instructor" },
+    { name: "Анна  Мурадова", role: "instructor" },
     cards,
     "u1",
   )!;
   assert.equal(anna.id, "instructor-anna");
   assert.equal(anna.data.userId, "u1");
   assert.equal(
-    cardFor(
-      { name: "Елена Барбарян", phone: "+995500000000", role: "operator" },
-      cards,
-      "u2",
-    )!.id,
+    cardFor({ name: "Елена Барбарян", role: "operator" }, cards, "u2")!.id,
     "admin-elena",
   );
   assert.equal(
-    cardFor(
-      { name: "Левон Бабаян", phone: "+995500000000", role: "lecturer" },
-      cards,
-      "u3",
-    )!.id,
+    cardFor({ name: "Левон Бабаян", role: "lecturer" }, cards, "u3")!.id,
     "lecturer-levon",
   );
   // the wrong role or an unknown name has no card, and an owner has none
   assert.equal(
-    cardFor(
-      { name: "Анна Мурадова", phone: "+995500000000", role: "lecturer" },
-      cards,
-      "u",
-    )!,
+    cardFor({ name: "Анна Мурадова", role: "lecturer" }, cards, "u")!,
     null,
   );
   assert.equal(
-    cardFor(
-      { name: "Степан Эваджян", phone: "+995500000000", role: "admin" },
-      cards,
-      "u",
-    ),
+    cardFor({ name: "Степан Эваджян", role: "admin" }, cards, "u"),
     null,
   );
   assert.equal(
@@ -966,4 +955,29 @@ test("seeded staff get their team card tied to the account", async () => {
     ).length,
     1,
   );
+});
+
+test("sign-in names come from the person's name and seeding works without phones", async () => {
+  const { loginFromName, loginPattern } =
+    await import("../src/lib/translit.ts");
+  const { parseSeedStaff } = await import("../src/lib/seed-staff.ts");
+  assert.equal(loginFromName("Мкртич Карапетян"), "mkrtich.karapetyan");
+  assert.equal(loginFromName("Анна Мурадова"), "anna.muradova");
+  assert.equal(loginFromName("Ашот Агабабян"), "ashot.agababyan");
+  assert.equal(loginFromName("Левон Бабаян"), "levon.babayan");
+  assert.equal(loginFromName("Елена Барбарян"), "elena.barbaryan");
+  assert.equal(loginFromName("Аревик Гамбарян"), "arevik.gambaryan");
+  assert.ok(loginPattern.test(loginFromName("Щукин Юрий Ёлкин")));
+  assert.ok(
+    loginPattern.test(loginFromName("ა")),
+    "a name with no latin letters still gets a valid login",
+  );
+  const list = parseSeedStaff(
+    '[{"name":"Мкртич Карапетян","role":"instructor"},{"name":"Елена Барбарян","role":"operator","login":"Elena","phone":"597 939 327"},{"name":"Плохой","role":"student"},{"name":"Х","role":"admin"}]',
+  );
+  assert.equal(list.length, 2);
+  assert.equal(list[0]!.username, "mkrtich.karapetyan");
+  assert.equal(list[0]!.phone, null);
+  assert.equal(list[1]!.username, "elena");
+  assert.equal(list[1]!.phone, "+995597939327");
 });

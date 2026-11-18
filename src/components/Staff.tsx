@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api, Field, type Item } from "./Site";
 import { formatPhone } from "../lib/phone";
+import { loginFromName } from "../lib/translit";
 
 const ROLE: Record<string, string> = {
   admin: "Владелец (полный доступ, деньги и зарплаты)",
@@ -47,9 +48,13 @@ export default function Staff({
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
     null,
   );
-  const [issued, setIssued] = useState<{ id: string; password: string } | null>(
-    null,
-  );
+  const [issued, setIssued] = useState<{
+    id: string;
+    password: string;
+    username?: string;
+  } | null>(null);
+  const [login, setLogin] = useState("");
+  const [loginEdited, setLoginEdited] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const people = users.filter((u) => STAFF.includes(u.role));
   // people of the site team who have no account yet, for the chosen role
@@ -107,9 +112,11 @@ export default function Staff({
           const d = Object.fromEntries(new FormData(f));
           const r = await call("admin/staff", d, "Аккаунт создан");
           if (r) {
-            setIssued({ id: r.id, password: r.password });
+            setIssued({ id: r.id, password: r.password, username: r.username });
             f.reset();
             setName("");
+            setLogin("");
+            setLoginEdited(false);
           }
         }}
       >
@@ -135,7 +142,11 @@ export default function Staff({
             <Field label="Выберите человека из команды сайта">
               <select
                 value=""
-                onChange={(e) => e.target.value && setName(e.target.value)}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  setName(e.target.value);
+                  if (!loginEdited) setLogin(loginFromName(e.target.value));
+                }}
               >
                 <option value="">— выбрать —</option>
                 {offered.map((c) => (
@@ -150,14 +161,32 @@ export default function Staff({
             <input
               name="name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (!loginEdited) setLogin(loginFromName(e.target.value));
+              }}
               minLength={2}
               maxLength={100}
               required
             />
           </Field>
-          <Field label="Телефон (это логин)">
-            <input name="phone" type="tel" inputMode="tel" required />
+          <Field label="Логин для входа (по имени)">
+            <input
+              name="username"
+              value={login}
+              onChange={(e) => {
+                setLogin(e.target.value.toLowerCase());
+                setLoginEdited(true);
+              }}
+              pattern="[a-z0-9._\-]{3,40}"
+              title="Латинские буквы, цифры, точка, дефис, от 3 символов"
+              autoCapitalize="none"
+              autoCorrect="off"
+              required
+            />
+          </Field>
+          <Field label="Телефон (необязательно)">
+            <input name="phone" type="tel" inputMode="tel" />
           </Field>
         </div>
         <button className="button small">
@@ -167,10 +196,13 @@ export default function Staff({
         {issued && (
           <div className="temp-password" role="status">
             <small>
-              Временный пароль (показан один раз). Сотрудник сменит его при
-              первом входе:
+              Логин и временный пароль (пароль показан один раз). Сотрудник
+              сменит его при первом входе:
             </small>
-            <code>{issued.password}</code>
+            <code>
+              {issued.username ? issued.username + " / " : ""}
+              {issued.password}
+            </code>
             <button
               type="button"
               className="icon-button"
@@ -198,6 +230,7 @@ export default function Staff({
                   {ROLE[u.role]}
                   {closed ? " · доступ закрыт" : ""}
                 </small>
+                {u.username && <small>Логин: {u.username}</small>}
                 {u.phone && (
                   <a href={"tel:" + u.phone}>{formatPhone(u.phone)}</a>
                 )}
