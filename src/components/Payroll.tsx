@@ -19,6 +19,12 @@ const KIND: Record<string, string> = {
   per_lesson: "За каждый принятый урок",
   premium: "Разовая премия",
 };
+const PAYKIND: Record<string, string> = {
+  salary: "Зарплата",
+  advance: "Аванс",
+};
+const dayOf = (iso?: string) =>
+  (iso || "").slice(0, 10).split("-").reverse().join(".");
 const monthName = (m: string) =>
   new Date(m + "-15T12:00:00Z").toLocaleDateString("ru-RU", {
     month: "long",
@@ -33,11 +39,16 @@ export function MySalary() {
   const [month, setMonth] = useState("");
   const [d, setD] = useState<Row | null>(null);
   const [error, setError] = useState("");
+  const load = useCallback(
+    () =>
+      api("payroll/me", month ? { month } : {})
+        .then(setD)
+        .catch(() => setError("Не удалось загрузить данные.")),
+    [month],
+  );
   useEffect(() => {
-    api("payroll/me", month ? { month } : {})
-      .then(setD)
-      .catch(() => setError("Не удалось загрузить данные."));
-  }, [month]);
+    load();
+  }, [load]);
   if (error)
     return (
       <p className="error" role="alert">
@@ -46,8 +57,74 @@ export function MySalary() {
     );
   if (!d) return <Notice>Загрузка…</Notice>;
   const empty = !d.items.length;
+  const L = d.ledger;
   return (
     <div className="finance">
+      {L.pending.map((x: Row) => (
+        <div className="notice payout-note" key={x.id} role="status">
+          <span>
+            Вам выплатили <b>{gel(x.amount)}</b> ({PAYKIND[x.kind]},{" "}
+            {dayOf(x.created)}
+            {x.note ? ` · ${x.note}` : ""}). Получили деньги?
+          </span>
+          <button
+            className="button small"
+            onClick={async () => {
+              await api("payroll/confirm", { id: x.id });
+              await load();
+            }}
+          >
+            Получил(а)
+          </button>
+        </div>
+      ))}
+      <div className="stat-cards">
+        <article className={L.debt ? "owe" : ""}>
+          <small>
+            {L.debt
+              ? "К получению (долг)"
+              : L.advance
+                ? "Получено вперёд (аванс)"
+                : "Всё получено"}
+          </small>
+          <strong>
+            {L.debt ? gel(L.debt) : L.advance ? gel(L.advance) : "0 ₾"}
+          </strong>
+          <small>
+            {L.debt
+              ? "остаётся, пока вам не выплатят и вы не подтвердите"
+              : L.advance
+                ? "зачтётся в следующих начислениях"
+                : "задолженности нет"}
+          </small>
+        </article>
+        <article>
+          <small>Начислено всего</small>
+          <strong>{gel(L.accrued)}</strong>
+        </article>
+        <article>
+          <small>Получено всего</small>
+          <strong>{gel(L.paid)}</strong>
+        </article>
+      </div>
+      {L.history.length > 0 && (
+        <>
+          <h4>Полученные выплаты</h4>
+          <ul className="ledger">
+            {L.history.map((x: Row) => (
+              <li key={x.id} className="payment">
+                <span>{dayOf(x.confirmed_at)}</span>
+                <span>
+                  {PAYKIND[x.kind]}
+                  {x.note ? ` · ${x.note}` : ""}
+                </span>
+                <b>{gel(x.amount)}</b>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <h4>Начисления за месяц</h4>
       <div className="finance-toolbar">
         <label>
           Месяц{" "}
@@ -233,8 +310,99 @@ export function PayrollReport() {
               <p className="muted">Принято уроков: {r.lessons}</p>
             )}
             <p>
-              К выплате: <b>{gel(r.total)}</b>
+              За выбранный месяц: <b>{gel(r.total)}</b>
             </p>
+            <p className={r.ledger.debt ? "debt-left" : "debt-ok"}>
+              {r.ledger.debt
+                ? `Долг сотруднику: ${gel(r.ledger.debt)}`
+                : r.ledger.advance
+                  ? `Аванс вперёд: ${gel(r.ledger.advance)}`
+                  : r.ledger.accrued
+                    ? "Закрыто, долга нет"
+                    : "Пока ничего не начислено"}
+            </p>
+            <p className="muted">
+              Начислено всего {gel(r.ledger.accrued)} · получено{" "}
+              {gel(r.ledger.paid)}
+            </p>
+            {r.ledger.pending.map((x: Row) => (
+              <p key={x.id} className="pay-line">
+                <span>
+                  Ждёт подтверждения: <b>{gel(x.amount)}</b> ({PAYKIND[x.kind]},{" "}
+                  {dayOf(x.created)})
+                </span>
+                <span>
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() =>
+                      call("finance/pay-out-confirm", { id: x.id })
+                    }
+                  >
+                    Получено
+                  </button>{" "}
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() =>
+                      confirm("Отменить эту выплату?") &&
+                      call("finance/pay-out-void", { id: x.id })
+                    }
+                  >
+                    Отменить
+                  </button>
+                </span>
+              </p>
+            ))}
+            <details className="pay-add">
+              <summary>
+                <Plus size={14} /> Записать выплату
+              </summary>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const f = e.currentTarget;
+                  const x = Object.fromEntries(new FormData(f));
+                  if (
+                    await call("finance/pay-out", {
+                      user_id: r.id,
+                      amount: x.amount,
+                      kind: x.kind,
+                      note: x.note || "",
+                    })
+                  )
+                    f.reset();
+                }}
+              >
+                <select name="kind" defaultValue="salary">
+                  <option value="salary">Зарплата</option>
+                  <option value="advance">Аванс</option>
+                </select>
+                <input
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  inputMode="decimal"
+                  placeholder={
+                    r.ledger.debt
+                      ? `Сумма (долг ${r.ledger.debt / 100})`
+                      : "Сумма, ₾"
+                  }
+                  required
+                />
+                <input
+                  name="note"
+                  placeholder="Комментарий (необязательно)"
+                  maxLength={200}
+                />
+                <button className="button small">Записать выплату</button>
+                <small className="muted">
+                  Сотрудник увидит выплату у себя и нажмёт «Получил(а)». До
+                  этого она не уменьшает долг.
+                </small>
+              </form>
+            </details>
             <details className="pay-add">
               <summary>
                 <Plus size={14} /> Добавить бонус, процент или премию

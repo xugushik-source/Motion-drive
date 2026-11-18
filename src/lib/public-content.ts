@@ -2046,7 +2046,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       id: "lecturer-levon",
       role: "lecturer",
-      image: "",
+      image: "/images/team/levon-babayan.webp",
       languages: "",
       vehicle: "",
       status: "published",

@@ -164,7 +164,7 @@ test("the embedded schema equals db/postgres.sql and works on a host without Sup
         "SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema='motion_drive'",
       )
     ).rows[0].n,
-    16,
+    17,
   );
   // the manager role is accepted, an unknown one is not
   await pg.exec(
@@ -185,6 +185,20 @@ test("the embedded schema equals db/postgres.sql and works on a host without Sup
   await assert.rejects(
     pg.exec(
       "INSERT INTO motion_drive.pay_items(id,user_id,kind,amount,from_month,created_by) VALUES('i2','m1','gift',1,'2026-11','m1')",
+    ),
+  );
+  // payouts: positive amount, known kind
+  await pg.exec(
+    "INSERT INTO motion_drive.payouts(id,user_id,amount,kind,created_by) VALUES('o1','m1',50000,'salary','m1')",
+  );
+  await assert.rejects(
+    pg.exec(
+      "INSERT INTO motion_drive.payouts(id,user_id,amount,kind,created_by) VALUES('o2','m1',0,'salary','m1')",
+    ),
+  );
+  await assert.rejects(
+    pg.exec(
+      "INSERT INTO motion_drive.payouts(id,user_id,amount,kind,created_by) VALUES('o3','m1',100,'gift','m1')",
     ),
   );
   // money: a payment needs a positive amount and a known method

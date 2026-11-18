@@ -1374,7 +1374,7 @@ function RecordEditor({
                   ...(kind === "courses" ? ["price", "duration"] : []),
                   ...(kind === "branches" ? ["city", "address", "phone"] : []),
                   ...(kind === "instructors"
-                    ? ["role", "languages", "vehicle", "order", "userId"]
+                    ? ["role", "languages", "vehicle", "order"]
                     : []),
                   ...(oneRecord ? ["title_en", "title_ka", "title_hy"] : []),
                   ...(["media", "materials"].includes(kind) ? ["url"] : []),

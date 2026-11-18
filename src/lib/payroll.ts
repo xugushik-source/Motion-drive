@@ -81,3 +81,44 @@ export function computePay(items: PayItem[], month: string, lessons = 0) {
     items: active,
   };
 }
+
+/** The month after "YYYY-MM". */
+export const nextMonth = (month: string) => {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+};
+/**
+ * Everything earned from the first month that has pay items up to `nowMonth`, month by month.
+ * `lessonsByMonth` holds accepted lessons per month for the "per lesson" items.
+ */
+export function accrualSince(
+  items: PayItem[],
+  nowMonth: string,
+  lessonsByMonth: Record<string, number> = {},
+) {
+  const live = items.filter((i) => !Number(i.voided));
+  const first = live.map((i) => i.from_month).sort()[0];
+  const months: { month: string; total: number }[] = [];
+  let accrued = 0;
+  if (first && first >= "2020-01")
+    for (
+      let m = first;
+      m <= nowMonth && months.length < 600;
+      m = nextMonth(m)
+    ) {
+      const total = computePay(live, m, lessonsByMonth[m] || 0).total;
+      months.push({ month: m, total });
+      accrued += total;
+    }
+  return { accrued, months };
+}
+/**
+ * What is still owed (debt) or paid ahead (advance). A payment counts only after the employee
+ * confirmed that they received it; a surplus is an advance that the next months' pay uses up.
+ */
+export const balanceOf = (accrued: number, paidConfirmed: number) => ({
+  balance: accrued - paidConfirmed,
+  debt: Math.max(accrued - paidConfirmed, 0),
+  advance: Math.max(paidConfirmed - accrued, 0),
+  closed: accrued - paidConfirmed === 0,
+});

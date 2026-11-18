@@ -550,3 +550,50 @@ test("staff accounts can be seeded from a private setting, invalid entries are s
   assert.deepEqual(parseSeedStaff("not json"), []);
   assert.deepEqual(parseSeedStaff(undefined), []);
 });
+
+test("payouts: a debt stays until the employee confirms the money, a surplus is an advance used later", async () => {
+  const { accrualSince, balanceOf, nextMonth } =
+    await import("../src/lib/payroll.ts");
+  assert.equal(nextMonth("2026-12"), "2027-01");
+  assert.equal(nextMonth("2026-03"), "2026-04");
+  const items: any[] = [
+    { kind: "salary", amount: 100000, from_month: "2026-09" },
+  ];
+  const nov = accrualSince(items, "2026-11");
+  assert.equal(nov.accrued, 300000);
+  assert.deepEqual(
+    nov.months.map((m) => m.month),
+    ["2026-09", "2026-10", "2026-11"],
+  );
+  assert.deepEqual(balanceOf(nov.accrued, 100000), {
+    balance: 200000,
+    debt: 200000,
+    advance: 0,
+    closed: false,
+  });
+  const closed = balanceOf(nov.accrued, 300000);
+  assert.deepEqual([closed.debt, closed.advance, closed.closed], [0, 0, true]);
+  // paid ahead: 3500 against 3000 earned is an advance of 500 …
+  const ahead = balanceOf(nov.accrued, 350000);
+  assert.deepEqual([ahead.debt, ahead.advance], [0, 50000]);
+  // … and December's pay uses it up, leaving 500 owed
+  const dec = accrualSince(items, "2026-12");
+  assert.deepEqual(
+    [
+      balanceOf(dec.accrued, 350000).debt,
+      balanceOf(dec.accrued, 350000).advance,
+    ],
+    [50000, 0],
+  );
+  // lessons per month feed the per-lesson item; voided items and nothing-set pay nothing
+  const kpi = accrualSince(
+    [
+      { kind: "per_lesson", amount: 2000, from_month: "2026-11" },
+      { kind: "bonus", amount: 999, from_month: "2026-11", voided: 1 },
+    ] as any[],
+    "2026-11",
+    { "2026-11": 7 },
+  );
+  assert.equal(kpi.accrued, 14000);
+  assert.equal(accrualSince([], "2026-11").accrued, 0);
+});

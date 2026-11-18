@@ -3,6 +3,8 @@ import {
   currentMonth,
   previousMonth,
   computePay,
+  accrualSince,
+  balanceOf,
   type PayItem,
 } from "../../../lib/payroll";
 import {
@@ -1178,6 +1180,37 @@ export async function POST(
               }),
             );
         });
+        // The public card follows the person: a replaced or closed teacher disappears from the site.
+        if (isTeacher(target.role)) {
+          const card = (await records("instructors")).find(
+            (c) => c.userId === target.id,
+          );
+          if (card) {
+            const { id, ...data } = card;
+            if (v.name && v.name !== target.name)
+              await saveRecord(
+                "instructors",
+                id,
+                {
+                  ...data,
+                  title: v.name,
+                  title_en: "",
+                  title_ka: "",
+                  title_hy: "",
+                  image: "",
+                  status: "draft",
+                },
+                user.id,
+              );
+            else if (v.active === false && data.status === "published")
+              await saveRecord(
+                "instructors",
+                id,
+                { ...data, status: "draft" },
+                user.id,
+              );
+          }
+        }
         return json({ ok: true });
       }
       if (p[1] === "set-password") {
@@ -1226,6 +1259,8 @@ export async function POST(
           ["attempts", "user_id"],
           ["messages", "user_id"],
           ["uploads", "user_id"],
+          ["pay_items", "user_id"],
+          ["payouts", "user_id"],
         ])
           if (
             await one(
@@ -1275,6 +1310,7 @@ export async function POST(
         await db
           .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
           .run(user.id, "staff:create", JSON.stringify({ id, role: v.role }));
+        await linkTeacherCard({ id, name: v.name, role: v.role }, user.id);
         // Shown once; the employee must change it at the first sign-in.
         return json({ id, password });
       }
@@ -1297,6 +1333,7 @@ export async function POST(
         await db
           .prepare("UPDATE users SET role=? WHERE id=?")
           .run(v.role, v.id);
+        await linkTeacherCard({ ...u, role: v.role }, user.id);
         return json({ ok: true });
       }
       if (p[1] === "record") {
@@ -1484,10 +1521,117 @@ export async function POST(
 // Uploaded files and the site's own static media folders.
 const localFile =
   /^\/(api\/files\/[a-f0-9-]+|(media|images)\/[\w.-]+(\/[\w.-]+)*)$/;
+/** Earned so far, confirmed payouts and what is still owed (or paid ahead) for one employee. */
+async function ledgerFor(userId: string) {
+  const items = (await all(
+    "SELECT * FROM pay_items WHERE user_id=? AND voided=0 ORDER BY created",
+    userId,
+  )) as unknown as PayItem[];
+  const lessonsByMonth: Record<string, number> = {};
+  for (const r of await all(
+    "SELECT accepted_at FROM bookings WHERE instructor_id=? AND accepted_at IS NOT NULL",
+    userId,
+  )) {
+    const m = currentMonth(new Date(String(r.accepted_at)));
+    lessonsByMonth[m] = (lessonsByMonth[m] || 0) + 1;
+  }
+  const { accrued, months } = accrualSince(
+    items,
+    currentMonth(),
+    lessonsByMonth,
+  );
+  const payouts = await all(
+    "SELECT id,amount,kind,note,created,confirmed_at FROM payouts WHERE user_id=? AND voided=0 ORDER BY created DESC",
+    userId,
+  );
+  const paid = payouts
+    .filter((x) => x.confirmed_at)
+    .reduce((a, x) => a + Number(x.amount), 0);
+  return {
+    accrued,
+    paid,
+    ...balanceOf(accrued, paid),
+    pending: payouts
+      .filter((x) => !x.confirmed_at)
+      .map((x) => ({ ...x, amount: Number(x.amount) })),
+    history: payouts
+      .filter((x) => x.confirmed_at)
+      .slice(0, 12)
+      .map((x) => ({ ...x, amount: Number(x.amount) })),
+    months: months.slice(-12),
+  };
+}
+/** An instructor or lecturer account gets its public card automatically (linked by name, or a new draft). */
+async function linkTeacherCard(u: Row, actor: string) {
+  if (!isTeacher(u.role)) return;
+  const cards = await records("instructors");
+  const mine = cards.find((c) => c.userId === u.id);
+  if (mine) {
+    if (mine.role !== u.role) {
+      const { id, ...data } = mine;
+      await saveRecord("instructors", id, { ...data, role: u.role }, actor);
+    }
+    return;
+  }
+  const norm = (x: unknown) =>
+    String(x || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  const match = cards.find(
+    (c) =>
+      !c.userId &&
+      ["title", "title_en", "title_ka", "title_hy"].some(
+        (k) => c[k] && norm(c[k]) === norm(u.name),
+      ),
+  );
+  if (match) {
+    const { id, ...data } = match;
+    await saveRecord(
+      "instructors",
+      id,
+      { ...data, userId: u.id, role: u.role },
+      actor,
+    );
+    return;
+  }
+  await saveRecord(
+    "instructors",
+    "instructor-" + randomUUID().slice(0, 8),
+    {
+      role: u.role,
+      title: u.name,
+      image: "",
+      languages: "",
+      vehicle: "",
+      status: "draft",
+      order: 99,
+      userId: u.id,
+    },
+    actor,
+  );
+}
 /** Lessons conducted by teachers and accepted by the office (feeds the "per lesson" KPI item). */
 async function lessons(p: string[], body: any, user: Row) {
   if (p[0] === "payroll") {
-    if (p[1] !== "me" || user.role === "student") return fail("forbidden", 403);
+    if (user.role === "student") return fail("forbidden", 403);
+    if (p[1] === "confirm") {
+      const c = z.object({ id: z.string().max(80) }).parse(body);
+      const row = await one(
+        "SELECT id FROM payouts WHERE id=? AND user_id=? AND voided=0 AND confirmed_at IS NULL",
+        c.id,
+        user.id,
+      );
+      if (!row) return fail("notFound", 404);
+      await db
+        .prepare("UPDATE payouts SET confirmed_at=? WHERE id=?")
+        .run(new Date().toISOString(), c.id);
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(user.id, "payout:confirmed", JSON.stringify({ id: c.id }));
+      return json({ ok: true });
+    }
+    if (p[1] !== "me") return fail("forbidden", 403);
     const v = z
       .object({
         month: z
@@ -1521,7 +1665,13 @@ async function lessons(p: string[], body: any, user: Row) {
       )?.n || 0,
     );
     const pay = computePay(items, month, done);
-    return json({ month, ...pay, lessons: done, pending });
+    return json({
+      month,
+      ...pay,
+      lessons: done,
+      pending,
+      ledger: await ledgerFor(user.id),
+    });
   }
   const v = z.object({ id: z.string().max(80) }).parse(body);
   const b = await one(
@@ -1765,21 +1915,24 @@ async function finance(p: string[], body: any, user: Row) {
       from,
       to,
     );
-    const rows = people.map((u) => {
-      const mine = items.filter((i) => i.user_id === u.id);
-      const lessonsDone = Number(
-        done.find((x) => x.instructor_id === u.id)?.n || 0,
-      );
-      const pay = computePay(mine, month, lessonsDone);
-      return {
-        id: u.id,
-        name: u.name,
-        role: u.role,
-        active: Number(u.active) !== 0,
-        lessons: lessonsDone,
-        ...pay,
-      };
-    });
+    const rows = await Promise.all(
+      people.map(async (u) => {
+        const mine = items.filter((i) => i.user_id === u.id);
+        const lessonsDone = Number(
+          done.find((x) => x.instructor_id === u.id)?.n || 0,
+        );
+        const pay = computePay(mine, month, lessonsDone);
+        return {
+          id: u.id,
+          name: u.name,
+          role: u.role,
+          active: Number(u.active) !== 0,
+          lessons: lessonsDone,
+          ...pay,
+          ledger: await ledgerFor(u.id),
+        };
+      }),
+    );
     return json({ month, rows, total: rows.reduce((a, r) => a + r.total, 0) });
   }
   if (p[1] === "pay-salary") {
@@ -1895,6 +2048,61 @@ async function finance(p: string[], body: any, user: Row) {
         JSON.stringify({ id, user: v.user_id, kind: v.kind }),
       );
     return json({ id });
+  }
+  if (p[1] === "pay-out") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        user_id: z.string().max(80),
+        amount: z.coerce.number().positive().max(1000000).multipleOf(0.01),
+        kind: z.enum(["salary", "advance"]).default("salary"),
+        note: z.string().trim().max(200).default(""),
+      })
+      .parse(body);
+    if (
+      !(await one(
+        "SELECT id FROM users WHERE id=? AND role<>'student'",
+        v.user_id,
+      ))
+    )
+      return fail("invalid");
+    const id = randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO payouts(id,user_id,amount,kind,note,created_by,created) VALUES(?,?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        v.user_id,
+        tetri(v.amount),
+        v.kind,
+        v.note,
+        user.id,
+        new Date().toISOString(),
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "payout:create",
+        JSON.stringify({ id, user: v.user_id, amount: v.amount, kind: v.kind }),
+      );
+    return json({ id });
+  }
+  if (p[1] === "pay-out-confirm" || p[1] === "pay-out-void") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z.object({ id: z.string().max(80) }).parse(body);
+    if (p[1] === "pay-out-confirm")
+      await db
+        .prepare(
+          "UPDATE payouts SET confirmed_at=? WHERE id=? AND confirmed_at IS NULL AND voided=0",
+        )
+        .run(new Date().toISOString(), v.id);
+    else await db.prepare("UPDATE payouts SET voided=1 WHERE id=?").run(v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "payout:" + p[1].slice(8), JSON.stringify({ id: v.id }));
+    return json({ ok: true });
   }
   if (p[1] === "pay-void") {
     if (!canSeeFinance(user.role)) return fail("forbidden", 403);
