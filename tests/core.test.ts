@@ -481,21 +481,72 @@ test("people and photos are one record each, with names in every language inside
   );
 });
 
-test("payroll: Georgian local day and month ranges, flat rate per accepted lesson", async () => {
-  const { dayRange, monthRange, lessonPay } =
+test("payroll: Georgian month ranges and KPI-style pay (salary, bonus, percent, per lesson, premium)", async () => {
+  const { dayRange, monthRange, currentMonth, previousMonth, computePay } =
     await import("../src/lib/payroll.ts");
-  // 2026-11-18 22:30 UTC is already 02:30 on the 19th in Georgia (UTC+4)
   const [d0, d1] = dayRange(new Date("2026-11-18T22:30:00Z"));
   assert.equal(d0, "2026-11-18T20:00:00.000Z");
   assert.equal(d1, "2026-11-19T20:00:00.000Z");
   const [m0, m1] = monthRange("2026-11", new Date("2026-11-18T10:00:00Z"));
   assert.equal(m0, "2026-10-31T20:00:00.000Z");
   assert.equal(m1, "2026-11-30T20:00:00.000Z");
+  assert.equal(currentMonth(new Date("2026-12-31T21:00:00Z")), "2027-01");
+  assert.equal(previousMonth("2027-01"), "2026-12");
+  assert.equal(previousMonth("2026-11"), "2026-10");
+  const items: any[] = [
+    { kind: "salary", amount: 100000, from_month: "2026-01" },
+    { kind: "bonus", amount: 5000, from_month: "2026-11" },
+    {
+      kind: "percent",
+      percent: 10,
+      from_month: "2026-11",
+      to_month: "2026-12",
+    },
+    { kind: "per_lesson", amount: 2000, from_month: "2026-11" },
+    {
+      kind: "premium",
+      amount: 30000,
+      from_month: "2026-11",
+      to_month: "2026-11",
+    },
+    { kind: "bonus", amount: 99999, from_month: "2026-11", voided: 1 },
+  ];
+  const nov = computePay(items, "2026-11", 12);
   assert.deepEqual(
-    monthRange(undefined, new Date("2026-12-31T21:00:00Z")),
-    monthRange("2027-01"),
+    [nov.salary, nov.bonus, nov.percent, nov.perLesson, nov.premium, nov.total],
+    [100000, 5000, 10000, 24000, 30000, 169000],
   );
-  assert.equal(lessonPay(2500, 3), 7500);
-  assert.equal(lessonPay(null, 5), 0);
-  assert.equal(lessonPay(-100), 0);
+  // December: the premium was one-time, the percent still runs; October: only the salary
+  const dec = computePay(items, "2026-12", 0);
+  assert.deepEqual(
+    [dec.premium, dec.percent, dec.perLesson, dec.total],
+    [0, 10000, 0, 115000],
+  );
+  assert.equal(computePay(items, "2026-10", 5).total, 100000);
+  // a percent with no salary pays nothing; nothing set means zero
+  assert.equal(
+    computePay(
+      [{ kind: "percent", percent: 50, from_month: "2026-01" }],
+      "2026-11",
+    ).total,
+    0,
+  );
+  assert.equal(computePay([], "2026-11", 5).total, 0);
+});
+
+test("staff accounts can be seeded from a private setting, invalid entries are skipped", async () => {
+  const { parseSeedStaff } = await import("../src/lib/seed-staff.ts");
+  const list = parseSeedStaff(
+    JSON.stringify([
+      { name: "Имя Фамилия", phone: "+995 568 00 00 00", role: "admin" },
+      { name: "X", phone: "+995591000000", role: "admin" },
+      { name: "Без Роли", phone: "+995591000001", role: "root" },
+      { name: "Плохой Телефон", phone: "123", role: "operator" },
+    ]),
+  );
+  assert.deepEqual(list, [
+    { name: "Имя Фамилия", phone: "+995568000000", role: "admin" },
+  ]);
+  assert.deepEqual(parseSeedStaff("not json"), []);
+  assert.deepEqual(parseSeedStaff(undefined), []);
 });

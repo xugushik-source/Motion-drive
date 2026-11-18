@@ -196,7 +196,9 @@ export default function Staff({
                 >
                   <Pencil size={14} /> Заменить человека
                 </button>
-                {!(u.role === "admin" && !mine) && (
+                {(u.role !== "admin" ||
+                  mine ||
+                  Number(u.must_change_password) === 1) && (
                   <button
                     type="button"
                     className="button small outline-dark"

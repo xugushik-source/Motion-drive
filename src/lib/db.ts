@@ -11,6 +11,7 @@ import { hashPassword } from "./password";
 import { postgresSchema } from "./postgres-schema";
 import { publicRecords } from "./public-content";
 import { sqliteSchema } from "./sqlite-schema";
+import { parseSeedStaff } from "./seed-staff";
 
 export type Row = Record<string, any>;
 let sqlite: DatabaseSync | undefined;
@@ -97,6 +98,19 @@ function localDb() {
         "ALTER TABLE messages ADD COLUMN admin_reply TEXT NOT NULL DEFAULT ''",
       );
     if (demoMode) seedDemo(sqlite);
+    for (const s of parseSeedStaff(process.env.SEED_STAFF))
+      if (!sqlite.prepare("SELECT 1 FROM users WHERE phone=?").get(s.phone))
+        sqlite
+          .prepare(
+            "INSERT INTO users(id,phone,name,password,role,locale,must_change_password) VALUES(?,?,?,?,?,'ru',1)",
+          )
+          .run(
+            randomUUID(),
+            s.phone,
+            s.name,
+            hashPassword(randomUUID() + randomUUID()),
+            s.role,
+          );
   }
   return sqlite;
 }
@@ -233,6 +247,33 @@ async function bootstrapAdmin(client: PoolClient) {
     "INSERT INTO motion_drive.audit(actor,action) VALUES('bootstrap','admin:create')",
   );
 }
+/** Accounts listed in SEED_STAFF; nobody knows their password until an administrator sets one. */
+async function seedStaff(client: PoolClient) {
+  for (const s of parseSeedStaff(process.env.SEED_STAFF)) {
+    if (
+      (
+        await client.query("SELECT 1 FROM motion_drive.users WHERE phone=$1", [
+          s.phone,
+        ])
+      ).rowCount
+    )
+      continue;
+    await client.query(
+      "INSERT INTO motion_drive.users(id,phone,name,password,role,locale,must_change_password) VALUES($1,$2,$3,$4,$5,'ru',1)",
+      [
+        randomUUID(),
+        s.phone,
+        s.name,
+        hashPassword(randomUUID() + randomUUID()),
+        s.role,
+      ],
+    );
+    await client.query(
+      "INSERT INTO motion_drive.audit(actor,action,after_value) VALUES('seed','staff:create',$1)",
+      [JSON.stringify({ role: s.role })],
+    );
+  }
+}
 export function ensureSchema() {
   if (!databaseUrl) return Promise.resolve();
   return (schemaReady ||= (async () => {
@@ -256,6 +297,7 @@ export function ensureSchema() {
         );
       }
       await bootstrapAdmin(client);
+      await seedStaff(client);
       await client.query("COMMIT");
     } catch (error) {
       try {

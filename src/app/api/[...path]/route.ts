@@ -1,4 +1,10 @@
-import { dayRange, monthRange, lessonPay } from "../../../lib/payroll";
+import {
+  monthRange,
+  currentMonth,
+  previousMonth,
+  computePay,
+  type PayItem,
+} from "../../../lib/payroll";
 import {
   isStaff,
   isTeacher,
@@ -272,11 +278,7 @@ export async function GET(
       );
       return json({
         user,
-        bookings: bookings.map((b: Row) =>
-          admin || (instructor && b.instructor_id === user.id)
-            ? b
-            : { ...b, pay_amount: undefined },
-        ),
+        bookings,
         lessons,
         results: instructor
           ? []
@@ -305,7 +307,7 @@ export async function GET(
         users: staff
           ? await all(
               admin
-                ? "SELECT id,name,email,phone,role,gender,birth_year,active,lesson_rate FROM users"
+                ? "SELECT id,name,email,phone,role,gender,birth_year,active,must_change_password FROM users"
                 : "SELECT id,name,email,phone,role,gender,birth_year FROM users",
             )
           : instructor
@@ -1074,7 +1076,9 @@ export async function POST(
         // Operators reset students only; nobody resets an administrator here.
         if (
           !target ||
-          target.role === "admin" ||
+          (target.role === "admin" &&
+            (user.role !== "admin" ||
+              Number(target.must_change_password) !== 1)) ||
           (user.role !== "admin" && target.role !== "student")
         )
           return fail("forbidden", 403);
@@ -1185,7 +1189,12 @@ export async function POST(
           .parse(body);
         const target = await one("SELECT * FROM users WHERE id=?", v.id);
         // An administrator's password changes only through their own account.
-        if (!target || (target.role === "admin" && target.id !== user.id))
+        if (
+          !target ||
+          (target.role === "admin" &&
+            target.id !== user.id &&
+            Number(target.must_change_password) !== 1)
+        )
           return fail("forbidden", 403);
         await transaction(async () => {
           await db
@@ -1238,27 +1247,6 @@ export async function POST(
               JSON.stringify({ id: v.id, role: target.role }),
             );
         });
-        return json({ ok: true });
-      }
-      if (p[1] === "rate") {
-        const v = z
-          .object({
-            id: z.string().max(80),
-            rate: z.coerce.number().min(0).max(10000).multipleOf(0.01),
-          })
-          .parse(body);
-        const target = await one("SELECT role FROM users WHERE id=?", v.id);
-        if (!target || !isTeacher(target.role)) return fail("invalid");
-        await db
-          .prepare("UPDATE users SET lesson_rate=? WHERE id=?")
-          .run(tetri(v.rate), v.id);
-        await db
-          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
-          .run(
-            user.id,
-            "payroll:rate",
-            JSON.stringify({ id: v.id, rate: v.rate }),
-          );
         return json({ ok: true });
       }
       if (p[1] === "staff") {
@@ -1496,19 +1484,33 @@ export async function POST(
 // Uploaded files and the site's own static media folders.
 const localFile =
   /^\/(api\/files\/[a-f0-9-]+|(media|images)\/[\w.-]+(\/[\w.-]+)*)$/;
-/** Lessons conducted by teachers and accepted by the office; pay is a flat rate per accepted lesson. */
+/** Lessons conducted by teachers and accepted by the office (feeds the "per lesson" KPI item). */
 async function lessons(p: string[], body: any, user: Row) {
   if (p[0] === "payroll") {
-    if (p[1] !== "me" || !isTeacher(user.role)) return fail("forbidden", 403);
-    const me = await one("SELECT lesson_rate FROM users WHERE id=?", user.id);
-    const [monthStart, monthEnd] = monthRange();
-    const [dayStart, dayEnd] = dayRange();
-    const rows = await all(
-      `SELECT b.id,b.program,b.accepted_at,b.pay_amount,s.start FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id
-       WHERE b.instructor_id=? AND b.accepted_at IS NOT NULL AND b.accepted_at>=? AND b.accepted_at<? ORDER BY b.accepted_at DESC`,
+    if (p[1] !== "me" || user.role === "student") return fail("forbidden", 403);
+    const v = z
+      .object({
+        month: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+      })
+      .parse(body || {});
+    const month = v.month || currentMonth();
+    const [from, to] = monthRange(month);
+    const items = (await all(
+      "SELECT * FROM pay_items WHERE user_id=? AND voided=0 ORDER BY created",
       user.id,
-      monthStart,
-      monthEnd,
+    )) as unknown as PayItem[];
+    const done = Number(
+      (
+        await one(
+          "SELECT count(*) AS n FROM bookings WHERE instructor_id=? AND accepted_at>=? AND accepted_at<?",
+          user.id,
+          from,
+          to,
+        )
+      )?.n || 0,
     );
     const pending = Number(
       (
@@ -1518,28 +1520,8 @@ async function lessons(p: string[], body: any, user: Row) {
         )
       )?.n || 0,
     );
-    const sum = (list: Row[]) =>
-      list.reduce((a, r) => a + Number(r.pay_amount || 0), 0);
-    const today = rows.filter(
-      (r) => r.accepted_at >= dayStart && r.accepted_at < dayEnd,
-    );
-    return json({
-      rate:
-        me?.lesson_rate === null || me?.lesson_rate === undefined
-          ? null
-          : Number(me.lesson_rate),
-      today: { lessons: today.length, amount: sum(today) },
-      month: { lessons: rows.length, amount: sum(rows) },
-      pending,
-      pendingAmount: lessonPay(me?.lesson_rate, pending),
-      items: rows.map((r) => ({
-        id: r.id,
-        program: r.program,
-        at: r.accepted_at,
-        start: r.start,
-        amount: Number(r.pay_amount || 0),
-      })),
-    });
+    const pay = computePay(items, month, done);
+    return json({ month, ...pay, lessons: done, pending });
   }
   const v = z.object({ id: z.string().max(80) }).parse(body);
   const b = await one(
@@ -1569,21 +1551,15 @@ async function lessons(p: string[], body: any, user: Row) {
     if (b.accepted_at || b.status === "cancelled" || !b.instructor_id)
       return fail("invalid");
     if (!b.conducted_at && !started) return fail("lessonNotStarted", 409);
-    const teacher = await one(
-      "SELECT lesson_rate FROM users WHERE id=?",
-      b.instructor_id,
-    );
-    const pay = lessonPay(teacher?.lesson_rate);
     await db
       .prepare(
-        "UPDATE bookings SET conducted_at=COALESCE(conducted_at,?),accepted_at=?,accepted_by=?,pay_amount=?,status='completed' WHERE id=? AND accepted_at IS NULL",
+        "UPDATE bookings SET conducted_at=COALESCE(conducted_at,?),accepted_at=?,accepted_by=?,status='completed' WHERE id=? AND accepted_at IS NULL",
       )
-      .run(now, now, user.id, pay, v.id);
+      .run(now, now, user.id, v.id);
     await db
       .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
       .run(user.id, "lesson:accepted", JSON.stringify({ id: v.id }));
-    // Only whether a rate exists is shown to the office, never the amount.
-    return json({ ok: true, noRate: pay === 0 });
+    return json({ ok: true });
   }
   if (p[1] === "unconduct") {
     if (b.accepted_at) return fail("invalid");
@@ -1776,39 +1752,158 @@ async function finance(p: string[], body: any, user: Row) {
           .optional(),
       })
       .parse(body || {});
-    const [from, to] = monthRange(v.month);
-    const teachers = await all(
-      "SELECT id,name,role,lesson_rate,active FROM users WHERE role IN ('instructor','lecturer') ORDER BY name",
+    const month = v.month || currentMonth();
+    const [from, to] = monthRange(month);
+    const people = await all(
+      "SELECT id,name,role,active FROM users WHERE role<>'student' ORDER BY CASE role WHEN 'admin' THEN 3 ELSE 0 END, name",
     );
+    const items = (await all(
+      "SELECT * FROM pay_items WHERE voided=0 ORDER BY created",
+    )) as unknown as (PayItem & { user_id: string })[];
     const done = await all(
-      "SELECT instructor_id, count(*) AS n, COALESCE(SUM(pay_amount),0) AS amount FROM bookings WHERE accepted_at>=? AND accepted_at<? GROUP BY instructor_id",
+      "SELECT instructor_id, count(*) AS n FROM bookings WHERE accepted_at>=? AND accepted_at<? GROUP BY instructor_id",
       from,
       to,
     );
-    const waiting = await all(
-      "SELECT instructor_id, count(*) AS n FROM bookings WHERE conducted_at IS NOT NULL AND accepted_at IS NULL GROUP BY instructor_id",
-    );
-    const rows = teachers.map((t) => {
-      const d = done.find((x) => x.instructor_id === t.id);
+    const rows = people.map((u) => {
+      const mine = items.filter((i) => i.user_id === u.id);
+      const lessonsDone = Number(
+        done.find((x) => x.instructor_id === u.id)?.n || 0,
+      );
+      const pay = computePay(mine, month, lessonsDone);
       return {
-        id: t.id,
-        name: t.name,
-        role: t.role,
-        active: Number(t.active) !== 0,
-        rate:
-          t.lesson_rate === null || t.lesson_rate === undefined
-            ? null
-            : Number(t.lesson_rate),
-        lessons: Number(d?.n || 0),
-        amount: Number(d?.amount || 0),
-        waiting: Number(waiting.find((x) => x.instructor_id === t.id)?.n || 0),
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        active: Number(u.active) !== 0,
+        lessons: lessonsDone,
+        ...pay,
       };
     });
-    return json({
-      month: from,
-      rows,
-      total: rows.reduce((a, r) => a + r.amount, 0),
+    return json({ month, rows, total: rows.reduce((a, r) => a + r.total, 0) });
+  }
+  if (p[1] === "pay-salary") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        user_id: z.string().max(80),
+        amount: z.coerce.number().min(0).max(1000000).multipleOf(0.01),
+        from_month: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+      })
+      .parse(body);
+    if (
+      !(await one(
+        "SELECT id FROM users WHERE id=? AND role<>'student'",
+        v.user_id,
+      ))
+    )
+      return fail("invalid");
+    const from = v.from_month || currentMonth();
+    await transaction(async () => {
+      // the previous salary ends the month before the new one starts
+      const old = await all(
+        "SELECT id,from_month FROM pay_items WHERE user_id=? AND kind='salary' AND voided=0 AND (to_month IS NULL OR to_month>=?)",
+        v.user_id,
+        from,
+      );
+      for (const o of old)
+        if (String(o.from_month) >= from)
+          await db
+            .prepare("UPDATE pay_items SET voided=1 WHERE id=?")
+            .run(o.id);
+        else
+          await db
+            .prepare("UPDATE pay_items SET to_month=? WHERE id=?")
+            .run(previousMonth(from), o.id);
+      if (v.amount > 0)
+        await db
+          .prepare(
+            "INSERT INTO pay_items(id,user_id,kind,title,amount,from_month,created_by) VALUES(?,?,'salary','Оклад',?,?,?)",
+          )
+          .run(randomUUID(), v.user_id, tetri(v.amount), from, user.id);
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(
+          user.id,
+          "pay:salary",
+          JSON.stringify({ user: v.user_id, amount: v.amount, from }),
+        );
     });
+    return json({ ok: true });
+  }
+  if (p[1] === "pay-add") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z
+      .object({
+        user_id: z.string().max(80),
+        kind: z.enum(["bonus", "percent", "per_lesson", "premium"]),
+        title: z.string().trim().max(200).default(""),
+        amount: z.coerce
+          .number()
+          .positive()
+          .max(1000000)
+          .multipleOf(0.01)
+          .optional(),
+        percent: z.coerce.number().positive().max(1000).optional(),
+        from_month: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+        to_month: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+      })
+      .parse(body);
+    if (
+      !(await one(
+        "SELECT id FROM users WHERE id=? AND role<>'student'",
+        v.user_id,
+      ))
+    )
+      return fail("invalid");
+    if (v.kind === "percent" ? v.percent === undefined : v.amount === undefined)
+      return fail("invalid");
+    const from = v.from_month || currentMonth();
+    // a premium is one month only
+    const to = v.kind === "premium" ? from : v.to_month || null;
+    if (to && to < from) return fail("invalid");
+    const id = randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO pay_items(id,user_id,kind,title,amount,percent,from_month,to_month,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        v.user_id,
+        v.kind,
+        v.title,
+        v.kind === "percent" ? null : tetri(v.amount!),
+        v.kind === "percent" ? v.percent! : null,
+        from,
+        to,
+        user.id,
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "pay:add",
+        JSON.stringify({ id, user: v.user_id, kind: v.kind }),
+      );
+    return json({ id });
+  }
+  if (p[1] === "pay-void") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const v = z.object({ id: z.string().max(80) }).parse(body);
+    await db.prepare("UPDATE pay_items SET voided=1 WHERE id=?").run(v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "pay:void", JSON.stringify({ id: v.id }));
+    return json({ ok: true });
   }
   if (p[1] === "report") {
     if (!canSeeFinance(user.role)) return fail("forbidden", 403);

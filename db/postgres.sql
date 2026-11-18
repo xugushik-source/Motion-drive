@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS motion_drive.payments(id TEXT PRIMARY KEY,user_id TEX
 CREATE INDEX IF NOT EXISTS payments_user ON motion_drive.payments(user_id);
 CREATE TABLE IF NOT EXISTS motion_drive.applications(id TEXT PRIMARY KEY,category TEXT NOT NULL CHECK(category IN ('B','C')),course TEXT NOT NULL CHECK(course IN ('theory','yard','city')),city TEXT NOT NULL,name TEXT NOT NULL,phone TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',locale TEXT NOT NULL DEFAULT 'ru',status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','contacted','closed')),created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE INDEX IF NOT EXISTS applications_status ON motion_drive.applications(status,created);
+CREATE TABLE IF NOT EXISTS motion_drive.pay_items(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id) ON DELETE CASCADE,kind TEXT NOT NULL CHECK(kind IN ('salary','bonus','percent','per_lesson','premium')),title TEXT NOT NULL DEFAULT '',amount INTEGER,percent DOUBLE PRECISION,from_month TEXT NOT NULL,to_month TEXT,created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS pay_items_user ON motion_drive.pay_items(user_id);
 CREATE TABLE IF NOT EXISTS motion_drive.results(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),answers TEXT NOT NULL,score INTEGER NOT NULL,total INTEGER NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS motion_drive.attempts(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),questions TEXT NOT NULL,deadline BIGINT NOT NULL,finished INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS motion_drive.messages(id TEXT PRIMARY KEY,user_id TEXT REFERENCES motion_drive.users(id),guest_id TEXT,locale TEXT NOT NULL,text TEXT NOT NULL,answer TEXT NOT NULL,admin_reply TEXT NOT NULL DEFAULT '',escalated INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -59,7 +61,7 @@ CREATE TABLE IF NOT EXISTS motion_drive.uploads(id TEXT PRIMARY KEY,user_id TEXT
 -- RLS is defense in depth, including for the private schema. An app-only role is
 -- granted DML and policies separately; no browser key can access this schema.
 DO $$ DECLARE t text; BEGIN
- FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications'] LOOP
+ FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications','pay_items'] LOOP
  EXECUTE format('ALTER TABLE motion_drive.%I ENABLE ROW LEVEL SECURITY',t);
  END LOOP;
 END $$;

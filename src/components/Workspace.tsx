@@ -29,7 +29,7 @@ import { api, Field, Notice, type Item } from "./Site";
 import { georgiaDay } from "./AvailabilityPicker";
 import { formatPhone } from "../lib/phone";
 import { STAFF_KINDS } from "../lib/roles";
-import { PaymentsTab, FinanceReport, gel } from "./Finance";
+import { PaymentsTab, FinanceReport } from "./Finance";
 import Applications from "./Applications";
 import Staff from "./Staff";
 import { MySalary, PayrollReport } from "./Payroll";
@@ -109,6 +109,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             "schedule",
             "students",
             "payments",
+            "salary",
             "messages",
             "media",
             "instructors",
@@ -518,13 +519,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                                     <button
                                       className="button small"
                                       onClick={async () => {
-                                        const r = await act("teach/accept", {
-                                          id: b.id,
-                                        });
-                                        if (r?.noRate)
-                                          setError(
-                                            "Урок принят, но у преподавателя не задана ставка: оплата за него 0. Ставку задаёт администратор.",
-                                          );
+                                        await act("teach/accept", { id: b.id });
                                       }}
                                     >
                                       {b.conducted_at
@@ -549,9 +544,6 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                           {b.accepted_at && (
                             <span className="status completed">
                               Урок принят
-                              {instructor && b.pay_amount !== undefined
-                                ? ` · ${gel(Number(b.pay_amount || 0))}`
-                                : ""}
                             </span>
                           )}
                           {["pending", "confirmed"].includes(b.status) && (
@@ -695,14 +687,8 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
         {tab === "staff" && admin && (
           <Staff users={data.users} me={user.id} onChange={refresh} />
         )}
-        {tab === "payroll" && admin && (
-          <PayrollReport
-            onRate={async (id, rate) => {
-              await act("admin/rate", { id, rate });
-            }}
-          />
-        )}
-        {tab === "salary" && instructor && <MySalary />}
+        {tab === "payroll" && admin && <PayrollReport />}
+        {tab === "salary" && (instructor || operator) && <MySalary />}
         {tab === "payments" && staff && <PaymentsTab t={t} />}
         {tab === "finance" && admin && <FinanceReport t={t} />}
         {tab === "students" && (
