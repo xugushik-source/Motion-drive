@@ -27,7 +27,7 @@ END $$;
 ALTER TABLE motion_drive.users ALTER COLUMN email DROP NOT NULL;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE motion_drive.users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE motion_drive.users ADD CONSTRAINT users_role_check CHECK(role IN ('student','operator','manager','instructor','admin'));
+ALTER TABLE motion_drive.users ADD CONSTRAINT users_role_check CHECK(role IN ('student','operator','manager','instructor','lecturer','admin'));
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS gender TEXT;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS birth_year INTEGER;
 ALTER TABLE motion_drive.users ADD COLUMN IF NOT EXISTS must_change_password INTEGER NOT NULL DEFAULT 0;
@@ -35,6 +35,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON motion_drive.users(phone) WHERE
 ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS series_id TEXT;
 ALTER TABLE motion_drive.bookings ADD COLUMN IF NOT EXISTS package_title TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS bookings_series ON motion_drive.bookings(series_id);
+CREATE TABLE IF NOT EXISTS motion_drive.charges(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),series_id TEXT,title TEXT NOT NULL,amount INTEGER NOT NULL CHECK(amount>=0),created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided INTEGER NOT NULL DEFAULT 0,void_reason TEXT NOT NULL DEFAULT '');
+CREATE INDEX IF NOT EXISTS charges_user ON motion_drive.charges(user_id);
+CREATE TABLE IF NOT EXISTS motion_drive.payments(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),charge_id TEXT,amount INTEGER NOT NULL CHECK(amount>0),method TEXT NOT NULL CHECK(method IN ('cash','card','transfer')),note TEXT NOT NULL DEFAULT '',created_by TEXT NOT NULL,paid_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,voided INTEGER NOT NULL DEFAULT 0,void_reason TEXT NOT NULL DEFAULT '');
+CREATE INDEX IF NOT EXISTS payments_user ON motion_drive.payments(user_id);
 CREATE TABLE IF NOT EXISTS motion_drive.results(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),answers TEXT NOT NULL,score INTEGER NOT NULL,total INTEGER NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS motion_drive.attempts(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES motion_drive.users(id),questions TEXT NOT NULL,deadline BIGINT NOT NULL,finished INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS motion_drive.messages(id TEXT PRIMARY KEY,user_id TEXT REFERENCES motion_drive.users(id),guest_id TEXT,locale TEXT NOT NULL,text TEXT NOT NULL,answer TEXT NOT NULL,admin_reply TEXT NOT NULL DEFAULT '',escalated INTEGER NOT NULL DEFAULT 0,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -47,7 +51,7 @@ CREATE TABLE IF NOT EXISTS motion_drive.uploads(id TEXT PRIMARY KEY,user_id TEXT
 -- RLS is defense in depth, including for the private schema. An app-only role is
 -- granted DML and policies separately; no browser key can access this schema.
 DO $$ DECLARE t text; BEGIN
- FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads'] LOOP
+ FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments'] LOOP
  EXECUTE format('ALTER TABLE motion_drive.%I ENABLE ROW LEVEL SECURITY',t);
  END LOOP;
 END $$;

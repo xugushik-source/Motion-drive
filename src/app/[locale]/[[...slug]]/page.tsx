@@ -23,6 +23,7 @@ const pages = [
   "instructor",
   "operator",
   "manager",
+  "lecturer",
   "privacy",
   "terms",
   "akhalkalaki",

@@ -1249,7 +1249,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       id: "lecturer-levon-ru",
       role: "lecturer",
-      title: "Левон",
+      title: "Левон Бабаян",
       description:
         "Лектор по теории. Ведёт занятия в Ахалкалаки (пн, ср, пт) и Ниноцминде (вт, чт, сб).",
       image: "",
@@ -1274,7 +1274,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       id: "lecturer-levon-en",
       role: "lecturer",
-      title: "Levon",
+      title: "Levon Babayan",
       description:
         "Theory lecturer. Teaches in Akhalkalaki (Mon, Wed, Fri) and Ninotsminda (Tue, Thu, Sat).",
       image: "",
@@ -1299,7 +1299,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       id: "lecturer-levon-ka",
       role: "lecturer",
-      title: "ლევონი",
+      title: "ლევონ ბაბაიანი",
       description:
         "თეორიის ლექტორი. ატარებს გაკვეთილებს ახალქალაქში (ორშ, ოთხშ, პარ) და ნინოწმინდაში (სამშ, ხუთშ, შაბ).",
       image: "",
@@ -1324,7 +1324,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
     {
       id: "lecturer-levon-hy",
       role: "lecturer",
-      title: "Լևոն",
+      title: "Լևոն Բաբայան",
       description:
         "Տեսության դասախոս։ Դասավանդում է Ախալքալակում (երկ, չոր, ուրբ) և Նինոծմինդայում (երք, հինգ, շաբ)։",
       image: "",

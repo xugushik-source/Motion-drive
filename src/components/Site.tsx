@@ -855,6 +855,7 @@ export default function Site({
                   "instructor",
                   "operator",
                   "manager",
+                  "lecturer",
                 ].includes(page) && (
                   <>
                     <Notice>{t("contactBooking")}</Notice>
@@ -888,7 +889,13 @@ export default function Site({
                   <Auth locale={locale} t={t} onUser={setUser} />
                 ))}
               {!contactOnly &&
-                ["admin", "instructor", "operator", "manager"].includes(page) &&
+                [
+                  "admin",
+                  "instructor",
+                  "lecturer",
+                  "operator",
+                  "manager",
+                ].includes(page) &&
                 (user === undefined ? (
                   <Notice>{t("loading")}</Notice>
                 ) : user && (user.role === "admin" || user.role === page) ? (
@@ -917,6 +924,7 @@ export default function Site({
               "instructor",
               "operator",
               "manager",
+              "lecturer",
               "account",
               "exam",
               "booking",

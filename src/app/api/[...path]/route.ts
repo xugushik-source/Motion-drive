@@ -1,4 +1,10 @@
-import { isStaff } from "../../../lib/roles";
+import {
+  isStaff,
+  isTeacher,
+  canEditKind,
+  canSeeFinance,
+  STAFF_KINDS,
+} from "../../../lib/roles";
 import { get as getBlob, put as putBlob } from "@vercel/blob";
 import { findKnowledge, detectLanguage } from "../../../lib/knowledge";
 import { contactOnly } from "../../../lib/deployment";
@@ -28,6 +34,7 @@ import {
 import { normalizePhone } from "../../../lib/phone";
 import {
   registerSchema,
+  phoneSchema,
   loginSchema,
   passwordSchema,
   packageSchema,
@@ -244,7 +251,7 @@ export async function GET(
     if (p[0] === "dashboard") {
       const admin = user.role === "admin",
         staff = isStaff(user.role),
-        instructor = user.role === "instructor";
+        instructor = isTeacher(user.role);
       const bookings = staff
         ? await all(
             "SELECT b.*,s.start AS slot_start,s.end AS slot_end FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id ORDER BY b.created DESC",
@@ -298,9 +305,13 @@ export async function GET(
                 user.id,
               )
             : [],
-        records: admin
+        records: staff
           ? Object.fromEntries(
-              await Promise.all(kinds.map(async (k) => [k, await records(k)])),
+              await Promise.all(
+                kinds
+                  .filter((k) => admin || STAFF_KINDS.includes(k))
+                  .map(async (k) => [k, await records(k)]),
+              ),
             )
           : {},
         usage: admin
@@ -393,7 +404,7 @@ export async function POST(
       user?.id || req.cookies.get("md_guest")?.value || "anonymous";
     if (!(await limit("api:" + identity, 100))) return fail("rateLimit", 429);
     if (p[0] === "upload") {
-      if (user?.role !== "admin") return fail("forbidden", 403);
+      if (!user || !isStaff(user.role)) return fail("forbidden", 403);
       const data = await req.formData(),
         file = data.get("file");
       if (!(file instanceof File) || file.size > 3 * 1024 * 1024)
@@ -600,6 +611,24 @@ export async function POST(
             }
             ids.push(id);
           }
+          if (pack && pack.price !== "" && pack.price !== undefined) {
+            const unit = Math.round(Number(pack.price) * 100),
+              total =
+                pack.priceType === "perLesson" ? unit * slotIds.length : unit;
+            if (Number.isFinite(total) && total > 0)
+              await db
+                .prepare(
+                  "INSERT INTO charges(id,user_id,series_id,title,amount,created_by) VALUES(?,?,?,?,?,?)",
+                )
+                .run(
+                  randomUUID(),
+                  user.id,
+                  seriesId,
+                  packageSnapshot(pack, slotIds.length),
+                  total,
+                  "system",
+                );
+          }
           await db
             .prepare(
               "INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)",
@@ -755,7 +784,7 @@ export async function POST(
         return json({ ok: true });
       });
     if (p[0] === "lesson") {
-      if (!(isStaff(user.role) || user.role === "instructor"))
+      if (!(isStaff(user.role) || isTeacher(user.role)))
         return fail("forbidden", 403);
       const v = z
         .object({
@@ -768,7 +797,7 @@ export async function POST(
         "SELECT b.*,s.start FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id=?",
         v.bookingId,
       );
-      if (!b || (user.role === "instructor" && b.instructor_id !== user.id))
+      if (!b || (isTeacher(user.role) && b.instructor_id !== user.id))
         return fail("forbidden", 403);
       if (
         b.status !== "confirmed" ||
@@ -795,7 +824,7 @@ export async function POST(
     }
     if (p[0] === "slot")
       return await transaction(async () => {
-        if (!(isStaff(user.role) || user.role === "instructor"))
+        if (!(isStaff(user.role) || isTeacher(user.role)))
           return fail("forbidden", 403);
         if (p[1] === "availability") {
           const v = z
@@ -805,10 +834,7 @@ export async function POST(
             "SELECT * FROM slots WHERE id=? FOR UPDATE",
             v.id,
           );
-          if (
-            !slot ||
-            (user.role === "instructor" && slot.instructor_id !== user.id)
-          )
+          if (!slot || (isTeacher(user.role) && slot.instructor_id !== user.id))
             return fail("forbidden", 403);
           if (
             await one(
@@ -837,12 +863,12 @@ export async function POST(
           })
           .parse(body);
         const instructorId = v.instructor_id || null;
-        if (user.role === "instructor" && instructorId !== user.id)
+        if (isTeacher(user.role) && instructorId !== user.id)
           return fail("forbidden", 403);
         if (
           instructorId &&
           !(await one(
-            "SELECT id FROM users WHERE id=? AND role='instructor' FOR UPDATE",
+            "SELECT id FROM users WHERE id=? AND role IN ('instructor','lecturer') FOR UPDATE",
             instructorId,
           ))
         )
@@ -959,12 +985,14 @@ export async function POST(
         return json({ score, total: qs.length, answers });
       }
     }
+    // Money entries and debts: all staff. Reports and statistics: administrators.
+    if (p[0] === "finance") return await finance(p, body, user);
     if (
       user.role !== "admin" &&
       !(
-        (user.role === "operator" || user.role === "manager") &&
+        isStaff(user.role) &&
         p[0] === "admin" &&
-        ["reply", "reset-password"].includes(p[1])
+        ["reply", "reset-password", "record", "delete"].includes(p[1])
       )
     )
       return fail("forbidden", 403);
@@ -1010,11 +1038,47 @@ export async function POST(
           .run(v.answer, v.id);
         return json({ ok: true });
       }
+      if (p[1] === "staff") {
+        const v = z
+          .object({
+            name: z.string().trim().min(2).max(100),
+            phone: phoneSchema,
+            role: z.enum([
+              "instructor",
+              "lecturer",
+              "operator",
+              "manager",
+              "admin",
+            ]),
+          })
+          .parse(body);
+        if (await one("SELECT id FROM users WHERE phone=?", v.phone))
+          return fail("accountExists", 409);
+        const id = randomUUID(),
+          password = temporaryPassword();
+        await db
+          .prepare(
+            "INSERT INTO users(id,phone,name,password,role,locale,must_change_password) VALUES(?,?,?,?,?,'ru',1)",
+          )
+          .run(id, v.phone, v.name, hashPassword(password), v.role);
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(user.id, "staff:create", JSON.stringify({ id, role: v.role }));
+        // Shown once; the employee must change it at the first sign-in.
+        return json({ id, password });
+      }
       if (p[1] === "role") {
         const v = z
           .object({
             id: z.string(),
-            role: z.enum(["student", "instructor", "operator", "manager"]),
+            role: z.enum([
+              "student",
+              "instructor",
+              "lecturer",
+              "operator",
+              "manager",
+              "admin",
+            ]),
           })
           .parse(body);
         const u = await one("SELECT * FROM users WHERE id=?", v.id);
@@ -1032,6 +1096,7 @@ export async function POST(
             data: z.record(z.string(), z.unknown()),
           })
           .parse(body);
+        if (!canEditKind(user.role, v.kind)) return fail("forbidden", 403);
         if (JSON.stringify(v.data).length > 50000) return fail("tooLarge", 413);
         let data = v.data as Row;
         if (v.kind === "settings")
@@ -1085,13 +1150,13 @@ export async function POST(
           if (
             data[field] &&
             !/^https:\/\//.test(String(data[field])) &&
-            !/^\/api\/files\/[a-f0-9-]+$/.test(String(data[field]))
+            !localFile.test(String(data[field]))
           )
             return fail("invalid");
         if (v.kind === "media" && data.url) {
           const url = String(data.url);
           if (
-            !/^\/api\/files\/[a-f0-9-]+$/.test(url) &&
+            !localFile.test(url) &&
             !/^https:\/\/(www\.youtube-nocookie\.com\/embed\/|player\.vimeo\.com\/video\/)\w[\w/-]*$/.test(
               url,
             )
@@ -1115,6 +1180,7 @@ export async function POST(
       }
       if (p[1] === "delete") {
         const v = z.object({ kind: z.string(), id: z.string() }).parse(body);
+        if (!canEditKind(user.role, v.kind)) return fail("forbidden", 403);
         const r = await one(
           "SELECT * FROM records WHERE id=? AND kind=?",
           v.id,
@@ -1203,6 +1269,244 @@ export async function POST(
   } catch (e) {
     return error(e);
   }
+}
+// Uploaded files and the site's own static media folders.
+const localFile =
+  /^\/(api\/files\/[a-f0-9-]+|(media|images)\/[\w.-]+(\/[\w.-]+)*)$/;
+const tetri = (lari: number) => Math.round(lari * 100);
+const lariAmount = z.coerce.number().positive().max(100000).multipleOf(0.01);
+/** Charges and payments. Staff see per-student balances; totals and reports are admin-only. */
+async function finance(p: string[], body: any, user: Row) {
+  if (!isStaff(user.role)) return fail("forbidden", 403);
+  if (p[1] === "debts") {
+    const rows = await all(
+      `SELECT u.id,u.name,u.phone,
+        COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.user_id=u.id AND c.voided=0),0) AS charged,
+        COALESCE((SELECT SUM(x.amount) FROM payments x WHERE x.user_id=u.id AND x.voided=0),0) AS paid
+       FROM users u WHERE u.role='student'
+        AND EXISTS(SELECT 1 FROM charges c WHERE c.user_id=u.id AND c.voided=0) ORDER BY u.name`,
+    );
+    return json(
+      rows
+        .map((r) => {
+          const charged = Number(r.charged),
+            paid = Number(r.paid);
+          return {
+            id: r.id,
+            name: r.name,
+            phone: r.phone,
+            charged,
+            paid,
+            balance: Math.max(charged - paid, 0),
+            overpaid: Math.max(paid - charged, 0),
+            percent: charged
+              ? Math.min(100, Math.round((paid / charged) * 100))
+              : 0,
+          };
+        })
+        .sort((a, b) => b.balance - a.balance),
+    );
+  }
+  if (p[1] === "ledger") {
+    const v = z.object({ user_id: z.string().max(80) }).parse(body);
+    return json({
+      charges: await all(
+        "SELECT * FROM charges WHERE user_id=? ORDER BY created DESC",
+        v.user_id,
+      ),
+      payments: await all(
+        "SELECT * FROM payments WHERE user_id=? ORDER BY paid_at DESC",
+        v.user_id,
+      ),
+    });
+  }
+  if (p[1] === "students") {
+    return json(
+      await all(
+        "SELECT id,name,phone FROM users WHERE role='student' ORDER BY name",
+      ),
+    );
+  }
+  if (p[1] === "charge") {
+    const v = z
+      .object({
+        user_id: z.string().max(80),
+        title: z.string().trim().min(2).max(200),
+        amount: lariAmount,
+        series_id: z.string().max(80).nullable().optional(),
+      })
+      .parse(body);
+    if (
+      !(await one(
+        "SELECT id FROM users WHERE id=? AND role='student'",
+        v.user_id,
+      ))
+    )
+      return fail("invalid");
+    const id = randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO charges(id,user_id,series_id,title,amount,created_by) VALUES(?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        v.user_id,
+        v.series_id || null,
+        v.title,
+        tetri(v.amount),
+        user.id,
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "finance:charge",
+        JSON.stringify({ id, user: v.user_id, amount: v.amount }),
+      );
+    return json({ id });
+  }
+  if (p[1] === "pay") {
+    const v = z
+      .object({
+        user_id: z.string().max(80),
+        amount: lariAmount,
+        method: z.enum(["cash", "card", "transfer"]),
+        note: z.string().max(300).default(""),
+        charge_id: z.string().max(80).nullable().optional(),
+      })
+      .parse(body);
+    if (
+      !(await one(
+        "SELECT id FROM users WHERE id=? AND role='student'",
+        v.user_id,
+      ))
+    )
+      return fail("invalid");
+    const id = randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO payments(id,user_id,charge_id,amount,method,note,created_by,paid_at) VALUES(?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        v.user_id,
+        v.charge_id || null,
+        tetri(v.amount),
+        v.method,
+        v.note,
+        user.id,
+        new Date().toISOString(),
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "finance:pay",
+        JSON.stringify({
+          id,
+          user: v.user_id,
+          amount: v.amount,
+          method: v.method,
+        }),
+      );
+    return json({ id });
+  }
+  if (p[1] === "void") {
+    const v = z
+      .object({
+        kind: z.enum(["charge", "payment"]),
+        id: z.string().max(80),
+        reason: z.string().trim().min(3).max(300),
+      })
+      .parse(body);
+    const table = v.kind === "charge" ? "charges" : "payments";
+    const row = await one(
+      `SELECT * FROM ${table} WHERE id=? AND voided=0`,
+      v.id,
+    );
+    if (!row) return fail("notFound", 404);
+    // A mistake can be undone by whoever made it within a day; later changes are for administrators.
+    const when = Date.parse(row.paid_at || row.created);
+    const own =
+      row.created_by === user.id && Date.now() - when < 24 * 3600 * 1000;
+    if (user.role !== "admin" && !own) return fail("forbidden", 403);
+    await db
+      .prepare(`UPDATE ${table} SET voided=1,void_reason=? WHERE id=?`)
+      .run(v.reason, v.id);
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(
+        user.id,
+        "finance:void:" + v.kind,
+        JSON.stringify({ id: v.id, reason: v.reason }),
+      );
+    return json({ ok: true });
+  }
+  if (p[1] === "report") {
+    if (!canSeeFinance(user.role)) return fail("forbidden", 403);
+    const monthly = await all(
+      "SELECT substr(paid_at,1,7) AS month, SUM(amount) AS total FROM payments WHERE voided=0 GROUP BY substr(paid_at,1,7) ORDER BY month DESC LIMIT 24",
+    );
+    const methods = await all(
+      "SELECT method, SUM(amount) AS total FROM payments WHERE voided=0 GROUP BY method",
+    );
+    const totals = await one(
+      `SELECT COALESCE((SELECT SUM(amount) FROM charges WHERE voided=0),0) AS charged,
+              COALESCE((SELECT SUM(amount) FROM payments WHERE voided=0),0) AS paid`,
+    );
+    const debts = (
+      await all(
+        `SELECT COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.user_id=u.id AND c.voided=0),0) AS charged,
+                COALESCE((SELECT SUM(x.amount) FROM payments x WHERE x.user_id=u.id AND x.voided=0),0) AS paid
+         FROM users u WHERE u.role='student'`,
+      )
+    ).reduce(
+      (sum, r) => sum + Math.max(Number(r.charged) - Number(r.paid), 0),
+      0,
+    );
+    const people = await all(
+      "SELECT gender, birth_year FROM users WHERE role='student'",
+    );
+    const year = new Date().getFullYear();
+    const ages: Record<string, number> = {
+      "<18": 0,
+      "18–25": 0,
+      "26–35": 0,
+      "36–50": 0,
+      "50+": 0,
+      "?": 0,
+    };
+    const gender: Record<string, number> = { m: 0, f: 0, "?": 0 };
+    for (const u of people) {
+      gender[u.gender === "m" || u.gender === "f" ? u.gender : "?"]++;
+      const age = u.birth_year ? year - Number(u.birth_year) : -1;
+      ages[
+        age < 0
+          ? "?"
+          : age < 18
+            ? "<18"
+            : age <= 25
+              ? "18–25"
+              : age <= 35
+                ? "26–35"
+                : age <= 50
+                  ? "36–50"
+                  : "50+"
+      ]++;
+    }
+    return json({
+      charged: Number(totals?.charged || 0),
+      paid: Number(totals?.paid || 0),
+      outstanding: debts,
+      monthly: monthly.map((r) => ({ month: r.month, total: Number(r.total) })),
+      methods: methods.map((r) => ({
+        method: r.method,
+        total: Number(r.total),
+      })),
+      students: { total: people.length, gender, ages },
+    });
+  }
+  return fail("notFound", 404);
 }
 const fallback: Record<string, string> = {
   ru: "У меня пока нет утверждённого ответа. Оставьте обращение администратору — школа уточнит информацию. Стоимость и время занятий подтверждает школа.",

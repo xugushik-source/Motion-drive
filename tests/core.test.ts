@@ -360,3 +360,30 @@ test("theory timetable: one lecturer, 10:00–22:00, 75+15 blocks", async () => 
   assert.equal(load.hoursPerDay, 5 * 1.25 + 3);
   assert.equal(load.hoursPerWeek, load.hoursPerDay * 6);
 });
+
+test("roles: staff edit photos and content, never prices, roles or reports", async () => {
+  const r = await import("../src/lib/roles.ts");
+  for (const role of ["operator", "manager"]) {
+    assert.ok(r.canEditKind(role, "media"));
+    assert.ok(r.canEditKind(role, "instructors"));
+    assert.ok(!r.canEditKind(role, "packages"));
+    assert.ok(!r.canEditKind(role, "services"));
+    assert.ok(!r.canEditKind(role, "settings"));
+    assert.ok(r.canRecordPayments(role));
+    assert.ok(!r.canSeeFinance(role));
+    assert.ok(!r.canManageRoles(role));
+  }
+  assert.ok(r.canEditKind("admin", "packages") && r.canSeeFinance("admin"));
+  assert.ok(
+    !r.canEditKind("student", "media") && !r.canRecordPayments("instructor"),
+  );
+  assert.ok(
+    r.isTeacher("instructor") &&
+      r.isTeacher("lecturer") &&
+      !r.isTeacher("operator"),
+  );
+  assert.ok(
+    !r.isStaff("lecturer"),
+    "a lecturer is a teacher, not office staff",
+  );
+});

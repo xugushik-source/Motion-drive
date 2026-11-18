@@ -22,10 +22,14 @@ import {
   CheckCheck,
   KeyRound,
   Copy,
+  Wallet,
+  BarChart3,
 } from "lucide-react";
 import { api, Field, Notice, type Item } from "./Site";
 import { georgiaDay } from "./AvailabilityPicker";
 import { formatPhone } from "../lib/phone";
+import { STAFF_KINDS } from "../lib/roles";
+import { PaymentsTab, FinanceReport } from "./Finance";
 type Props = {
   user: Item;
   locale: string;
@@ -77,12 +81,29 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
       (user.role === "operator" || user.role === "manager") &&
       page === user.role,
     staff = admin || operator,
-    instructor = user.role === "instructor" && page === "instructor";
+    instructor =
+      (user.role === "instructor" || user.role === "lecturer") &&
+      page === user.role;
+  // Staff edit photos and content from their own panel; prices, roles and reports stay with admins.
+  const canEdit = (kind: string) =>
+    admin || (operator && STAFF_KINDS.includes(kind));
   const tabs = [
     ...(admin
-      ? modules
+      ? [...modules.slice(0, 2), "payments", "finance", ...modules.slice(2)]
       : operator
-        ? ["bookings", "schedule", "students", "messages"]
+        ? [
+            "bookings",
+            "schedule",
+            "students",
+            "payments",
+            "messages",
+            "media",
+            "instructors",
+            "branches",
+            "courses",
+            "reviews",
+            "faq",
+          ]
         : instructor
           ? ["bookings", "students", "schedule", "lessons"]
           : ["bookings", "progress", "results", "materials", "messages"]),
@@ -193,6 +214,10 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               <Users size={16} />
             ) : ["knowledge", "faq", "messages"].includes(k) ? (
               <MessageCircle size={16} />
+            ) : k === "payments" ? (
+              <Wallet size={16} />
+            ) : k === "finance" ? (
+              <BarChart3 size={16} />
             ) : (
               <BookOpen size={16} />
             )}
@@ -225,12 +250,13 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                 <ArrowUpRight size={16} />
               </Link>
             )}
-          {user.role === "instructor" && page !== "instructor" && (
-            <Link href={"/" + locale + "/instructor"}>
-              {t("instructor")}
-              <ArrowUpRight size={16} />
-            </Link>
-          )}
+          {(user.role === "instructor" || user.role === "lecturer") &&
+            page !== user.role && (
+              <Link href={"/" + locale + "/" + user.role}>
+                {t(user.role)}
+                <ArrowUpRight size={16} />
+              </Link>
+            )}
           <button
             onClick={async () => {
               await api("auth/logout", {});
@@ -248,7 +274,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             <p className="eyebrow">MOTION DRIVE / {user.role.toUpperCase()}</p>
             <h2>{t(tab)}</h2>
           </div>
-          {admin && data.records[tab] && (
+          {canEdit(tab) && data.records[tab] && (
             <button className="button small" onClick={() => setEditing({})}>
               <Plus size={17} />
               {t("add")}
@@ -589,10 +615,62 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             ))}
           </>
         )}
+        {tab === "payments" && staff && <PaymentsTab t={t} />}
+        {tab === "finance" && admin && <FinanceReport t={t} />}
+        {tab === "students" && admin && (
+          <form
+            className="form-card staff-form"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = e.currentTarget;
+              const d = Object.fromEntries(new FormData(f));
+              const r = await act("admin/staff", d);
+              if (r) {
+                setIssued({ id: r.id, password: r.password });
+                f.reset();
+              }
+            }}
+          >
+            <h3>{t("addStaff")}</h3>
+            <div className="form-grid">
+              <Field label={t("name")}>
+                <input name="name" minLength={2} maxLength={100} required />
+              </Field>
+              <Field label={t("phone")}>
+                <input name="phone" type="tel" inputMode="tel" required />
+              </Field>
+              <Field label={t("role")}>
+                <select name="role" defaultValue="operator">
+                  {[
+                    "operator",
+                    "manager",
+                    "instructor",
+                    "lecturer",
+                    "admin",
+                  ].map((r) => (
+                    <option key={r} value={r}>
+                      {t(r)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <button className="button small">
+              <Plus size={16} />
+              {t("addStaff")}
+            </button>
+            {issued && !data.users.some((u: Item) => u.id === issued.id) && (
+              <div className="temp-password" role="status">
+                <small>{t("staffCreated")}</small>
+                <code>{issued.password}</code>
+              </div>
+            )}
+          </form>
+        )}
         {tab === "students" && (
           <div className="data-list">
             {data.users
-              .filter((u: Item) => u.role !== "admin")
+              .filter((u: Item) => admin || u.role !== "admin")
               .map((u: Item) => (
                 <article key={u.id}>
                   <strong>{u.name}</strong>
@@ -651,8 +729,10 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                         >
                           <option value="student">{t("student")}</option>
                           <option value="instructor">{t("instructor")}</option>
+                          <option value="lecturer">{t("lecturer")}</option>
                           <option value="operator">{t("operator")}</option>
                           <option value="manager">{t("manager")}</option>
+                          <option value="admin">{t("admin")}</option>
                         </select>
                       </Field>
                     </>
@@ -1029,7 +1109,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             ))}
           </>
         )}
-        {admin &&
+        {canEdit(tab) &&
           data.records[tab] &&
           !["imports", "lessons"].includes(tab) && (
             <>

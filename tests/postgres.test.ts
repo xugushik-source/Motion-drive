@@ -164,15 +164,33 @@ test("the embedded schema equals db/postgres.sql and works on a host without Sup
         "SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema='motion_drive'",
       )
     ).rows[0].n,
-    12,
+    14,
   );
   // the manager role is accepted, an unknown one is not
   await pg.exec(
     "INSERT INTO motion_drive.users(id,email,name,password,role) VALUES('m1','m@x.test','M','x','manager')",
   );
+  await pg.exec(
+    "INSERT INTO motion_drive.users(id,email,name,password,role) VALUES('l1','l@x.test','L','x','lecturer')",
+  );
   await assert.rejects(
     pg.exec(
       "INSERT INTO motion_drive.users(id,email,name,password,role) VALUES('m2','n@x.test','N','x','boss')",
+    ),
+  );
+  // money: a payment needs a positive amount and a known method
+  await pg.exec(
+    "INSERT INTO motion_drive.charges(id,user_id,title,amount,created_by) VALUES('c1','m1','Course',45000,'m1');" +
+      "INSERT INTO motion_drive.payments(id,user_id,charge_id,amount,method,created_by) VALUES('p1','m1','c1',10000,'cash','m1')",
+  );
+  await assert.rejects(
+    pg.exec(
+      "INSERT INTO motion_drive.payments(id,user_id,amount,method,created_by) VALUES('p2','m1',0,'cash','m1')",
+    ),
+  );
+  await assert.rejects(
+    pg.exec(
+      "INSERT INTO motion_drive.payments(id,user_id,amount,method,created_by) VALUES('p3','m1',100,'crypto','m1')",
     ),
   );
   await pg.close();
