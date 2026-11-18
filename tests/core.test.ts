@@ -321,3 +321,42 @@ test("roles: managers see everything staff see, but never finance", async () => 
   assert.ok(!canSeeFinance("manager") && !canSeeFinance("operator"));
   assert.ok(canManageRoles("admin") && !canManageRoles("manager"));
 });
+
+test("theory timetable: one lecturer, 10:00–22:00, 75+15 blocks", async () => {
+  const t = await import("../src/lib/theory.ts");
+  assert.deepEqual(
+    t
+      .blockStarts()
+      .map((m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`),
+    ["10:00", "11:30", "13:00", "14:30", "16:00", "17:30", "19:00", "20:30"],
+  );
+  const plan = t.dayPlan();
+  assert.equal(plan.length, 8);
+  assert.equal(plan.at(-1)!.start, "20:30");
+  assert.ok(plan.at(-1)!.end <= "22:00");
+  assert.ok(t.breaksOk(plan));
+  // closed 13:00–15:00 break keeps only 13:00/14:30 out
+  assert.deepEqual(
+    t.dayPlan({ openMidday: false }).map((b) => b.start),
+    ["10:00", "11:30", "16:00", "17:30", "19:00", "20:30"],
+  );
+  assert.deepEqual(
+    plan.filter((b) => b.kind === "individual").map((b) => b.start),
+    ["13:00", "14:30", "20:30"],
+  );
+  // the lecturer alternates cities, never two cities on one day, Sunday is free
+  assert.equal(t.cityOnWeekday(1), "akhalkalaki");
+  assert.equal(t.cityOnWeekday(2), "ninotsminda");
+  assert.equal(t.cityOnWeekday(0), null);
+  for (let d = 1; d <= 6; d++) assert.ok(t.cityOnWeekday(d));
+  assert.deepEqual(
+    [t.GROUP_CAPACITY.akhalkalaki, t.GROUP_CAPACITY.ninotsminda],
+    [23, 35],
+  );
+  // supply follows the demand split: 3 of 5 group times are evenings = 60%
+  const load = t.weeklyLoad();
+  assert.equal(load.groupBlocksPerDay, 5);
+  assert.equal(load.eveningShare, 0.6);
+  assert.equal(load.hoursPerDay, 5 * 1.25 + 3);
+  assert.equal(load.hoursPerWeek, load.hoursPerDay * 6);
+});
