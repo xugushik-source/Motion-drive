@@ -11,7 +11,7 @@ import { hashPassword } from "./password";
 import { postgresSchema } from "./postgres-schema";
 import { publicRecords } from "./public-content";
 import { sqliteSchema } from "./sqlite-schema";
-import { parseSeedStaff } from "./seed-staff";
+import { cardFor, parseSeedStaff } from "./seed-staff";
 
 export type Row = Record<string, any>;
 let sqlite: DatabaseSync | undefined;
@@ -282,16 +282,34 @@ async function seedStaff(client: PoolClient) {
       ).rowCount
     )
       continue;
+    const id = randomUUID();
     await client.query(
-      "INSERT INTO motion_drive.users(id,phone,name,password,role,locale,must_change_password) VALUES($1,$2,$3,$4,$5,'ru',1)",
+      "INSERT INTO motion_drive.users(id,phone,name,password,role,locale,must_change_password,started) VALUES($1,$2,$3,$4,$5,'ru',1,$6)",
       [
-        randomUUID(),
+        id,
         s.phone,
         s.name,
         hashPassword(randomUUID() + randomUUID()),
         s.role,
+        // pay rules of the role count from the month the person starts (Georgian time)
+        new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 7),
       ],
     );
+    // the person's card on the public team page is tied to the account
+    const stored = await client.query(
+      "SELECT id,data FROM motion_drive.records WHERE kind='instructors'",
+    );
+    const known = new Map(stored.rows.map((r) => [r.id, JSON.parse(r.data)]));
+    const cards = (publicRecords.instructors || []).map((c) => ({
+      ...c,
+      ...(known.get(c.id) || {}),
+    }));
+    const link = cardFor(s, cards, id);
+    if (link)
+      await client.query(
+        "INSERT INTO motion_drive.records(id,kind,data) VALUES($1,'instructors',$2) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated=CURRENT_TIMESTAMP",
+        [link.id, JSON.stringify(link.data)],
+      );
     await client.query(
       "INSERT INTO motion_drive.audit(actor,action,after_value) VALUES('seed','staff:create',$1)",
       [JSON.stringify({ role: s.role })],

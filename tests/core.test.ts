@@ -915,3 +915,55 @@ test("Google Sheets mirror signs the service account and writes rows", async () 
   assert.equal(await sheets.appendRow("Журнал", ["x"], broken), false);
   delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 });
+
+test("seeded staff get their team card tied to the account", async () => {
+  const { cardFor, parseSeedStaff } = await import("../src/lib/seed-staff.ts");
+  const { publicRecords } = await import("../src/lib/public-content.ts");
+  const cards = publicRecords.instructors!;
+  const anna = cardFor(
+    { name: "Анна  Мурадова", phone: "+995500000000", role: "instructor" },
+    cards,
+    "u1",
+  )!;
+  assert.equal(anna.id, "instructor-anna");
+  assert.equal(anna.data.userId, "u1");
+  assert.equal(
+    cardFor(
+      { name: "Елена Барбарян", phone: "+995500000000", role: "operator" },
+      cards,
+      "u2",
+    )!.id,
+    "admin-elena",
+  );
+  assert.equal(
+    cardFor(
+      { name: "Левон Бабаян", phone: "+995500000000", role: "lecturer" },
+      cards,
+      "u3",
+    )!.id,
+    "lecturer-levon",
+  );
+  // the wrong role or an unknown name has no card, and an owner has none
+  assert.equal(
+    cardFor(
+      { name: "Анна Мурадова", phone: "+995500000000", role: "lecturer" },
+      cards,
+      "u",
+    )!,
+    null,
+  );
+  assert.equal(
+    cardFor(
+      { name: "Степан Эваджян", phone: "+995500000000", role: "admin" },
+      cards,
+      "u",
+    ),
+    null,
+  );
+  assert.equal(
+    parseSeedStaff(
+      '[{"name":"Елена Барбарян","phone":"597 939 327","role":"operator"},{"name":"X","phone":"1","role":"admin"}]',
+    ).length,
+    1,
+  );
+});

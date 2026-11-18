@@ -24,3 +24,31 @@ export function parseSeedStaff(raw?: string): SeedStaff[] {
     return [];
   }
 }
+
+const norm = (x: unknown) =>
+  String(x || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+/** The public team card that belongs to this person, tied to the new account (by role and name). */
+export function cardFor(
+  staff: SeedStaff,
+  cards: Record<string, any>[],
+  userId: string,
+) {
+  const cardRole = (
+    {
+      instructor: "instructor",
+      lecturer: "lecturer",
+      operator: "administrator",
+    } as Record<string, string>
+  )[staff.role];
+  if (!cardRole) return null;
+  const card = cards.find(
+    (c) =>
+      c.role === cardRole && !c.userId && norm(c.title) === norm(staff.name),
+  );
+  if (!card) return null;
+  const { id, ...data } = card;
+  return { id: String(id), data: { ...data, userId } };
+}
