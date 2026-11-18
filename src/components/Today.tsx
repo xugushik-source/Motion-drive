@@ -101,7 +101,7 @@ export default function Today({
   if (toAccept)
     alerts.push({
       text: `${toAccept} уроков проведены, но не приняты: от этого зависит зарплата преподавателей.`,
-      tab: "lessons",
+      tab: "bookings",
       label: "Принять уроки",
     });
 
@@ -130,7 +130,7 @@ export default function Today({
       title: "Уроки сегодня",
       value: todays.length,
       hint: "расписание дня",
-      tab: "lessons",
+      tab: "bookings",
     },
     {
       title: "Свободных занятий на неделю",

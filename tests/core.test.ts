@@ -981,3 +981,57 @@ test("sign-in names come from the person's name and seeding works without phones
   assert.equal(list[1]!.username, "elena");
   assert.equal(list[1]!.phone, "+995597939327");
 });
+
+test("instructions exist for owners, administrators and teachers and name real screens", async () => {
+  const { OWNER_GUIDE, ADMIN_GUIDE, TEACHER_GUIDE, guideFor, guideMarkdown } =
+    await import("../src/lib/guide.ts");
+  assert.equal(guideFor("admin"), OWNER_GUIDE);
+  assert.equal(guideFor("operator"), ADMIN_GUIDE);
+  assert.equal(guideFor("manager"), ADMIN_GUIDE);
+  assert.equal(guideFor("instructor"), TEACHER_GUIDE);
+  assert.equal(guideFor("lecturer"), TEACHER_GUIDE);
+  const ru = JSON.parse(
+    (await import("node:fs")).readFileSync("messages/ru.json", "utf8"),
+  );
+  for (const g of [OWNER_GUIDE, ADMIN_GUIDE, TEACHER_GUIDE]) {
+    assert.ok(g.sections.length >= 5, g.title);
+    for (const s of g.sections) assert.ok(s.steps.length >= 2, s.title);
+    const text = guideMarkdown(g);
+    assert.ok(
+      !/\+995\s?5\d\d|TODO|undefined/.test(text),
+      "no phone numbers or leftovers",
+    );
+    assert.ok(text.includes("motion-drive.vercel.app/ru/"), "has the address");
+  }
+  // the tab names used in the instructions are the real ones
+  for (const name of [
+    "Сегодня",
+    "Заявки с сайта",
+    "Ученики",
+    "Оплаты",
+    "Расходы и касса",
+    "Финансы и статистика",
+    "Зарплата",
+    "Должности",
+    "Сотрудники",
+  ])
+    assert.ok(
+      OWNER_GUIDE.sections
+        .concat(ADMIN_GUIDE.sections)
+        .some((s) => s.steps.some((x) => x.includes("«" + name + "»"))) ||
+        name === "Должности",
+      name,
+    );
+  for (const key of [
+    "today",
+    "guide",
+    "roles",
+    "payroll",
+    "staff",
+    "payments",
+    "expenses",
+  ])
+    assert.ok(ru[key], "tab label " + key);
+  assert.equal(ru.guide, "Инструкция");
+  assert.equal(ru.salary, "Моя зарплата");
+});

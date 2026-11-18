@@ -724,6 +724,19 @@ export async function POST(
           )
             return fail("bookingsPaused");
           const v = bookingSchema.parse(body);
+          // The office can book a student by phone arrangement; otherwise the student books for himself.
+          let client = user;
+          let onBehalf = false;
+          if (v.user_id) {
+            if (!isStaff(user.role)) return fail("forbidden", 403);
+            const st = await one(
+              "SELECT * FROM users WHERE id=? AND role='student'",
+              v.user_id,
+            );
+            if (!st) return fail("invalid");
+            client = st;
+            onBehalf = true;
+          }
           const slotIds = [
             ...new Set(v.slot_ids || (v.slot_id ? [v.slot_id] : [])),
           ];
@@ -786,7 +799,7 @@ export async function POST(
                 )
                 .run(
                   id,
-                  user.id,
+                  client.id,
                   v.city,
                   pack?.program || v.program,
                   pack?.gearbox && pack.gearbox !== "none"
@@ -794,8 +807,10 @@ export async function POST(
                     : v.gearbox,
                   slot.instructor_id || v.instructor_id || null,
                   slotId,
-                  v.name,
-                  v.contact,
+                  onBehalf ? client.name : v.name,
+                  onBehalf
+                    ? client.phone || client.email || v.contact
+                    : v.contact,
                   v.note,
                   seriesId,
                   pack ? packageSnapshot(pack, slotIds.length) : "",
@@ -807,6 +822,11 @@ export async function POST(
               return fail("slotUnavailable", 409);
             }
             ids.push(id);
+            // a time agreed by the office is confirmed at once
+            if (onBehalf)
+              await db
+                .prepare("UPDATE bookings SET status='confirmed' WHERE id=?")
+                .run(id);
           }
           if (pack && pack.price !== "" && pack.price !== undefined) {
             const unit = Math.round(Number(pack.price) * 100),
@@ -819,7 +839,7 @@ export async function POST(
                 )
                 .run(
                   randomUUID(),
-                  user.id,
+                  client.id,
                   seriesId,
                   packageSnapshot(pack, slotIds.length),
                   v.lesson_kind ||
@@ -830,7 +850,7 @@ export async function POST(
             if (Number.isFinite(total) && total > 0)
               mirror(
                 "Начисление (запись)",
-                user.name,
+                client.name,
                 total / 100,
                 packageSnapshot(pack, slotIds.length),
               );
@@ -848,7 +868,7 @@ export async function POST(
             id: ids[0],
             ids,
             series_id: seriesId,
-            status: "pending",
+            status: onBehalf ? "confirmed" : "pending",
           });
         }
         if (p[1] === "series") {

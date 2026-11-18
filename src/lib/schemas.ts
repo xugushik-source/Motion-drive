@@ -61,6 +61,8 @@ export const bookingSchema = z.object({
   name: z.string().trim().min(2).max(100),
   contact: z.string().trim().min(5).max(180),
   note: z.string().max(1200).default(""),
+  /** The office books on behalf of this student (after agreeing the time by phone). */
+  user_id: z.string().max(80).optional(),
   consent: z.literal(true),
   website: z.string().max(0).default(""),
 });

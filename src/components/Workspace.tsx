@@ -36,6 +36,7 @@ import PayPanel from "./PayPanel";
 import { MySalary, PayrollReport } from "./Payroll";
 import Roles from "./Roles";
 import Today from "./Today";
+import Guide from "./Guide";
 import { ExpensesTab, MoneyOverview } from "./Money";
 type Props = {
   user: Item;
@@ -72,7 +73,7 @@ const modules = [
 ];
 /** The side menu in sections, so that 30 items are never one flat list. */
 const SECTIONS: [string, string[]][] = [
-  ["Сегодня", ["today"]],
+  ["Сегодня", ["today", "guide"]],
   ["Работа", ["bookings", "applications", "students", "schedule", "lessons"]],
   ["Деньги", ["payments", "expenses", "finance", "payroll", "salary", "mypay"]],
   ["Люди", ["staff", "roles", "instructors"]],
@@ -133,6 +134,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
     admin || (operator && STAFF_KINDS.includes(kind));
   const tabs = [
     ...(staff ? ["today"] : []),
+    ...(staff || instructor ? ["guide"] : []),
     ...(admin
       ? [
           ...modules.slice(0, 3),
@@ -815,6 +817,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             }}
           />
         )}
+        {tab === "guide" && (staff || instructor) && <Guide role={user.role} />}
         {tab === "roles" && admin && <Roles />}
         {tab === "staff" && admin && (
           <Staff
@@ -880,6 +883,15 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                     act={act}
                   />
                   <ShowId id={u.id} has={!!Number(u.has_personal_id)} t={t} />
+                  <BookFor
+                    student={u}
+                    slots={freeSlots}
+                    instructors={data.users.filter(
+                      (x: Item) => x.role === "instructor",
+                    )}
+                    act={act}
+                    onDone={(m) => setNotice(m)}
+                  />
                   <div className="row-actions">
                     <button
                       type="button"
@@ -2192,6 +2204,102 @@ function EnrollGroup({
           </select>
         )}
         <button className="button small">Записать</button>
+      </form>
+    </details>
+  );
+}
+
+const DAYS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+const slotText = (iso: string) => {
+  const d = new Date(Date.parse(iso) + 4 * 3600e3);
+  return `${DAYS[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2, "0")}.${String(d.getUTCMonth() + 1).padStart(2, "0")} ${d.toISOString().slice(11, 16)}`;
+};
+/** The office books a lesson for a student after agreeing the time with him by phone. */
+function BookFor({
+  student,
+  slots,
+  instructors,
+  act,
+  onDone,
+}: {
+  student: Item;
+  slots: Item[];
+  instructors: Item[];
+  act: (path: string, body: any) => Promise<any>;
+  onDone: (message: string) => void;
+}) {
+  const [slot, setSlot] = useState("");
+  const [kind, setKind] = useState("city");
+  const [gear, setGear] = useState("automatic");
+  const free = slots
+    .filter((s) => s.city === "akhalkalaki")
+    .filter((s) => kind !== "yard" || s.kind !== "city")
+    .slice(0, 80);
+  return (
+    <details className="pay-add">
+      <summary>Записать на занятие</summary>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!slot) return;
+          const r = await act("booking/create", {
+            user_id: student.id,
+            city: "akhalkalaki",
+            program: "practice",
+            gearbox: gear,
+            slot_ids: [slot],
+            lesson_kind: kind,
+            name: student.name,
+            contact: student.phone || student.email || "-",
+            note: "",
+            consent: true,
+            website: "",
+          });
+          if (r) {
+            setSlot("");
+            onDone("Занятие записано и подтверждено: " + student.name);
+          }
+        }}
+      >
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+          aria-label="Вид занятия"
+        >
+          <option value="city">Город</option>
+          <option value="yard">Площадка</option>
+        </select>
+        <select
+          value={gear}
+          onChange={(e) => setGear(e.target.value)}
+          aria-label="Коробка"
+        >
+          <option value="automatic">Автомат</option>
+          <option value="manual">Механика</option>
+        </select>
+        <select
+          value={slot}
+          onChange={(e) => setSlot(e.target.value)}
+          aria-label="Время"
+          required
+        >
+          <option value="">— выберите время —</option>
+          {free.map((s) => (
+            <option key={s.id} value={s.id}>
+              {slotText(s.start)}
+              {s.instructor_id
+                ? " · " +
+                  (instructors.find((i) => i.id === s.instructor_id)?.name ||
+                    "инструктор")
+                : ""}
+            </option>
+          ))}
+        </select>
+        <button className="button small">Записать</button>
+        <small className="muted">
+          Запись подтверждается сразу. Ученик видит её у себя в кабинете. Чтобы
+          записать на несколько занятий, повторите.
+        </small>
       </form>
     </details>
   );

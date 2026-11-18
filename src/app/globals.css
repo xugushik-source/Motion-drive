@@ -2973,3 +2973,15 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .today-card:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.07); }
 .list-search { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; font: inherit; margin-bottom: 12px; }
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+.guide { max-width: 760px; }
+.guide h3 { margin: 0 0 4px; font-size: 26px; }
+.guide-section { border: 1px solid var(--line); border-radius: 12px; background: #fff; margin: 10px 0; padding: 0 16px; }
+.guide-section summary { cursor: pointer; padding: 14px 0; font-weight: 600; }
+.guide-section ol { margin: 0 0 14px; padding-left: 22px; display: grid; gap: 8px; }
+.guide-warn { list-style: none; margin-left: -22px; display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: #fff3ee; border: 1px solid #ffd2c2; }
+@media print {
+  .workspace-nav, .header, .footer, .no-print, .page-top, .back-bar { display: none !important; }
+  .guide-section { break-inside: avoid; }
+  .guide-section[open] summary { margin-bottom: 4px; }
+}
