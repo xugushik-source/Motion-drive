@@ -2524,6 +2524,23 @@ function BookFor({
             </option>
           ))}
         </select>
+        {slot !== "custom" ? (
+          <button
+            type="button"
+            className="button small outline-dark"
+            onClick={() => setSlot("custom")}
+          >
+            Другое время: своё, шаг 5 минут
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="button small outline-dark"
+            onClick={() => setSlot("")}
+          >
+            Выбрать из готового списка
+          </button>
+        )}
         {slot === "custom" && (
           <div className="form-grid">
             <input required type="date" name="date" aria-label="Дата" />
