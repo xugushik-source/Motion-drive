@@ -1,6 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  BookOpen,
+  CheckCircle2,
+} from "lucide-react";
 import { api, Notice } from "./Site";
 import { gel } from "./Finance";
 
@@ -171,6 +176,17 @@ export default function Today({
 
   return (
     <div className="today">
+      <button type="button" className="today-guide" onClick={() => go("guide")}>
+        <BookOpen size={22} />
+        <span>
+          <b>Инструкция: как работать</b>
+          <small>
+            Пошагово: что нажимать утром, как записать ученика, принять оплату и
+            закрыть урок. Нажмите, чтобы открыть.
+          </small>
+        </span>
+        <ArrowUpRight size={18} />
+      </button>
       {alerts.length ? (
         <div className="today-alerts">
           {alerts.map((a) => (

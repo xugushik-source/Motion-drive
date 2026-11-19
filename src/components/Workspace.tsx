@@ -310,6 +310,21 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             <small>{t(user.role)}</small>
           </div>
         </div>
+        {tabs.includes("guide") && (
+          <button
+            type="button"
+            className={"guide-link" + (tab === "guide" ? " selected" : "")}
+            onClick={() => {
+              setTab("guide");
+              setEditing(null);
+              setNotice("");
+              window.scrollTo({ top: 0 });
+            }}
+          >
+            <BookOpen size={16} />
+            Инструкция: как работать
+          </button>
+        )}
         {(tabs.length > 10
           ? [
               ...SECTIONS.map(([title, keys]) => [

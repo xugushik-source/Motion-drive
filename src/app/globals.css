@@ -3026,3 +3026,10 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .update-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; background: #fff3ee; border: 1px solid #ffd2c2; }
 .build-stamp { display: block; margin-top: 10px; color: var(--muted); font-size: 10px; }
 .chess-cell.yardslot { box-shadow: inset 0 -3px 0 #2e7d3255; }
+
+.workspace-nav .guide-link { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--coral, #ff6b52); color: #101712; font-weight: 600; font-size: 13px; border: 0; cursor: pointer; text-align: left; }
+.workspace-nav .guide-link.selected { background: #101712; color: #fff; }
+.today-guide { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; margin-bottom: 14px; border-radius: 14px; border: 2px solid var(--coral, #ff6b52); background: #fff8f4; cursor: pointer; font: inherit; }
+.today-guide span { flex: 1; display: grid; gap: 2px; }
+.today-guide small { color: var(--muted); font-size: 13px; }
+@media (max-width: 1100px) { .workspace-nav .guide-link { width: 100%; flex: 0 0 100%; } }
