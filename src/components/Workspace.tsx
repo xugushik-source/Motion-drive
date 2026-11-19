@@ -37,6 +37,7 @@ import { MySalary, PayrollReport } from "./Payroll";
 import Roles from "./Roles";
 import Today from "./Today";
 import Guide from "./Guide";
+import Chessboard from "./Chessboard";
 import { AddStudent, SetPersonalId } from "./OfficeStudent";
 import { ExpensesTab, MoneyOverview } from "./Money";
 type Props = {
@@ -75,7 +76,10 @@ const modules = [
 /** The side menu in sections, so that 30 items are never one flat list. */
 const SECTIONS: [string, string[]][] = [
   ["Сегодня", ["today", "guide"]],
-  ["Работа", ["bookings", "applications", "students", "schedule", "lessons"]],
+  [
+    "Работа",
+    ["chess", "bookings", "applications", "students", "schedule", "lessons"],
+  ],
   ["Деньги", ["payments", "expenses", "finance", "payroll", "salary", "mypay"]],
   ["Люди", ["staff", "roles", "instructors"]],
   [
@@ -134,7 +138,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
   const canEdit = (kind: string) =>
     admin || (operator && STAFF_KINDS.includes(kind));
   const tabs = [
-    ...(staff ? ["today"] : []),
+    ...(staff ? ["today", "chess"] : []),
     ...(staff || instructor ? ["guide"] : []),
     ...(admin
       ? [
@@ -830,6 +834,24 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
           />
         )}
         {tab === "guide" && (staff || instructor) && <Guide role={user.role} />}
+        {tab === "chess" && staff && (
+          <Chessboard
+            slots={data.slots}
+            bookings={data.bookings}
+            users={data.users}
+            act={act}
+            refresh={refresh}
+            onOpenStudent={(phone) => {
+              setSearch(phone);
+              setTab("students");
+              window.scrollTo({ top: 0 });
+            }}
+            goStudents={() => {
+              setTab("students");
+              window.scrollTo({ top: 0 });
+            }}
+          />
+        )}
         {tab === "roles" && admin && <Roles />}
         {tab === "staff" && admin && (
           <Staff

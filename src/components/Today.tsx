@@ -83,8 +83,8 @@ export default function Today({
   else if (freeWeek === 0)
     alerts.push({
       text: "На ближайшую неделю нет свободных занятий: ученики не смогут записаться.",
-      tab: "schedule",
-      label: "Открыть расписание",
+      tab: "chess",
+      label: "Открыть шахматку",
     });
   if (toConfirm.length)
     alerts.push({
@@ -130,13 +130,13 @@ export default function Today({
       title: "Уроки сегодня",
       value: todays.length,
       hint: "расписание дня",
-      tab: "bookings",
+      tab: "chess",
     },
     {
       title: "Свободных занятий на неделю",
       value: freeWeek,
       hint: "куда могут записаться ученики",
-      tab: "schedule",
+      tab: "chess",
       hot: freeWeek === 0,
     },
     {

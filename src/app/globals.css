@@ -2985,3 +2985,40 @@ html[data-intro="seen"] .intro-curtain { display: none; }
   .guide-section { break-inside: avoid; }
   .guide-section[open] summary { margin-bottom: 4px; }
 }
+
+.chess-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
+.chess-nav { display: flex; align-items: center; gap: 8px; }
+.chess-nav input[type=date] { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+.chess-stamp { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.chess-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); margin: 6px 0 10px; }
+.chess-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cb { display: inline-block; width: 12px; height: 12px; border-radius: 4px; border: 1px solid rgba(0,0,0,.12); vertical-align: -1px; }
+.cb-free { background: #dff3e4; }
+.cb-pending { background: #ffe8b5; }
+.cb-confirmed { background: #cfe2ff; }
+.cb-wait { background: #e5d4ff; }
+.cb-done { background: #b8e0c4; }
+.cb-closed { background: #e6e6e1; }
+.cb-past { background: #f1f1ed; }
+.chess-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.chess-grid { border-collapse: separate; border-spacing: 3px; width: 100%; min-width: 420px; }
+.chess-grid th { font-weight: 600; font-size: 12px; padding: 6px 8px; white-space: nowrap; text-align: center; }
+.chess-grid tbody th { position: sticky; left: 0; background: #fff; text-align: right; color: var(--muted); }
+.chess-grid td { padding: 0; min-width: 96px; height: 52px; }
+.chess-grid td.cb-none { background: repeating-linear-gradient(45deg, #fafaf7, #fafaf7 6px, #f3f3ee 6px, #f3f3ee 12px); border-radius: 8px; }
+.chess-cell { width: 100%; height: 100%; min-height: 50px; display: grid; align-content: center; gap: 2px; padding: 4px 6px; border: 1px solid rgba(0,0,0,.08); border-radius: 8px; font: inherit; cursor: pointer; text-align: center; }
+.chess-cell b { font-size: 13px; }
+.chess-cell small { font-size: 11px; color: #555; }
+.chess-cell.picked { outline: 3px solid var(--ink, #101712); outline-offset: -1px; }
+.chess-cell.evening { box-shadow: inset 0 -3px 0 #8a6cff55; }
+.chess-cell:hover { filter: brightness(.96); }
+.chess-cell.heat { color: #101712; }
+.chess-detail { margin-top: 14px; display: grid; gap: 10px; }
+.chess-detail header { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.chess-detail header span { color: var(--muted); font-size: 13px; flex: 1 1 200px; }
+.chess-detail form { display: grid; gap: 8px; }
+.chess-booking p { margin: 2px 0; }
+
+.chess-switch { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.chess-switch button { padding: 8px 16px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
+.chess-switch button.on { background: #101712; color: #fff; }
