@@ -54,6 +54,7 @@ export default function Chessboard({
   refresh,
   onOpenStudent,
   goStudents,
+  onPay,
 }: {
   slots: Row[];
   bookings: Row[];
@@ -62,6 +63,7 @@ export default function Chessboard({
   refresh: () => Promise<void> | void;
   onOpenStudent: (phone: string) => void;
   goStudents: () => void;
+  onPay?: (id: string, name: string) => void;
 }) {
   const [day, setDay] = useState(today());
   const [view, setView] = useState<"day" | "week">("day");
@@ -410,6 +412,7 @@ export default function Chessboard({
           close={() => setPicked(null)}
           onOpenStudent={onOpenStudent}
           goStudents={goStudents}
+          onPay={onPay}
         />
       )}
     </div>
@@ -424,6 +427,7 @@ function Detail({
   close,
   onOpenStudent,
   goStudents,
+  onPay,
 }: {
   cell: Cell;
   users: Row[];
@@ -431,6 +435,7 @@ function Detail({
   close: () => void;
   onOpenStudent: (phone: string) => void;
   goStudents: () => void;
+  onPay?: (id: string, name: string) => void;
 }) {
   const { slot, booking, state } = cell;
   const who = users.find((u) => u.id === slot.instructor_id)?.name;
@@ -629,7 +634,17 @@ function Detail({
                 type="button"
                 className="button small"
                 onClick={async () => {
-                  if (await act("teach/accept", { id: booking.id })) close();
+                  const r = await act("teach/accept", { id: booking.id });
+                  if (!r) return;
+                  if (
+                    r.charged &&
+                    onPay &&
+                    confirm(
+                      `Урок принят. Ученик ещё не заплатил: записан долг ${r.charged / 100} ₾.\n\nПринять оплату сейчас?`,
+                    )
+                  )
+                    onPay(String(booking.user_id), String(booking.name));
+                  close();
                 }}
               >
                 {booking.conducted_at

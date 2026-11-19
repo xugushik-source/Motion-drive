@@ -690,7 +690,13 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                                     <button
                                       className="button small"
                                       onClick={async () => {
-                                        await act("teach/accept", { id: b.id });
+                                        const r = await act("teach/accept", {
+                                          id: b.id,
+                                        });
+                                        if (r?.charged)
+                                          setNotice(
+                                            `Урок принят. Ученик ещё не заплатил: записан долг ${r.charged / 100} ₾ (его можно закрыть в «Оплаты и долг»).`,
+                                          );
                                       }}
                                     >
                                       {b.conducted_at
@@ -889,6 +895,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             users={data.users}
             act={act}
             refresh={refresh}
+            onPay={openLedger}
             onOpenStudent={(phone) => {
               setSearch(phone);
               setTab("students");
@@ -2270,7 +2277,9 @@ function EnrollGroup({
     );
   return (
     <details className="pay-add">
-      <summary>Записать в группу теории</summary>
+      <summary>
+        Теория: записать в группу (только если ученик проходит теорию)
+      </summary>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -2308,8 +2317,11 @@ function EnrollGroup({
           key={scope}
         />
         {lecturers.length > 0 && (
-          <select name="lecturer_id" defaultValue="">
-            <option value="">Лектор: по умолчанию</option>
+          <select
+            name="lecturer_id"
+            defaultValue={lecturers[0]?.id || ""}
+            aria-label="Лектор"
+          >
             {lecturers.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}

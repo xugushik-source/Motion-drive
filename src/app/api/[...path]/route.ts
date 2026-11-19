@@ -2300,7 +2300,38 @@ async function lessons(p: string[], body: any, user: Row) {
     await db
       .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
       .run(user.id, "lesson:accepted", JSON.stringify({ id: v.id }));
-    return json({ ok: true });
+    // A lesson that is not part of a paid-for package is charged when it is closed, so an unpaid lesson
+    // becomes the student's debt at once (a payment taken later settles it).
+    let charged = 0;
+    if (
+      !b.package_id &&
+      !(await one("SELECT id FROM charges WHERE booking_id=?", v.id))
+    ) {
+      const kind = String(b.lesson_kind || "city");
+      const amount = await lessonPrice(kind, String(b.gearbox || "automatic"));
+      if (amount > 0) {
+        const when = new Date(Date.parse(b.slot_start || now) + 4 * 3600e3)
+          .toISOString()
+          .slice(0, 16)
+          .replace("T", " ");
+        await db
+          .prepare(
+            "INSERT INTO charges(id,user_id,title,kind,amount,created_by,booking_id) VALUES(?,?,?,?,?,?,?)",
+          )
+          .run(
+            randomUUID(),
+            b.user_id,
+            `Занятие ${when} · ${kind === "yard" ? "площадка" : "город"}`,
+            kind,
+            amount,
+            user.id,
+            v.id,
+          );
+        charged = amount;
+        mirror("Начисление (урок принят)", String(b.name), amount / 100, kind);
+      }
+    }
+    return json({ ok: true, charged });
   }
   if (p[1] === "unconduct") {
     if (b.accepted_at) return fail("invalid");
@@ -2385,6 +2416,18 @@ async function myPay(p: string[], body: any, user: Row) {
 }
 const tetri = (lari: number) => Math.round(lari * 100);
 const lariAmount = z.coerce.number().positive().max(100000).multipleOf(0.01);
+/** What one lesson costs by the public price list, in tetri (0 when the list has no such price). */
+async function lessonPrice(kind: string, gearbox: string) {
+  const list = await approved("packages");
+  const id =
+    kind === "yard"
+      ? "yard-ru"
+      : kind === "city"
+        ? `city-${gearbox === "manual" ? "manual" : "automatic"}-ru`
+        : "";
+  const price = Number(list.find((x) => x.id === id)?.price);
+  return Number.isFinite(price) && price > 0 ? Math.round(price * 100) : 0;
+}
 /** The local (Georgian, UTC+4) calendar day n days from today as YYYY-MM-DD. */
 const localDay = (n: number) =>
   new Date(Date.now() + 4 * 3600e3 + n * 86400e3).toISOString().slice(0, 10);
@@ -2481,11 +2524,23 @@ async function autoOpenSchedule() {
     const settings = await records("settings");
     if (settings.some((x) => x.key === "auto_schedule" && x.value === "false"))
       return;
-    if (!(await limit("auto-schedule", 1, 1800))) return;
     const teachers = await all(
       "SELECT id FROM users WHERE role='instructor' AND active=1",
     );
     if (!teachers.length) return;
+    // throttled to once in half an hour, except when an instructor has no lessons at all yet
+    const nowIso = new Date().toISOString();
+    let newcomer = false;
+    for (const t of teachers)
+      if (
+        !(await one(
+          "SELECT id FROM slots WHERE instructor_id=? AND start>? LIMIT 1",
+          t.id,
+          nowIso,
+        ))
+      )
+        newcomer = true;
+    if (!newcomer && !(await limit("auto-schedule", 1, 1800))) return;
     const hours = await driveHours();
     const to = localDay(20);
     const mark = String(
