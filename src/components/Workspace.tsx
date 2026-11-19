@@ -1215,8 +1215,8 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                 if (weeks === 1 && !days.length) {
                   const r = await act("slot/create", {
                     ...base,
-                    start: new Date(String(f.start) + "+04:00").toISOString(),
-                    end: new Date(String(f.end) + "+04:00").toISOString(),
+                    start: new Date(`${f.date}T${f.from}+04:00`).toISOString(),
+                    end: new Date(`${f.date}T${f.to}+04:00`).toISOString(),
                   });
                   if (r) {
                     form.reset();
@@ -1229,8 +1229,9 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                   return;
                 }
                 // Repeat the same hours on the chosen weekdays for N weeks.
-                const [first, from] = String(f.start).split("T");
-                const to = String(f.end).split("T")[1];
+                const first = String(f.date),
+                  from = String(f.from),
+                  to = String(f.to);
                 const startDay = new Date(first + "T12:00:00Z").getUTCDay();
                 let created = 0,
                   skipped = 0;
@@ -1286,11 +1287,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                 </select>
               </Field>
               <div className="form-grid">
-                <Field label={t("start") + " · UTC+04:00"}>
-                  <input required type="datetime-local" name="start" />
+                <Field label="Дата (первый день)">
+                  <input required type="date" name="date" />
                 </Field>
-                <Field label={t("end") + " · UTC+04:00"}>
-                  <input required type="datetime-local" name="end" />
+                <Field label="Время начала (шаг 5 минут)">
+                  <input required type="time" name="from" step={300} />
+                </Field>
+                <Field label="Время конца (шаг 5 минут)">
+                  <input required type="time" name="to" step={300} />
                 </Field>
               </div>
               <Field label="Вид занятий">
@@ -1300,29 +1304,37 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                   onChange={(e) => setSlotKind(e.target.value)}
                 >
                   <option value="any">Любые (город или площадка)</option>
-                  <option value="yard">Площадка: занятия по 25 минут</option>
+                  <option value="yard">Площадка</option>
                   <option value="city">Город</option>
                 </select>
               </Field>
-              {slotKind === "yard" ? (
-                <p className="muted">
-                  Занятие на площадке длится 25 минут. Задайте любое время
-                  начала и конца: окно нарежется на занятия по 25 минут
-                  (например, 10:00–13:00 даст 7 занятий, остаток в конце не
-                  открывается). Чтобы ученик ездил 50 минут, он берёт два
-                  занятия подряд.
-                </p>
-              ) : (
-                <Field label={t("slotDuration")}>
-                  <select name="intervalMinutes" defaultValue="60">
-                    {[30, 45, 60, 90, 120].map((n) => (
-                      <option key={n} value={n}>
-                        {n} {t("minutes")}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
+              <Field label="Длительность одного занятия, минут (любая, кратно 5)">
+                <input
+                  required
+                  type="number"
+                  name="intervalMinutes"
+                  min={5}
+                  max={240}
+                  step={5}
+                  inputMode="numeric"
+                  key={slotKind}
+                  defaultValue={slotKind === "yard" ? 25 : 60}
+                  list="slot-minutes"
+                />
+                <datalist id="slot-minutes">
+                  {[25, 30, 45, 50, 60, 75, 90, 120].map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+              </Field>
+              <p className="muted">
+                {slotKind === "yard"
+                  ? "Площадка: обычно 25 минут. "
+                  : "Город: обычно 60 минут. "}
+                Время начала, конца и длительность любые, кратные 5 минутам.
+                Окно режется на занятия подряд; остаток в конце, который не
+                вмещает целое занятие, не открывается.
+              </p>
               <div className="repeat-box">
                 <Field label={t("repeatWeeks")}>
                   <select name="weeks" defaultValue="1">

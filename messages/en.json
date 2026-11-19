@@ -183,6 +183,7 @@
   "accountExists": "An account already exists.",
   "badCredentials": "Wrong phone number or password.",
   "rateLimit": "Too many requests. Try again later.",
+  "minutesMultiple5": "Set start, end and lesson length in multiples of 5 minutes.",
   "yardOnlySlot": "This is a yard slot: it can only be used for yard lessons.",
   "cityOnlySlot": "After dark only city driving is offered; the yard needs daylight.",
   "kitTitle": "Your package",

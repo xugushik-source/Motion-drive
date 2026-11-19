@@ -1118,7 +1118,7 @@ export async function POST(
             city: z.enum(["akhalkalaki", "ninotsminda"]),
             start: z.iso.datetime(),
             end: z.iso.datetime(),
-            intervalMinutes: z.number().int().min(15).max(240).optional(),
+            intervalMinutes: z.number().int().min(5).max(240).optional(),
             // yard lessons are 25 minutes each (book two in a row for fifty), city lessons are longer
             kind: z.enum(["any", "yard", "city"]).default("any"),
           })
@@ -1155,12 +1155,16 @@ export async function POST(
           v.start,
         );
         if (overlap) return fail("slotUnavailable", 409);
-        // The window may start and end at any time; it is cut into whole lessons and what does not fit
-        // at the end is left unopened.
-        const interval =
-          (v.kind === "yard"
-            ? 25
-            : v.intervalMinutes || (end - start) / 60000) * 60000;
+        // The window may start and end at any time (in whole fives of minutes); it is cut into whole
+        // lessons and what does not fit at the end is left unopened.
+        const lesson = v.intervalMinutes || (v.kind === "yard" ? 25 : 60);
+        if (
+          lesson % 5 !== 0 ||
+          new Date(start).getUTCMinutes() % 5 !== 0 ||
+          new Date(end).getUTCMinutes() % 5 !== 0
+        )
+          return fail("minutesMultiple5", 400);
+        const interval = lesson * 60000;
         const count = Math.floor((end - start) / interval);
         if (count < 1 || count > 48) return fail("invalid");
         const leftover = Math.round((end - start - count * interval) / 60000);
