@@ -168,7 +168,7 @@ export function Auth({
       <div>
         <span className="eyebrow">MOTION DRIVE / YOUR SPACE</span>
         <h2>{staff ? t("staffLoginTitle") : t("account")}</h2>
-        <p>{staff ? t("staffLoginText") : t("loginToBook")}</p>
+        <p>{staff ? t("staffLoginText") : t("accountLead")}</p>
         {!staff && (
           <div className="auth-perks">
             {["bookings", "progress", "materials"].map((k) => (

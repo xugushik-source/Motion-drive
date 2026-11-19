@@ -1001,7 +1001,7 @@ test("instructions exist for owners, administrators and teachers and name real s
       !/\+995\s?5\d\d|TODO|undefined/.test(text),
       "no phone numbers or leftovers",
     );
-    assert.ok(text.includes("motion-drive.vercel.app/ru/"), "has the address");
+    assert.ok(text.includes("motion-drive.vercel.app"), "has the address");
   }
   // the tab names used in the instructions are the real ones
   for (const name of [

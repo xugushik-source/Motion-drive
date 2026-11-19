@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import {
   motion,
   MotionConfig,
@@ -100,6 +101,27 @@ export default function Site({
       .then((x) => setUser(x.user))
       .catch(() => setUser(null));
   }, []);
+  // One door for everybody: whoever signs in at "Личный кабинет" lands in his own cabinet by his position.
+  const router = useRouter();
+  const OWN_PAGE: Record<string, string> = {
+    admin: "admin",
+    operator: "operator",
+    manager: "manager",
+    instructor: "instructor",
+    lecturer: "lecturer",
+  };
+  useEffect(() => {
+    if (!user) return;
+    const own = OWN_PAGE[user.role];
+    if (page === "account" && own) router.replace(`/${locale}/${own}`);
+    else if (
+      Object.values(OWN_PAGE).includes(page) &&
+      user.role !== "admin" &&
+      user.role !== page
+    )
+      router.replace(`/${locale}/${own || "account"}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, page, locale]);
   const href = (p = "") => `/${locale}${p ? "/" + p : ""}`;
   const list = (kind: string) =>
     content[kind].filter((x) => !x.locale || x.locale === locale);
@@ -908,13 +930,17 @@ export default function Site({
                 (user === undefined ? (
                   <Notice>{t("loading")}</Notice>
                 ) : user ? (
-                  <Workspace
-                    user={user}
-                    locale={locale}
-                    t={t}
-                    page="account"
-                    onLogout={() => setUser(null)}
-                  />
+                  OWN_PAGE[user.role] ? (
+                    <Notice>{t("loading")}</Notice>
+                  ) : (
+                    <Workspace
+                      user={user}
+                      locale={locale}
+                      t={t}
+                      page="account"
+                      onLogout={() => setUser(null)}
+                    />
+                  )
                 ) : (
                   <Auth locale={locale} t={t} onUser={setUser} />
                 ))}
