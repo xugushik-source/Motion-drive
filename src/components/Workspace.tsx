@@ -696,6 +696,26 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                                     <Check size={16} />
                                   </button>
                                 )}
+                                {instructor &&
+                                  b.lesson_kind === "yard" &&
+                                  b.status === "confirmed" &&
+                                  !b.conducted_at &&
+                                  Date.parse(String(b.slot_start || "")) >
+                                    Date.now() && (
+                                    <button
+                                      className="button small outline-dark"
+                                      onClick={() => {
+                                        if (
+                                          confirm(
+                                            "Отказаться от этого занятия на площадке? Оно вернётся администратору.",
+                                          )
+                                        )
+                                          act("teach/decline", { id: b.id });
+                                      }}
+                                    >
+                                      Отказаться
+                                    </button>
+                                  )}
                                 {instructor && b.conducted_at && (
                                   <span className="status pending">
                                     Ждёт принятия
@@ -1300,11 +1320,13 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               <Field label="Вид занятий">
                 <select
                   name="kind"
-                  value={slotKind}
+                  value={instructor ? "city" : slotKind}
                   onChange={(e) => setSlotKind(e.target.value)}
                 >
-                  <option value="any">Любые (город или площадка)</option>
-                  <option value="yard">Площадка</option>
+                  {!instructor && (
+                    <option value="any">Любые (город или площадка)</option>
+                  )}
+                  {!instructor && <option value="yard">Площадка</option>}
                   <option value="city">Город</option>
                 </select>
               </Field>

@@ -186,6 +186,7 @@
   "minutesMultiple5": "Set start, end and lesson length in multiples of 5 minutes.",
   "yardBusy": "There is one yard: another instructor's student is on it at that time.",
   "yardWindowTaken": "The yard is already open for another instructor at that time.",
+  "yardOfficeOnly": "Only the office assigns the yard: instructors cannot open yard time.",
   "yardOnlySlot": "This is a yard slot: it can only be used for yard lessons.",
   "cityOnlySlot": "After dark only city driving is offered; the yard needs daylight.",
   "kitTitle": "Your package",

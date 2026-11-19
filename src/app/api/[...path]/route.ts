@@ -1147,6 +1147,9 @@ export async function POST(
         const instructorId = v.instructor_id || null;
         if (isTeacher(user.role) && instructorId !== user.id)
           return fail("forbidden", 403);
+        // the yard is assigned by the office only; instructors cannot open yard time themselves
+        if (isTeacher(user.role) && v.kind === "yard")
+          return fail("yardOfficeOnly", 403);
         if (
           instructorId &&
           !(await one(
@@ -1167,15 +1170,31 @@ export async function POST(
           end = Date.parse(v.end);
         if (start <= Date.now() || end <= start || end - start > 24 * 3600000)
           return fail("invalid");
-        const overlap = await one(
-          "SELECT id FROM slots WHERE (instructor_id=? OR (instructor_id IS NULL AND ? IS NULL AND city=?)) AND start<? AND end>?",
+        // Only a time that already holds a lesson is taken. Free hours the automatic timetable opened
+        // are replaced by the window the office sets by hand (any start and end in 5-minute steps).
+        const overlapWhere =
+          "(instructor_id=? OR (instructor_id IS NULL AND ? IS NULL AND city=?)) AND start<? AND end>?";
+        const overlapArgs = [
           instructorId,
           instructorId,
           v.city,
           v.end,
           v.start,
+        ];
+        const taken = await one(
+          `SELECT s.id FROM slots s JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed')
+           WHERE (s.instructor_id=? OR (s.instructor_id IS NULL AND ? IS NULL AND s.city=?)) AND s.start<? AND s.end>?`,
+          ...overlapArgs,
         );
-        if (overlap) return fail("slotUnavailable", 409);
+        if (taken) return fail("slotUnavailable", 409);
+        await db
+          .prepare(
+            `DELETE FROM slots WHERE ${overlapWhere} AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.slot_id=slots.id)`,
+          )
+          .run(...overlapArgs);
+        await db
+          .prepare(`UPDATE slots SET available=0 WHERE ${overlapWhere}`)
+          .run(...overlapArgs);
         // one yard: the yard hours of two instructors must not overlap
         if (
           v.kind === "yard" &&
@@ -2337,6 +2356,25 @@ async function lessons(p: string[], body: any, user: Row) {
     await db
       .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
       .run(user.id, "lesson:conducted", JSON.stringify({ id: v.id }));
+    return json({ ok: true });
+  }
+  if (p[1] === "decline") {
+    // an instructor may refuse a yard lesson the office assigned: it goes back to the office queue
+    const own = isTeacher(user.role) && b.instructor_id === user.id;
+    if (!own || b.lesson_kind !== "yard") return fail("forbidden", 403);
+    if (b.status !== "confirmed" || b.conducted_at || b.accepted_at || started)
+      return fail("invalid");
+    await db
+      .prepare(
+        "UPDATE bookings SET status='pending',note=? WHERE id=? AND status='confirmed'",
+      )
+      .run(
+        (String(b.note || "") + " [Инструктор отказался от занятия]").trim(),
+        v.id,
+      );
+    await db
+      .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+      .run(user.id, "lesson:declined", JSON.stringify({ id: v.id }));
     return json({ ok: true });
   }
   if (!isStaff(user.role)) return fail("forbidden", 403);
