@@ -2438,6 +2438,7 @@ function BookFor({
   const [gear, setGear] = useState("automatic");
   const [everyone, setEveryone] = useState(false);
   const mine = student.instructor_id as string | undefined;
+  const drivers = instructors.filter((i) => i.role === "instructor");
   const free = slots
     .filter((s) => s.city === "akhalkalaki")
     .filter((s) => kind !== "yard" || s.kind !== "city")
@@ -2452,12 +2453,29 @@ function BookFor({
         onSubmit={async (e) => {
           e.preventDefault();
           if (!slot) return;
+          let slotId = slot;
+          if (slot === "custom") {
+            // any day and time in 5-minute steps: open a window of exactly one lesson, then book it
+            const f = Object.fromEntries(new FormData(e.currentTarget));
+            const minutes = Number(f.minutes || (kind === "yard" ? 25 : 60));
+            const start = new Date(`${f.date}T${f.time}+04:00`);
+            const w = await act("slot/create", {
+              city: "akhalkalaki",
+              instructor_id: String(f.who || mine || ""),
+              start: start.toISOString(),
+              end: new Date(start.getTime() + minutes * 60000).toISOString(),
+              kind,
+              intervalMinutes: minutes,
+            });
+            if (!w?.ids?.[0]) return;
+            slotId = w.ids[0];
+          }
           const r = await act("booking/create", {
             user_id: student.id,
             city: "akhalkalaki",
             program: "practice",
             gearbox: gear,
-            slot_ids: [slot],
+            slot_ids: [slotId],
             lesson_kind: kind,
             name: student.name,
             contact: student.phone || student.email || "-",
@@ -2494,6 +2512,7 @@ function BookFor({
           required
         >
           <option value="">— выберите время —</option>
+          <option value="custom">Другое время (своё, шаг 5 минут)…</option>
           {free.map((s) => (
             <option key={s.id} value={s.id}>
               {slotText(s.start)}
@@ -2505,6 +2524,35 @@ function BookFor({
             </option>
           ))}
         </select>
+        {slot === "custom" && (
+          <div className="form-grid">
+            <input required type="date" name="date" aria-label="Дата" />
+            <input
+              required
+              type="time"
+              name="time"
+              step={300}
+              aria-label="Время (шаг 5 минут)"
+            />
+            <input
+              type="number"
+              name="minutes"
+              min={5}
+              step={5}
+              key={kind}
+              defaultValue={kind === "yard" ? 25 : 60}
+              aria-label="Длительность, минут"
+            />
+            <select name="who" defaultValue={mine || ""} required>
+              <option value="">— инструктор —</option>
+              {drivers.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {mine && (
           <label className="checkbox">
             <input
