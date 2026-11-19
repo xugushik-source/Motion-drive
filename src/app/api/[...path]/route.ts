@@ -573,31 +573,50 @@ export async function POST(
       }
       if (p[1] === "login") {
         const v = loginSchema.parse(body);
-        // Students sign in with a phone number; staff with a name-based login (or an e-mail / phone).
+        // Students sign in with a phone number; staff with their name and surname (typed in Russian or
+        // Latin, "Елена Барбарян" and "elena.barbaryan" are the same person), an e-mail also works.
         const raw = v.login.trim();
-        let column: "email" | "phone" | "username";
         let key: string;
+        let u: Row | undefined;
         if (raw.includes("@")) {
-          column = "email";
           key = raw.toLowerCase();
+          if (!(await limit("login:" + key, 10, 900)))
+            return fail("rateLimit", 429);
+          u = await one("SELECT * FROM users WHERE email=?", key);
         } else {
           const phone = normalizePhone(raw);
           if (phone) {
-            column = "phone";
             key = phone;
-          } else if (loginPattern.test(raw.toLowerCase())) {
-            column = "username";
-            key = raw.toLowerCase();
-          } else return fail("badPhone");
+            if (!(await limit("login:" + key, 10, 900)))
+              return fail("rateLimit", 429);
+            u = await one("SELECT * FROM users WHERE phone=?", key);
+          } else {
+            // a login as it was typed (a custom one), or the one made from the words of the name
+            const typed = raw.toLowerCase();
+            const made = loginFromName(raw);
+            if (!loginPattern.test(made) && !loginPattern.test(typed))
+              return fail("badPhone");
+            key = made;
+            if (!(await limit("login:" + key, 10, 900)))
+              return fail("rateLimit", 429);
+            u =
+              (loginPattern.test(typed)
+                ? await one(
+                    "SELECT * FROM users WHERE lower(username)=?",
+                    typed,
+                  )
+                : undefined) ||
+              (await one("SELECT * FROM users WHERE lower(username)=?", made));
+            if (!u) {
+              // the name itself always works, even when the owner gave the person another login;
+              // only if exactly one employee has that name
+              const same = (
+                await all("SELECT * FROM users WHERE role<>'student'")
+              ).filter((x) => loginFromName(String(x.name)) === made);
+              if (same.length === 1) u = same[0];
+            }
+          }
         }
-        if (!(await limit("login:" + key, 10, 900)))
-          return fail("rateLimit", 429);
-        const u = await one(
-          column === "username"
-            ? "SELECT * FROM users WHERE lower(username)=?"
-            : "SELECT * FROM users WHERE " + column + "=?",
-          key,
-        );
         if (!u || !checkPassword(v.password, u.password))
           return fail("badCredentials", 401);
         if (Number(u.active) === 0) return fail("accountClosed", 403);

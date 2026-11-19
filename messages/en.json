@@ -192,6 +192,7 @@
   "backToPackages": "Back to packages",
   "sheetsNotConfigured": "Google Sheet is not connected.",
   "sheetsFailed": "Could not write to the Google Sheet. Check access.",
+  "loginHint": "Staff: first and last name, in Russian or English (for example, Elena Barbaryan). Students: phone number.",
   "loginLabel": "Phone or login",
   "slotUnavailable": "This time is booked or unavailable.",
   "slotRequired": "Assign a lesson time before confirmation.",

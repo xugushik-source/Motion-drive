@@ -104,6 +104,7 @@ function AccountFields({
           required
         />
       </Field>
+      {!register && <p className="hint">{t("loginHint")}</p>}
       <Field label={t("password")}>
         <input
           name="password"
