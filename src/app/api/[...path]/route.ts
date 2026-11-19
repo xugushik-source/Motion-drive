@@ -335,13 +335,14 @@ export async function GET(
         users: staff
           ? await all(
               admin
-                ? "SELECT id,name,email,phone,username,role,gender,birth_year,active,must_change_password,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users"
+                ? "SELECT id,name,email,phone,username,role,gender,birth_year,active,must_change_password,pay_method,instructor_id,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users"
                 : // administrators see contacts of students only; colleagues' phones and e-mails stay private
-                  "SELECT id,name,CASE WHEN role='student' THEN email END AS email,CASE WHEN role='student' THEN phone END AS phone,role,gender,birth_year,pay_method,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users",
+                  "SELECT id,name,CASE WHEN role='student' THEN email END AS email,CASE WHEN role='student' THEN phone END AS phone,role,gender,birth_year,pay_method,instructor_id,(personal_id IS NOT NULL AND personal_id<>'') AS has_personal_id FROM users",
             )
           : instructor
             ? await all(
-                "SELECT DISTINCT u.id,u.name FROM users u JOIN bookings b ON b.user_id=u.id WHERE b.instructor_id=?",
+                "SELECT DISTINCT u.id,u.name FROM users u LEFT JOIN bookings b ON b.user_id=u.id WHERE b.instructor_id=? OR u.instructor_id=?",
+                user.id,
                 user.id,
               )
             : [],
@@ -1258,9 +1259,17 @@ export async function POST(
         return fail("accountExists", 409);
       const id = randomUUID(),
         password = temporaryPassword();
+      if (
+        v.instructor_id &&
+        !(await one(
+          "SELECT id FROM users WHERE id=? AND role='instructor' AND active=1",
+          v.instructor_id,
+        ))
+      )
+        return fail("invalid");
       await db
         .prepare(
-          "INSERT INTO users(id,phone,name,password,locale,gender,birth_year,personal_id,must_change_password) VALUES(?,?,?,?,'ru',?,?,?,1)",
+          "INSERT INTO users(id,phone,name,password,locale,gender,birth_year,personal_id,instructor_id,must_change_password) VALUES(?,?,?,?,'ru',?,?,?,?,1)",
         )
         .run(
           id,
@@ -1270,6 +1279,7 @@ export async function POST(
           v.gender ?? null,
           v.birth_year ?? null,
           v.personal_id || null,
+          v.instructor_id || null,
         );
       await db
         .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
@@ -1280,6 +1290,39 @@ export async function POST(
         );
       // Shown once: the student may sign in with his phone and this password and choose his own.
       return json({ id, password });
+    }
+    if (p[0] === "student" && p[1] === "assign") {
+      // Which driving instructor a student is assigned to (empty: any). Theory groups and lecturers are set by enrolment.
+      if (!isStaff(user.role)) return fail("forbidden", 403);
+      const v = z
+        .object({
+          id: z.string().max(80),
+          instructor_id: z.string().max(80).nullable().optional(),
+        })
+        .parse(body);
+      if (
+        !(await one("SELECT id FROM users WHERE id=? AND role='student'", v.id))
+      )
+        return fail("notFound", 404);
+      if (
+        v.instructor_id &&
+        !(await one(
+          "SELECT id FROM users WHERE id=? AND role='instructor' AND active=1",
+          v.instructor_id,
+        ))
+      )
+        return fail("invalid");
+      await db
+        .prepare("UPDATE users SET instructor_id=? WHERE id=?")
+        .run(v.instructor_id || null, v.id);
+      await db
+        .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+        .run(
+          user.id,
+          "student:assign",
+          JSON.stringify({ id: v.id, instructor: v.instructor_id || null }),
+        );
+      return json({ ok: true });
     }
     if (p[0] === "student" && p[1] === "personal-id-set") {
       if (!isStaff(user.role)) return fail("forbidden", 403);

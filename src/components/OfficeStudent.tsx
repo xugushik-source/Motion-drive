@@ -16,9 +16,11 @@ const ERR: Record<string, string> = {
 export function AddStudent({
   onCreated,
   preset,
+  instructors = [],
 }: {
   onCreated: (phone: string) => Promise<void> | void;
   preset?: { name?: string; phone?: string };
+  instructors?: { id: string; name: string }[];
 }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState<{
@@ -56,6 +58,7 @@ export function AddStudent({
               foreign: d.foreign === "on",
               gender: d.gender || undefined,
               birth_year: d.birth_year || undefined,
+              instructor_id: d.instructor_id || undefined,
             });
             setDone({
               name: d.name,
@@ -100,6 +103,18 @@ export function AddStudent({
               placeholder="01001012345"
             />
           </Field>
+          {instructors.length > 0 && (
+            <Field label="Инструктор (если будет ездить)">
+              <select name="instructor_id" defaultValue="">
+                <option value="">не закреплён (любой)</option>
+                {instructors.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Пол">
             <select name="gender" defaultValue="">
               <option value="">—</option>

@@ -61,6 +61,8 @@ export const officeStudentSchema = z
       .optional()
       .catch(undefined),
     personal_id: z.string().trim().max(30).optional(),
+    /** The driving instructor the student is assigned to (optional). */
+    instructor_id: z.string().max(80).optional(),
     foreign: z.union([z.boolean(), z.literal("on")]).optional(),
   })
   .superRefine((v, ctx) => {

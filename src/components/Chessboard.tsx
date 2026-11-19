@@ -531,6 +531,17 @@ function Detail({
             <option value="automatic">Автомат</option>
             <option value="manual">Механика</option>
           </select>
+          {(() => {
+            const st = users.find((u) => u.id === student);
+            return st?.instructor_id &&
+              st.instructor_id !== slot.instructor_id ? (
+              <small className="muted">
+                Ученик закреплён за инструктором{" "}
+                {users.find((u) => u.id === st.instructor_id)?.name}, а это
+                время другого инструктора. Запись возможна.
+              </small>
+            ) : null;
+          })()}
           <button className="button small">Записать сюда</button>
           <button
             type="button"

@@ -877,6 +877,10 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
           <div className="data-list">
             {staff && (
               <AddStudent
+                instructors={data.users.filter(
+                  (x: Item) =>
+                    x.role === "instructor" && Number(x.active ?? 1) !== 0,
+                )}
                 onCreated={async (phone) => {
                   await refresh();
                   setSearch(phone);
@@ -916,6 +920,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                       {t(u.pay_method === "cash" ? "payCash" : "payNoncash")}
                     </p>
                   )}
+                  <AssignInstructor
+                    student={u}
+                    instructors={data.users.filter(
+                      (x: Item) =>
+                        x.role === "instructor" && Number(x.active ?? 1) !== 0,
+                    )}
+                    act={act}
+                  />
                   <EnrollGroup
                     student={u}
                     enrollments={data.enrollments || []}
@@ -2285,9 +2297,12 @@ function BookFor({
   const [slot, setSlot] = useState("");
   const [kind, setKind] = useState("city");
   const [gear, setGear] = useState("automatic");
+  const [everyone, setEveryone] = useState(false);
+  const mine = student.instructor_id as string | undefined;
   const free = slots
     .filter((s) => s.city === "akhalkalaki")
     .filter((s) => kind !== "yard" || s.kind !== "city")
+    .filter((s) => everyone || !mine || s.instructor_id === mine)
     .slice(0, 80);
   return (
     <details className="pay-add">
@@ -2349,6 +2364,21 @@ function BookFor({
             </option>
           ))}
         </select>
+        {mine && (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={everyone}
+              onChange={(e) => setEveryone(e.target.checked)}
+            />
+            <span>
+              Показать время всех инструкторов (сейчас только{" "}
+              {instructors.find((i) => i.id === mine)?.name ||
+                "его инструктора"}
+              )
+            </span>
+          </label>
+        )}
         <button className="button small">Записать</button>
         <small className="muted">
           Запись подтверждается сразу. Ученик видит её у себя в кабинете. Чтобы
@@ -2356,5 +2386,41 @@ function BookFor({
         </small>
       </form>
     </details>
+  );
+}
+
+/** The driving instructor a student is assigned to (for students who take driving: city and yard). */
+function AssignInstructor({
+  student,
+  instructors,
+  act,
+}: {
+  student: Item;
+  instructors: Item[];
+  act: (path: string, body: any) => Promise<any>;
+}) {
+  return (
+    <p className="muted assign-line">
+      <label>
+        Вождение (город и площадка), инструктор:{" "}
+        <select
+          value={student.instructor_id || ""}
+          aria-label="Инструктор ученика"
+          onChange={(e) =>
+            act("student/assign", {
+              id: student.id,
+              instructor_id: e.target.value || null,
+            })
+          }
+        >
+          <option value="">не закреплён (любой)</option>
+          {instructors.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </p>
   );
 }

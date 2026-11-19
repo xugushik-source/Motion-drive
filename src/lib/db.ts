@@ -69,6 +69,7 @@ function localDb() {
       ["pay_method", "TEXT"],
       ["started", "TEXT"],
       ["username", "TEXT"],
+      ["instructor_id", "TEXT"],
     ])
       if (!have.includes(name))
         sqlite.exec(`ALTER TABLE users ADD COLUMN ${name} ${ddl}`);
