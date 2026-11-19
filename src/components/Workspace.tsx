@@ -2419,6 +2419,8 @@ const slotText = (iso: string) => {
   const d = new Date(Date.parse(iso) + 4 * 3600e3);
   return `${DAYS[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2, "0")}.${String(d.getUTCMonth() + 1).padStart(2, "0")} ${d.toISOString().slice(11, 16)}`;
 };
+/** What the office has typed into the booking form survives refreshes of the cabinet. */
+const bookDrafts = new Map<string, Record<string, any>>();
 /** The office books a lesson for a student after agreeing the time with him by phone. */
 function BookFor({
   student,
@@ -2433,10 +2435,30 @@ function BookFor({
   act: (path: string, body: any) => Promise<any>;
   onDone: (message: string) => void;
 }) {
-  const [slot, setSlot] = useState("");
-  const [kind, setKind] = useState("city");
-  const [gear, setGear] = useState("automatic");
-  const [everyone, setEveryone] = useState(false);
+  const draft = bookDrafts.get(student.id) || {};
+  const [state, setState] = useState<Record<string, any>>({
+    slot: "",
+    kind: "city",
+    gear: "automatic",
+    everyone: false,
+    open: false,
+    date: "",
+    time: "",
+    minutes: "",
+    who: "",
+    ...draft,
+  });
+  const patch = (x: Record<string, any>) =>
+    setState((prev) => {
+      const next = { ...prev, ...x };
+      bookDrafts.set(student.id, next);
+      return next;
+    });
+  const { slot, kind, gear, everyone } = state;
+  const setSlot = (v: string) => patch({ slot: v });
+  const setKind = (v: string) => patch({ kind: v, minutes: "" });
+  const setGear = (v: string) => patch({ gear: v });
+  const setEveryone = (v: boolean) => patch({ everyone: v });
   const mine = student.instructor_id as string | undefined;
   const drivers = instructors.filter((i) => i.role === "instructor");
   const free = slots
@@ -2447,7 +2469,11 @@ function BookFor({
     .filter((s) => everyone || !mine || s.instructor_id === mine)
     .slice(0, 80);
   return (
-    <details className="pay-add">
+    <details
+      className="pay-add"
+      open={!!state.open}
+      onToggle={(e) => patch({ open: e.currentTarget.open })}
+    >
       <summary>Записать на занятие</summary>
       <form
         onSubmit={async (e) => {
@@ -2456,7 +2482,12 @@ function BookFor({
           let slotId = slot;
           if (slot === "custom") {
             // any day and time in 5-minute steps: open a window of exactly one lesson, then book it
-            const f = Object.fromEntries(new FormData(e.currentTarget));
+            const f = {
+              date: state.date,
+              time: state.time,
+              who: state.who || mine || "",
+              minutes: state.minutes,
+            };
             const minutes = Number(f.minutes || (kind === "yard" ? 25 : 60));
             const start = new Date(`${f.date}T${f.time}+04:00`);
             const w = await act("slot/create", {
@@ -2484,7 +2515,18 @@ function BookFor({
             website: "",
           });
           if (r) {
-            setSlot("");
+            bookDrafts.delete(student.id);
+            setState({
+              slot: "",
+              kind: "city",
+              gear: "automatic",
+              everyone: false,
+              open: true,
+              date: "",
+              time: "",
+              minutes: "",
+              who: "",
+            });
             onDone("Занятие записано и подтверждено: " + student.name);
           }
         }}
@@ -2543,24 +2585,36 @@ function BookFor({
         )}
         {slot === "custom" && (
           <div className="form-grid">
-            <input required type="date" name="date" aria-label="Дата" />
+            <input
+              required
+              type="date"
+              value={state.date}
+              onChange={(e) => patch({ date: e.target.value })}
+              aria-label="Дата"
+            />
             <input
               required
               type="time"
-              name="time"
               step={300}
+              value={state.time}
+              onChange={(e) => patch({ time: e.target.value })}
               aria-label="Время (шаг 5 минут)"
             />
             <input
               type="number"
-              name="minutes"
               min={5}
               step={5}
-              key={kind}
-              defaultValue={kind === "yard" ? 25 : 60}
+              placeholder={kind === "yard" ? "25 мин" : "60 мин"}
+              value={state.minutes}
+              onChange={(e) => patch({ minutes: e.target.value })}
               aria-label="Длительность, минут"
             />
-            <select name="who" defaultValue={mine || ""} required>
+            <select
+              value={state.who || mine || ""}
+              onChange={(e) => patch({ who: e.target.value })}
+              required
+              aria-label="Инструктор"
+            >
               <option value="">— инструктор —</option>
               {drivers.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -2585,7 +2639,9 @@ function BookFor({
             </span>
           </label>
         )}
-        <button className="button small">Записать</button>
+        <button className="button small">
+          {slot === "custom" ? "Сохранить запись" : "Записать"}
+        </button>
         <small className="muted">
           Запись подтверждается сразу. Ученик видит её у себя в кабинете. Чтобы
           записать на несколько занятий, повторите.
