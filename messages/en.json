@@ -183,6 +183,7 @@
   "accountExists": "An account already exists.",
   "badCredentials": "Wrong phone number or password.",
   "rateLimit": "Too many requests. Try again later.",
+  "yardOnlySlot": "This is a yard slot: it can only be used for yard lessons.",
   "cityOnlySlot": "After dark only city driving is offered; the yard needs daylight.",
   "kitTitle": "Your package",
   "kitSubmit": "Place order",

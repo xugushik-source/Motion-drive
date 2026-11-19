@@ -803,6 +803,13 @@ export async function POST(
               (v.instructor_id && v.instructor_id !== slot.instructor_id)
             )
               return fail("slotUnavailable", 409);
+            // a yard slot takes yard lessons only
+            if (
+              slot.kind === "yard" &&
+              (v.lesson_kind ||
+                lessonKindOf(pack?.id, pack?.program || v.program)) !== "yard"
+            )
+              return fail("yardOnlySlot", 409);
             // after dark only city driving is offered; the yard needs daylight
             if (
               slot.kind === "city" &&
@@ -1112,6 +1119,8 @@ export async function POST(
             start: z.iso.datetime(),
             end: z.iso.datetime(),
             intervalMinutes: z.number().int().min(15).max(240).optional(),
+            // yard lessons are 25 minutes each (book two in a row for fifty), city lessons are longer
+            kind: z.enum(["any", "yard", "city"]).default("any"),
           })
           .parse(body);
         const instructorId = v.instructor_id || null;
@@ -1146,16 +1155,23 @@ export async function POST(
           v.start,
         );
         if (overlap) return fail("slotUnavailable", 409);
-        const interval = (v.intervalMinutes || (end - start) / 60000) * 60000;
-        if ((end - start) % interval !== 0 || (end - start) / interval > 48)
-          return fail("invalid");
+        // The window may start and end at any time; it is cut into whole lessons and what does not fit
+        // at the end is left unopened.
+        const interval =
+          (v.kind === "yard"
+            ? 25
+            : v.intervalMinutes || (end - start) / 60000) * 60000;
+        const count = Math.floor((end - start) / interval);
+        if (count < 1 || count > 48) return fail("invalid");
+        const leftover = Math.round((end - start - count * interval) / 60000);
         const ids = [];
-        for (let at = start; at < end; at += interval) {
+        for (let k = 0; k < count; k++) {
+          const at = start + k * interval;
           const id = randomUUID();
           ids.push(id);
           await db
             .prepare(
-              "INSERT INTO slots(id,instructor_id,city,start,end) VALUES(?,?,?,?,?)",
+              'INSERT INTO slots(id,instructor_id,city,start,"end",kind) VALUES(?,?,?,?,?,?)',
             )
             .run(
               id,
@@ -1163,12 +1179,13 @@ export async function POST(
               v.city,
               new Date(at).toISOString(),
               new Date(at + interval).toISOString(),
+              v.kind,
             );
         }
         await db
           .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
           .run(user.id, "slot:create", JSON.stringify({ ids, ...v }));
-        return json({ id: ids[0], ids });
+        return json({ id: ids[0], ids, leftover });
       });
     if (p[0] === "exam") {
       if (p[1] === "start") {
@@ -2491,6 +2508,17 @@ async function openSchedule(o: {
               )?.n || 0,
             ) > k;
         if (have) continue;
+        // never over a lesson the office opened by hand at another time
+        if (
+          who &&
+          (await one(
+            "SELECT id FROM slots WHERE instructor_id=? AND start<? AND end>?",
+            who,
+            l.end,
+            l.start,
+          ))
+        )
+          continue;
         await db
           .prepare(
             'INSERT INTO slots(id,instructor_id,city,start,"end",available,kind) VALUES(?,?,?,?,?,1,?)',

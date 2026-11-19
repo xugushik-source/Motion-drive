@@ -106,6 +106,21 @@ export default function Chessboard({
     return { slot, state: "free" };
   };
 
+  // free lessons that follow one another for the same instructor (for a longer yard session)
+  const chainOf = (slot: Row) => {
+    const out = [slot];
+    for (;;) {
+      const last = out[out.length - 1]!;
+      const next = slots.find(
+        (x) =>
+          (x.instructor_id || null) === (last.instructor_id || null) &&
+          x.start === last.end &&
+          cellOf(x).state === "free",
+      );
+      if (!next || out.length >= 4) return out;
+      out.push(next);
+    }
+  };
   const daySlots = slots.filter((s) => localDay(s.start) === day);
   // columns: every instructor who has lessons that day (all instructors when none do), plus unassigned
   const columns: { id: string | null; name: string }[] = [
@@ -116,21 +131,14 @@ export default function Chessboard({
       ? [{ id: null, name: "Без инструктора" }]
       : []),
   ];
-  const hours = daySlots.length
-    ? Array.from(
-        {
-          length:
-            Math.max(...daySlots.map((s) => hourOf(s.end || s.start))) -
-            Math.min(...daySlots.map((s) => hourOf(s.start))) +
-            1,
-        },
-        (_, i) => Math.min(...daySlots.map((s) => hourOf(s.start))) + i,
-      )
-    : [];
-  const find = (col: string | null, h: number) =>
+  // rows are the real start times of the day (any minute), not whole hours
+  const times = [...new Set(daySlots.map((s) => timeOf(s.start)))].sort();
+  const find = (col: string | null, tm: string) =>
     daySlots.find(
-      (s) => (s.instructor_id || null) === col && hourOf(s.start) === h,
+      (s) => (s.instructor_id || null) === col && timeOf(s.start) === tm,
     );
+  const minutesOf = (s: Row) =>
+    Math.round((Date.parse(s.end) - Date.parse(s.start)) / 60000);
   const counts = (list: Row[]) => {
     let free = 0,
       busy = 0,
@@ -261,9 +269,9 @@ export default function Chessboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {hours.map((h) => (
+                  {times.map((h) => (
                     <tr key={h}>
-                      <th>{String(h).padStart(2, "0")}:00</th>
+                      <th>{h}</th>
                       {columns.map((c) => {
                         const s = find(c.id, h);
                         if (!s)
@@ -282,7 +290,8 @@ export default function Chessboard({
                                 "chess-cell cb-" +
                                 cell.state +
                                 (picked === s.id ? " picked" : "") +
-                                (s.kind === "city" ? " evening" : "")
+                                (s.kind === "city" ? " evening" : "") +
+                                (s.kind === "yard" ? " yardslot" : "")
                               }
                               onClick={() => setPicked(s.id)}
                               title={`${timeOf(s.start)}–${timeOf(s.end)} · ${STATE_TEXT[cell.state]}`}
@@ -298,14 +307,22 @@ export default function Chessboard({
                                       : cell.booking.lesson_kind === "city"
                                         ? "город"
                                         : ""}
+                                    {minutesOf(s) !== 60
+                                      ? ` · ${minutesOf(s)} мин`
+                                      : ""}
                                   </small>
                                 </>
                               ) : (
                                 <small>
                                   {cell.state === "free"
-                                    ? s.kind === "city"
-                                      ? "свободно · город"
-                                      : "свободно"
+                                    ? (s.kind === "city"
+                                        ? "свободно · город"
+                                        : s.kind === "yard"
+                                          ? "свободно · площадка"
+                                          : "свободно") +
+                                      (minutesOf(s) !== 60
+                                        ? ` · ${minutesOf(s)} мин`
+                                        : "")
                                     : STATE_TEXT[cell.state].toLowerCase()}
                                 </small>
                               )}
@@ -413,6 +430,7 @@ export default function Chessboard({
           onOpenStudent={onOpenStudent}
           goStudents={goStudents}
           onPay={onPay}
+          chain={chainOf(sel!)}
         />
       )}
     </div>
@@ -428,7 +446,9 @@ function Detail({
   onOpenStudent,
   goStudents,
   onPay,
+  chain,
 }: {
+  chain: Row[];
   cell: Cell;
   users: Row[];
   act: (path: string, body: any) => Promise<any>;
@@ -441,7 +461,8 @@ function Detail({
   const who = users.find((u) => u.id === slot.instructor_id)?.name;
   const [q, setQ] = useState("");
   const [student, setStudent] = useState("");
-  const [kind, setKind] = useState("city");
+  const [kind, setKind] = useState(slot.kind === "yard" ? "yard" : "city");
+  const [rows, setRows] = useState(1);
   const [gear, setGear] = useState("automatic");
   const students = users
     .filter((u) => u.role === "student")
@@ -488,7 +509,9 @@ function Detail({
               city: "akhalkalaki",
               program: "practice",
               gearbox: gear,
-              slot_ids: [slot.id],
+              slot_ids: (kind === "yard" ? chain.slice(0, rows) : [slot]).map(
+                (x) => x.id,
+              ),
               lesson_kind: kind,
               name: st.name,
               contact: st.phone || st.email || "-",
@@ -525,9 +548,25 @@ function Detail({
             onChange={(e) => setKind(e.target.value)}
             aria-label="Вид занятия"
           >
-            <option value="city">Город</option>
+            {slot.kind !== "yard" && <option value="city">Город</option>}
             {slot.kind !== "city" && <option value="yard">Площадка</option>}
           </select>
+          {kind === "yard" && chain.length > 1 && (
+            <select
+              value={rows}
+              onChange={(e) => setRows(Number(e.target.value))}
+              aria-label="Занятий подряд"
+            >
+              {chain.map((_, i) => (
+                <option key={i} value={i + 1}>
+                  {i + 1}{" "}
+                  {i === 0
+                    ? "занятие (25 мин)"
+                    : `подряд (${(i + 1) * 25} мин)`}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={gear}
             onChange={(e) => setGear(e.target.value)}

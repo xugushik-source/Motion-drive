@@ -114,6 +114,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
     [payFocus, setPayFocus] = useState<{ id: string; name: string } | null>(
       null,
     ),
+    [slotKind, setSlotKind] = useState("any"),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [editing, setEditing] = useState<Item | null>(null),
@@ -1191,7 +1192,8 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                 const base = {
                   city: f.city,
                   instructor_id: instructor ? user.id : f.instructor_id || null,
-                  intervalMinutes: Number(f.intervalMinutes),
+                  kind: String(f.kind || "any"),
+                  intervalMinutes: Number(f.intervalMinutes || 25),
                 };
                 const weeks = Number(f.weeks || 1);
                 const days = fd.getAll("wd").map(Number);
@@ -1201,7 +1203,14 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                     start: new Date(String(f.start) + "+04:00").toISOString(),
                     end: new Date(String(f.end) + "+04:00").toISOString(),
                   });
-                  if (r) form.reset();
+                  if (r) {
+                    form.reset();
+                    setSlotKind("any");
+                    if (r.leftover)
+                      setNotice(
+                        `Открыто занятий: ${r.ids.length}. Последние ${r.leftover} мин. окна не вошли в целое занятие.`,
+                      );
+                  }
                   return;
                 }
                 // Repeat the same hours on the chosen weekdays for N weeks.
@@ -1269,15 +1278,36 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                   <input required type="datetime-local" name="end" />
                 </Field>
               </div>
-              <Field label={t("slotDuration")}>
-                <select name="intervalMinutes" defaultValue="60">
-                  {[30, 45, 60, 90, 120].map((n) => (
-                    <option key={n} value={n}>
-                      {n} {t("minutes")}
-                    </option>
-                  ))}
+              <Field label="Вид занятий">
+                <select
+                  name="kind"
+                  value={slotKind}
+                  onChange={(e) => setSlotKind(e.target.value)}
+                >
+                  <option value="any">Любые (город или площадка)</option>
+                  <option value="yard">Площадка: занятия по 25 минут</option>
+                  <option value="city">Город</option>
                 </select>
               </Field>
+              {slotKind === "yard" ? (
+                <p className="muted">
+                  Занятие на площадке длится 25 минут. Задайте любое время
+                  начала и конца: окно нарежется на занятия по 25 минут
+                  (например, 10:00–13:00 даст 7 занятий, остаток в конце не
+                  открывается). Чтобы ученик ездил 50 минут, он берёт два
+                  занятия подряд.
+                </p>
+              ) : (
+                <Field label={t("slotDuration")}>
+                  <select name="intervalMinutes" defaultValue="60">
+                    {[30, 45, 60, 90, 120].map((n) => (
+                      <option key={n} value={n}>
+                        {n} {t("minutes")}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               <div className="repeat-box">
                 <Field label={t("repeatWeeks")}>
                   <select name="weeks" defaultValue="1">
@@ -2362,6 +2392,7 @@ function BookFor({
   const free = slots
     .filter((s) => s.city === "akhalkalaki")
     .filter((s) => kind !== "yard" || s.kind !== "city")
+    .filter((s) => kind !== "city" || s.kind !== "yard")
     .filter((s) => everyone || !mine || s.instructor_id === mine)
     .slice(0, 80);
   return (
