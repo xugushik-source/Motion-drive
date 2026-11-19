@@ -247,6 +247,10 @@ export async function GET(
             : [],
       );
     }
+    if (p[0] === "version")
+      return json({
+        id: (process.env.VERCEL_GIT_COMMIT_SHA || "dev").slice(0, 7),
+      });
     if (p[0] === "slots") {
       await autoOpenSchedule();
       return json(

@@ -3022,3 +3022,6 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .chess-switch { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .chess-switch button { padding: 8px 16px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .chess-switch button.on { background: #101712; color: #fff; }
+
+.update-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; background: #fff3ee; border: 1px solid #ffd2c2; }
+.build-stamp { display: block; margin-top: 10px; color: var(--muted); font-size: 10px; }

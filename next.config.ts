@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+// The version of the site, so that an open page can tell it is out of date.
+const build = (process.env.VERCEL_GIT_COMMIT_SHA || "dev").slice(0, 7);
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: {
+    NEXT_PUBLIC_BUILD_ID: build,
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
+  },
   serverExternalPackages: ["node:sqlite"],
   async headers() {
     return [

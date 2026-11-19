@@ -189,6 +189,20 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
     setNotice("");
     window.scrollTo({ top: 0 });
   };
+  // A page that stays open for days must say when the site has been updated.
+  const [stale, setStale] = useState(false);
+  useEffect(() => {
+    const mine = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
+    const check = () =>
+      api("version")
+        .then((v) =>
+          setStale(v.id !== "dev" && mine !== "dev" && v.id !== mine),
+        )
+        .catch(() => {});
+    check();
+    const timer = setInterval(check, 120000);
+    return () => clearInterval(timer);
+  }, []);
   // Staff get new orders and applications without reloading the page.
   useEffect(() => {
     if (!["admin", "manager", "operator"].includes(user.role)) return;
@@ -356,6 +370,40 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
               ))}
             </div>
           ))}
+        {stale && (
+          <div className="notice update-banner" role="status">
+            <span>
+              Вышла новая версия сайта. Обновите страницу, чтобы увидеть
+              изменения.
+            </span>
+            <button
+              type="button"
+              className="button small"
+              onClick={() => window.location.reload()}
+            >
+              Обновить
+            </button>
+          </div>
+        )}
+        <small className="build-stamp">
+          Версия сайта: {process.env.NEXT_PUBLIC_BUILD_ID || "dev"}
+          {process.env.NEXT_PUBLIC_BUILD_TIME
+            ? " · " +
+              new Date(
+                Date.parse(process.env.NEXT_PUBLIC_BUILD_TIME) + 4 * 3600e3,
+              )
+                .toISOString()
+                .slice(8, 10) +
+              "." +
+              process.env.NEXT_PUBLIC_BUILD_TIME.slice(5, 7) +
+              " " +
+              new Date(
+                Date.parse(process.env.NEXT_PUBLIC_BUILD_TIME) + 4 * 3600e3,
+              )
+                .toISOString()
+                .slice(11, 16)
+            : ""}
+        </small>
         <div className="workspace-links">
           <Link href={"/" + locale}>
             <ArrowLeft size={16} />
