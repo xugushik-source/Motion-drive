@@ -574,9 +574,13 @@ export function Booking({
     ? Number(pack!.price) *
       (perLesson ? Math.max(1, picked.length || count) : 1)
     : null;
+  // one yard for the school: a yard lesson cannot take a time when someone else is on it
+  const yardLesson = String(pack?.id || "").includes("yard");
   const available = slots.filter(
     (s) =>
-      s.city === bookCity && (!instructor || s.instructor_id === instructor),
+      s.city === bookCity &&
+      (!instructor || s.instructor_id === instructor) &&
+      !(yardLesson && Number(s.yard_busy)),
   );
   const pickedSlots = picked
     .map((id) => slots.find((s) => s.id === id))

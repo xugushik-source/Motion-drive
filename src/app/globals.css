@@ -3033,3 +3033,4 @@ html[data-intro="seen"] .intro-curtain { display: none; }
 .today-guide span { flex: 1; display: grid; gap: 2px; }
 .today-guide small { color: var(--muted); font-size: 13px; }
 @media (max-width: 1100px) { .workspace-nav .guide-link { width: 100%; flex: 0 0 100%; } }
+.cb-yardbusy { background: repeating-linear-gradient(45deg, #ffe3d6, #ffe3d6 5px, #fff3ec 5px, #fff3ec 10px); }

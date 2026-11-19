@@ -2420,6 +2420,7 @@ function BookFor({
     .filter((s) => s.city === "akhalkalaki")
     .filter((s) => kind !== "yard" || s.kind !== "city")
     .filter((s) => kind !== "city" || s.kind !== "yard")
+    .filter((s) => kind !== "yard" || !Number(s.yard_busy))
     .filter((s) => everyone || !mine || s.instructor_id === mine)
     .slice(0, 80);
   return (

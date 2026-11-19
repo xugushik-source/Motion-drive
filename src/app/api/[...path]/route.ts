@@ -254,9 +254,11 @@ export async function GET(
     if (p[0] === "slots") {
       await autoOpenSchedule();
       return json(
-        await all(
-          "SELECT s.id,s.city,s.start,s.end,s.instructor_id,s.kind FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
-          new Date().toISOString(),
+        await markYardBusy(
+          await all(
+            "SELECT s.id,s.city,s.start,s.end,s.instructor_id,s.kind FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
+            new Date().toISOString(),
+          ),
         ),
       );
     }
@@ -327,8 +329,10 @@ export async function GET(
               user.id,
             ),
         slots: staff
-          ? await all(
-              "SELECT s.*,b.id AS booking_id,b.status AS booking_status FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') ORDER BY s.start",
+          ? await markYardBusy(
+              await all(
+                "SELECT s.*,b.id AS booking_id,b.status AS booking_status FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') ORDER BY s.start",
+              ),
             )
           : instructor
             ? await all(
@@ -803,6 +807,21 @@ export async function POST(
               (v.instructor_id && v.instructor_id !== slot.instructor_id)
             )
               return fail("slotUnavailable", 409);
+            // the yard is one for the whole school
+            if (
+              (v.lesson_kind ||
+                lessonKindOf(pack?.id, pack?.program || v.program)) === "yard"
+            ) {
+              await db
+                .prepare(
+                  "INSERT INTO records(id,kind,data) VALUES('lock:yard','calendar','{}') ON CONFLICT(id) DO NOTHING",
+                )
+                .run();
+              await one(
+                "SELECT id FROM records WHERE id='lock:yard' FOR UPDATE",
+              );
+              if (await yardBusy(slot)) return fail("yardBusy", 409);
+            }
             // a yard slot takes yard lessons only
             if (
               slot.kind === "yard" &&
@@ -991,6 +1010,8 @@ export async function POST(
             Date.parse(slot.start) <= Date.now()
           )
             return fail("slotUnavailable", 409);
+          if (b.lesson_kind === "yard" && (await yardBusy(slot, b.id)))
+            return fail("yardBusy", 409);
           try {
             await db
               .prepare(
@@ -1155,6 +1176,16 @@ export async function POST(
           v.start,
         );
         if (overlap) return fail("slotUnavailable", 409);
+        // one yard: the yard hours of two instructors must not overlap
+        if (
+          v.kind === "yard" &&
+          (await one(
+            "SELECT id FROM slots WHERE kind='yard' AND start<? AND end>?",
+            v.end,
+            v.start,
+          ))
+        )
+          return fail("yardWindowTaken", 409);
         // The window may start and end at any time (in whole fives of minutes); it is cut into whole
         // lessons and what does not fit at the end is left unopened.
         const lesson = v.intervalMinutes || (v.kind === "yard" ? 25 : 60);
@@ -2448,6 +2479,40 @@ async function lessonPrice(kind: string, gearbox: string) {
         : "";
   const price = Number(list.find((x) => x.id === id)?.price);
   return Number.isFinite(price) && price > 0 ? Math.round(price * 100) : 0;
+}
+/**
+ * There is one yard for the whole school: while a student drives there with one instructor, nobody else
+ * can have a yard lesson in the same time. City lessons are not affected.
+ */
+async function yardBusy(slot: Row, exceptBooking = "") {
+  return !!(await one(
+    `SELECT b.id FROM bookings b JOIN slots s ON s.id=b.slot_id
+     WHERE b.lesson_kind='yard' AND b.status IN ('pending','confirmed','completed')
+       AND s.id<>? AND s.start<? AND s.end>? AND b.id<>?`,
+    slot.id,
+    slot.end,
+    slot.start,
+    exceptBooking,
+  ));
+}
+/** Marks free lessons that cannot be used for the yard because somebody else is on it at that time. */
+async function markYardBusy(rows: Row[]) {
+  const busy = await all(
+    `SELECT s.id,s.start,s.end FROM bookings b JOIN slots s ON s.id=b.slot_id
+     WHERE b.lesson_kind='yard' AND b.status IN ('pending','confirmed','completed') AND s.end>?`,
+    new Date().toISOString(),
+  );
+  return rows.map((r) => ({
+    ...r,
+    yard_busy: busy.some(
+      (x) =>
+        x.id !== r.id &&
+        String(x.start) < String(r.end) &&
+        String(x.end) > String(r.start),
+    )
+      ? 1
+      : 0,
+  }));
 }
 /** The local (Georgian, UTC+4) calendar day n days from today as YYYY-MM-DD. */
 const localDay = (n: number) =>

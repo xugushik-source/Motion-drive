@@ -29,7 +29,15 @@ const pretty = (day: string) =>
 type Cell = {
   slot: Row;
   booking?: Row;
-  state: "free" | "closed" | "pending" | "confirmed" | "wait" | "done" | "past";
+  state:
+    | "free"
+    | "closed"
+    | "pending"
+    | "confirmed"
+    | "wait"
+    | "done"
+    | "yardbusy"
+    | "past";
 };
 const STATE_TEXT: Record<Cell["state"], string> = {
   free: "Свободно",
@@ -38,6 +46,7 @@ const STATE_TEXT: Record<Cell["state"], string> = {
   confirmed: "Записан",
   wait: "Проведён, ждёт принятия",
   done: "Принят",
+  yardbusy: "Площадка занята другим инструктором",
   past: "Прошло",
 };
 
@@ -103,6 +112,9 @@ export default function Chessboard({
     }
     if (!Number(slot.available)) return { slot, state: "closed" };
     if (Date.parse(slot.start) <= now) return { slot, state: "past" };
+    // one yard for the school: its hours are unusable while another instructor is on it
+    if (slot.kind === "yard" && Number(slot.yard_busy))
+      return { slot, state: "yardbusy" };
     return { slot, state: "free" };
   };
 
@@ -115,7 +127,8 @@ export default function Chessboard({
         (x) =>
           (x.instructor_id || null) === (last.instructor_id || null) &&
           x.start === last.end &&
-          cellOf(x).state === "free",
+          cellOf(x).state === "free" &&
+          !Number(x.yard_busy),
       );
       if (!next || out.length >= 4) return out;
       out.push(next);
@@ -238,6 +251,7 @@ export default function Chessboard({
             "confirmed",
             "wait",
             "done",
+            "yardbusy",
             "closed",
           ] as Cell["state"][]
         ).map((s) => (
@@ -319,7 +333,9 @@ export default function Chessboard({
                                         ? "свободно · город"
                                         : s.kind === "yard"
                                           ? "свободно · площадка"
-                                          : "свободно") +
+                                          : Number(s.yard_busy)
+                                            ? "свободно · только город"
+                                            : "свободно") +
                                       (minutesOf(s) !== 60
                                         ? ` · ${minutesOf(s)} мин`
                                         : "")
@@ -461,7 +477,9 @@ function Detail({
   const who = users.find((u) => u.id === slot.instructor_id)?.name;
   const [q, setQ] = useState("");
   const [student, setStudent] = useState("");
-  const [kind, setKind] = useState(slot.kind === "yard" ? "yard" : "city");
+  const [kind, setKind] = useState(
+    slot.kind === "yard" && !Number(slot.yard_busy) ? "yard" : "city",
+  );
   const [rows, setRows] = useState(1);
   const [gear, setGear] = useState("automatic");
   const students = users
@@ -549,7 +567,9 @@ function Detail({
             aria-label="Вид занятия"
           >
             {slot.kind !== "yard" && <option value="city">Город</option>}
-            {slot.kind !== "city" && <option value="yard">Площадка</option>}
+            {slot.kind !== "city" && !Number(slot.yard_busy) && (
+              <option value="yard">Площадка</option>
+            )}
           </select>
           {kind === "yard" && chain.length > 1 && (
             <select
@@ -609,6 +629,14 @@ function Detail({
             </button>
           </small>
         </form>
+      )}
+
+      {state === "yardbusy" && (
+        <p className="muted">
+          Площадка одна: в это время на ней уже занимается ученик другого
+          инструктора. Это время для площадки недоступно (для города можно
+          записывать на часы без метки «площадка»).
+        </p>
       )}
 
       {state === "closed" && (
