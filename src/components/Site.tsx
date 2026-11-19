@@ -938,8 +938,8 @@ export default function Site({
                   />
                 ) : (
                   <>
-                    <Notice>{t("noAccess")}</Notice>
-                    <Auth locale={locale} t={t} onUser={setUser} />
+                    {user ? <Notice>{t("noAccess")}</Notice> : null}
+                    <Auth locale={locale} t={t} onUser={setUser} staff />
                   </>
                 ))}
               {page === "exam" &&

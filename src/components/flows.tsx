@@ -105,7 +105,7 @@ function AccountFields({
         />
       </Field>
       {!register && <p className="hint">{t("loginHint")}</p>}
-      <Field label={t("password")}>
+      <Field label={register ? t("password") : t("passwordPlain")}>
         <input
           name="password"
           type="password"
@@ -158,7 +158,8 @@ export function Auth({
   locale,
   t,
   onUser,
-}: { onUser: (u: Item) => void } & Common) {
+  staff = false,
+}: { onUser: (u: Item) => void; staff?: boolean } & Common) {
   const [register, setRegister] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -166,16 +167,18 @@ export function Auth({
     <div className="auth-layout">
       <div>
         <span className="eyebrow">MOTION DRIVE / YOUR SPACE</span>
-        <h2>{t("account")}</h2>
-        <p>{t("loginToBook")}</p>
-        <div className="auth-perks">
-          {["bookings", "progress", "materials"].map((k) => (
-            <p key={k}>
-              <Check size={18} />
-              {t(k)}
-            </p>
-          ))}
-        </div>
+        <h2>{staff ? t("staffLoginTitle") : t("account")}</h2>
+        <p>{staff ? t("staffLoginText") : t("loginToBook")}</p>
+        {!staff && (
+          <div className="auth-perks">
+            {["bookings", "progress", "materials"].map((k) => (
+              <p key={k}>
+                <Check size={18} />
+                {t(k)}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
       <form
         className="form-card"
@@ -193,23 +196,25 @@ export function Auth({
           }
         }}
       >
-        <div className="tabs">
-          <button
-            type="button"
-            className={!register ? "selected" : ""}
-            onClick={() => setRegister(false)}
-          >
-            {t("login")}
-          </button>
-          <button
-            type="button"
-            className={register ? "selected" : ""}
-            onClick={() => setRegister(true)}
-          >
-            {t("register")}
-          </button>
-        </div>
-        <AccountFields register={register} t={t} />
+        {!staff && (
+          <div className="tabs">
+            <button
+              type="button"
+              className={!register ? "selected" : ""}
+              onClick={() => setRegister(false)}
+            >
+              {t("login")}
+            </button>
+            <button
+              type="button"
+              className={register ? "selected" : ""}
+              onClick={() => setRegister(true)}
+            >
+              {t("register")}
+            </button>
+          </div>
+        )}
+        <AccountFields register={register && !staff} t={t} />
         {register && (
           <label className="checkbox">
             <input type="checkbox" required />
