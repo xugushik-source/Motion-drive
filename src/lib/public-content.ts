@@ -222,7 +222,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       id: "faq-ru-4",
       question: "Сколько стоит обучение?",
       answer:
-        "Теория: группа — 150 ₾ (4 недели, пн/ср/пт в Ахалкалаки, вт/чт/сб в Ниноцминде, новые группы каждые 15 дней, ближайший старт 23 ноября), индивидуально — 300 ₾ (10 лекций за 2 недели). Вождение по городу: автомат — 60 ₾ за час, механика — 80 ₾ за час. Площадка: 40 ₾ за 25 минут, цена одна для автомата и механики. Экзаменационные маршруты в Ахалцихе: урок из 3 маршрутов — автомат 100 ₾, механика 120 ₾. Справка об обучении: категории A–E — 70 ₾, T и S — 120 ₾, срок 12 рабочих дней. Скидок за количество часов нет.",
+        "Теория: группа — 150 ₾ (4 недели, пн/ср/пт в Ахалкалаки, вт/чт/сб в Ниноцминде, новые группы каждые 15 дней, ближайший старт 23 ноября), индивидуально — 300 ₾ (10 лекций за 2 недели). Вождение по городу: автомат — 60 ₾ за час, механика — 70 ₾ за час. Площадка: 40 ₾ за 25 минут, цена одна для автомата и механики. Экзаменационные маршруты в Ахалцихе: урок из 3 маршрутов — автомат 100 ₾, механика 120 ₾. Справка об обучении: категории A–E — 70 ₾, T и S — 120 ₾, срок 12 рабочих дней. Скидок за количество часов нет.",
       aliases: [
         "цена",
         "стоимость",
@@ -334,7 +334,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       id: "faq-en-4",
       question: "How much does tuition cost?",
       answer:
-        "Theory: group — 150 ₾ (4 weeks, Mon/Wed/Fri in Akhalkalaki, Tue/Thu/Sat in Ninotsminda, new groups every 15 days, next start 23 November), individual — 300 ₾ (10 lectures over 2 weeks). City driving: automatic — 60 ₾ per hour, manual — 80 ₾ per hour. Training ground: 40 ₾ per 25 minutes, same for automatic and manual. Exam routes in Akhaltsikhe: a lesson of 3 routes — automatic 100 ₾, manual 120 ₾. Training certificate: categories A–E — 70 ₾, T and S — 120 ₾, ready in 12 working days. There are no volume discounts.",
+        "Theory: group — 150 ₾ (4 weeks, Mon/Wed/Fri in Akhalkalaki, Tue/Thu/Sat in Ninotsminda, new groups every 15 days, next start 23 November), individual — 300 ₾ (10 lectures over 2 weeks). City driving: automatic — 60 ₾ per hour, manual — 70 ₾ per hour. Training ground: 40 ₾ per 25 minutes, same for automatic and manual. Exam routes in Akhaltsikhe: a lesson of 3 routes — automatic 100 ₾, manual 120 ₾. Training certificate: categories A–E — 70 ₾, T and S — 120 ₾, ready in 12 working days. There are no volume discounts.",
       aliases: ["price", "cost", "fees", "~much", "prices", "tuition", "rate"],
       locale: "en",
       status: "published",
@@ -433,7 +433,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       id: "faq-ka-4",
       question: "რა ღირს სწავლა?",
       answer:
-        "თეორია: ჯგუფური — 150 ₾ (4 კვირა, ახალქალაქში ორშ/ოთხ/პარ, ნინოწმინდაში სამ/ხუთ/შაბ, ახალი ჯგუფები ყოველ 15 დღეში, უახლოესი დაწყება 23 ნოემბერს), ინდივიდუალური — 300 ₾ (10 ლექცია 2 კვირაში). ქალაქში მართვა: ავტომატიკა — 60 ₾ საათში, მექანიკა — 80 ₾ საათში. მოედანი: 40 ₾ 25 წუთზე, ფასი ერთია ავტომატიკისა და მექანიკისთვის. საგამოცდო მარშრუტები ახალციხეში: გაკვეთილი 3 მარშრუტით — ავტომატიკა 100 ₾, მექანიკა 120 ₾. სწავლების ცნობა: A–E — 70 ₾, T და S — 120 ₾, 12 სამუშაო დღეში. რაოდენობაზე ფასდაკლება არ არის.",
+        "თეორია: ჯგუფური — 150 ₾ (4 კვირა, ახალქალაქში ორშ/ოთხ/პარ, ნინოწმინდაში სამ/ხუთ/შაბ, ახალი ჯგუფები ყოველ 15 დღეში, უახლოესი დაწყება 23 ნოემბერს), ინდივიდუალური — 300 ₾ (10 ლექცია 2 კვირაში). ქალაქში მართვა: ავტომატიკა — 60 ₾ საათში, მექანიკა — 70 ₾ საათში. მოედანი: 40 ₾ 25 წუთზე, ფასი ერთია ავტომატიკისა და მექანიკისთვის. საგამოცდო მარშრუტები ახალციხეში: გაკვეთილი 3 მარშრუტით — ავტომატიკა 100 ₾, მექანიკა 120 ₾. სწავლების ცნობა: A–E — 70 ₾, T და S — 120 ₾, 12 სამუშაო დღეში. რაოდენობაზე ფასდაკლება არ არის.",
       aliases: ["ფასი", "ღირს", "საფასური", "ფასები", "ღირებულება"],
       locale: "ka",
       status: "published",
@@ -549,7 +549,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       id: "faq-hy-4",
       question: "Որքա՞ն արժե ուսուցումը։",
       answer:
-        "Տեսություն՝ խմբային — 150 ₾ (4 շաբաթ, Ախալքալաքում երկ/չրք/ուրբ, Նինոծմինդայում երք/հնգ/շաբ, նոր խմբեր 15 օրը մեկ, մոտակա մեկնարկը՝ նոյեմբերի 23), անհատական — 300 ₾ (10 դասախոսություն 2 շաբաթում)։ Վարում քաղաքում՝ ավտոմատ — 60 ₾ ժամը, մեխանիկա — 80 ₾ ժամը։ Ավտոդրոմ՝ 40 ₾ 25 րոպեի համար, գինը նույնն է ավտոմատի և մեխանիկայի համար։ Քննական երթուղիներ Ախալցիխեում՝ 3 երթուղիով դաս — ավտոմատ 100 ₾, մեխանիկա 120 ₾։ Ուսման տեղեկանք՝ A–E — 70 ₾, T և S — 120 ₾, 12 աշխատանքային օրում։ Քանակի համար զեղչ չկա։",
+        "Տեսություն՝ խմբային — 150 ₾ (4 շաբաթ, Ախալքալաքում երկ/չրք/ուրբ, Նինոծմինդայում երք/հնգ/շաբ, նոր խմբեր 15 օրը մեկ, մոտակա մեկնարկը՝ նոյեմբերի 23), անհատական — 300 ₾ (10 դասախոսություն 2 շաբաթում)։ Վարում քաղաքում՝ ավտոմատ — 60 ₾ ժամը, մեխանիկա — 70 ₾ ժամը։ Ավտոդրոմ՝ 40 ₾ 25 րոպեի համար, գինը նույնն է ավտոմատի և մեխանիկայի համար։ Քննական երթուղիներ Ախալցիխեում՝ 3 երթուղիով դաս — ավտոմատ 100 ₾, մեխանիկա 120 ₾։ Ուսման տեղեկանք՝ A–E — 70 ₾, T և S — 120 ₾, 12 աշխատանքային օրում։ Քանակի համար զեղչ չկա։",
       aliases: [
         "գին",
         "արժե",
@@ -2369,7 +2369,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       priceType: "perLesson",
       lessons: 1,
       lessonMinutes: 60,
-      price: 80,
+      price: 70,
       program: "practice",
       gearbox: "manual",
       bookable: true,
@@ -2673,7 +2673,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       priceType: "perLesson",
       lessons: 1,
       lessonMinutes: 60,
-      price: 80,
+      price: 70,
       program: "practice",
       gearbox: "manual",
       bookable: true,
@@ -2975,7 +2975,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       priceType: "perLesson",
       lessons: 1,
       lessonMinutes: 60,
-      price: 80,
+      price: 70,
       program: "practice",
       gearbox: "manual",
       bookable: true,
@@ -3277,7 +3277,7 @@ export const publicRecords: Record<string, Record<string, any>[]> = {
       priceType: "perLesson",
       lessons: 1,
       lessonMinutes: 60,
-      price: 80,
+      price: 70,
       program: "practice",
       gearbox: "manual",
       bookable: true,

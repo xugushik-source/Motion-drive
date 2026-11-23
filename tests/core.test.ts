@@ -187,7 +187,7 @@ test("the published price list is valid and identical in every language", async 
   const price = (id: string) =>
     publicRecords.packages.find((p) => p.id === id)!.price;
   assert.equal(price("city-automatic-ru"), 60);
-  assert.equal(price("city-manual-ru"), 80);
+  assert.equal(price("city-manual-ru"), 70);
   assert.equal(price("yard-ru"), 40);
   assert.equal(price("theory-group-ru"), 150);
   assert.equal(price("individual-auto-ru"), 80);

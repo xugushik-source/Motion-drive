@@ -221,7 +221,7 @@ function seedDemo(d: DatabaseSync) {
       DEMO.studentPhone,
       "",
       series,
-      "Вождение по городу · механика · 4×60 · 4 × 80 ₾ = 320 ₾",
+      "Вождение по городу · механика · 4×60 · 4 × 70 ₾ = 280 ₾",
     );
 }
 function poolConfig() {
