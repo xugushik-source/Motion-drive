@@ -71,6 +71,8 @@ CREATE TABLE IF NOT EXISTS motion_drive.collections(id TEXT PRIMARY KEY,from_use
 CREATE INDEX IF NOT EXISTS collections_to ON motion_drive.collections(to_user);
 ALTER TABLE motion_drive.slots ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'any';
 ALTER TABLE motion_drive.slots ADD COLUMN IF NOT EXISTS capacity INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS motion_drive.theory_groups(id TEXT PRIMARY KEY,name TEXT NOT NULL,lecturer_id TEXT REFERENCES motion_drive.users(id) ON DELETE SET NULL,scope TEXT NOT NULL CHECK(scope IN ('akhalkalaki','ninotsminda','visiting')),price INTEGER NOT NULL DEFAULT 0,starts TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',active INTEGER NOT NULL DEFAULT 1,created_by TEXT NOT NULL,created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+ALTER TABLE motion_drive.theory_enrollments ADD COLUMN IF NOT EXISTS group_id TEXT;
 ALTER TABLE motion_drive.expenses ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'cash';
 ALTER TABLE motion_drive.expenses ADD COLUMN IF NOT EXISTS person TEXT;
 ALTER TABLE motion_drive.payouts ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'cash';
@@ -91,7 +93,7 @@ CREATE TABLE IF NOT EXISTS motion_drive.uploads(id TEXT PRIMARY KEY,user_id TEXT
 -- RLS is defense in depth, including for the private schema. An app-only role is
 -- granted DML and policies separately; no browser key can access this schema.
 DO $$ DECLARE t text; BEGIN
- FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications','pay_items','payouts','theory_enrollments','expenses','collections','cash_adjust','role_pay'] LOOP
+ FOREACH t IN ARRAY ARRAY['users','sessions','records','bookings','slots','results','attempts','messages','audit','usage','limits','uploads','charges','payments','applications','pay_items','payouts','theory_enrollments','expenses','collections','cash_adjust','role_pay','theory_groups'] LOOP
  EXECUTE format('ALTER TABLE motion_drive.%I ENABLE ROW LEVEL SECURITY',t);
  END LOOP;
 END $$;

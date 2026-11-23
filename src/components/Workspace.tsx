@@ -38,6 +38,7 @@ import Roles from "./Roles";
 import Today from "./Today";
 import Guide from "./Guide";
 import Chessboard from "./Chessboard";
+import TheoryGroups from "./TheoryGroups";
 import { AddStudent, SetPersonalId } from "./OfficeStudent";
 import { ExpensesTab, MoneyOverview } from "./Money";
 type Props = {
@@ -78,7 +79,15 @@ const SECTIONS: [string, string[]][] = [
   ["Сегодня", ["today", "guide"]],
   [
     "Работа",
-    ["chess", "bookings", "applications", "students", "schedule", "lessons"],
+    [
+      "chess",
+      "bookings",
+      "applications",
+      "students",
+      "groups",
+      "schedule",
+      "lessons",
+    ],
   ],
   ["Деньги", ["payments", "expenses", "finance", "payroll", "salary", "mypay"]],
   ["Люди", ["staff", "roles", "instructors"]],
@@ -139,7 +148,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
   const canEdit = (kind: string) =>
     admin || (operator && STAFF_KINDS.includes(kind));
   const tabs = [
-    ...(staff ? ["today", "chess"] : []),
+    ...(staff ? ["today", "chess", "groups"] : []),
     ...(staff || instructor ? ["guide"] : []),
     ...(admin
       ? [
@@ -943,6 +952,18 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
             }}
           />
         )}
+        {tab === "groups" && staff && (
+          <TheoryGroups
+            groups={data.theoryGroups || []}
+            enrollments={data.enrollments || []}
+            users={data.users}
+            act={act}
+            goStudents={() => {
+              setTab("students");
+              window.scrollTo({ top: 0 });
+            }}
+          />
+        )}
         {tab === "roles" && admin && <Roles />}
         {tab === "staff" && admin && (
           <Staff
@@ -1025,6 +1046,7 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                     lecturers={data.users.filter(
                       (x: Item) => x.role === "lecturer",
                     )}
+                    groups={data.theoryGroups || []}
                     act={act}
                   />
                   <ShowId
@@ -2336,19 +2358,25 @@ function EnrollGroup({
   student,
   enrollments,
   lecturers,
+  groups,
   act,
 }: {
   student: Item;
   enrollments: Item[];
   lecturers: Item[];
+  groups: Item[];
   act: (path: string, body: any) => Promise<any>;
 }) {
   const mine = enrollments.find((e) => e.user_id === student.id);
-  const [scope, setScope] = useState("akhalkalaki");
-  if (mine)
+  const open = groups.filter((g) => Number(g.active) !== 0);
+  const [choice, setChoice] = useState("");
+  const group = open.find((g) => g.id === choice);
+  const individual = choice === "individual";
+  if (mine) {
+    const g = groups.find((x) => x.id === mine.group_id);
     return (
       <p className="muted">
-        Теория: <b>{GROUP_SCOPE[mine.scope]}</b>
+        Теория: <b>{g ? g.name : GROUP_SCOPE[mine.scope]}</b>
         {Number(mine.price) > 0 ? ` · ${Number(mine.price) / 100} ₾` : ""}
         {lecturers.find((l) => l.id === mine.lecturer_id)
           ? ` · лектор ${lecturers.find((l) => l.id === mine.lecturer_id)!.name}`
@@ -2365,6 +2393,7 @@ function EnrollGroup({
         </button>
       </p>
     );
+  }
   return (
     <details className="pay-add">
       <summary>
@@ -2372,43 +2401,55 @@ function EnrollGroup({
       </summary>
       <p className="muted">
         <b>Групповая теория: 150 ₾.</b> <b>Индивидуальная: 300 ₾.</b> Теорию
-        можно брать отдельно, без вождения. Стоимость сразу записывается ученику
-        в долг, оплату отмечайте в «Оплаты и долг».
+        можно брать отдельно, без вождения. Выберите группу по названию:
+        стоимость сразу записывается ученику в долг, оплату отмечайте в «Оплаты
+        и долг». Новые группы создаются в разделе «Группы теории».
       </p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
           const x = Object.fromEntries(new FormData(e.currentTarget));
+          if (!group && !individual) return;
           await act("theory/enroll", {
             user_id: student.id,
-            scope: x.scope,
-            price: x.price === "" ? THEORY_PRICE[String(x.scope)] : x.price,
-            lecturer_id: x.lecturer_id || null,
+            scope: individual ? "individual" : group!.scope,
+            group_id: individual ? null : group!.id,
+            price: x.price === "" ? (individual ? 300 : 150) : x.price,
+            lecturer_id: individual
+              ? x.lecturer_id || null
+              : group!.lecturer_id,
           });
+          setChoice("");
         }}
       >
         <select
-          name="scope"
-          value={scope}
-          onChange={(e) => setScope(e.target.value)}
+          value={choice}
+          onChange={(e) => setChoice(e.target.value)}
+          required
+          aria-label="Группа"
         >
-          {Object.entries(GROUP_SCOPE).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
+          <option value="">— выберите группу —</option>
+          {open.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name} · {enrollments.filter((e) => e.group_id === g.id).length}{" "}
+              чел.
             </option>
           ))}
+          <option value="individual">Индивидуально / мини-группа до 3</option>
         </select>
-        <input
-          name="price"
-          type="number"
-          step="0.01"
-          min="0"
-          inputMode="decimal"
-          aria-label="Стоимость курса, ₾"
-          defaultValue={THEORY_PRICE[scope]}
-          key={scope}
-        />
-        {lecturers.length > 0 && (
+        {(group || individual) && (
+          <input
+            name="price"
+            type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
+            aria-label="Стоимость курса, ₾"
+            defaultValue={individual ? 300 : Number(group!.price) / 100}
+            key={choice}
+          />
+        )}
+        {individual && lecturers.length > 0 && (
           <select
             name="lecturer_id"
             defaultValue={lecturers[0]?.id || ""}
@@ -2420,6 +2461,11 @@ function EnrollGroup({
               </option>
             ))}
           </select>
+        )}
+        {!open.length && (
+          <small className="muted">
+            Групп пока нет: создайте группу в разделе «Группы теории».
+          </small>
         )}
         <button className="button small">Записать</button>
       </form>

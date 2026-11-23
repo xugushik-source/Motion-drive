@@ -98,6 +98,7 @@ function localDb() {
       ["payouts", "method", "TEXT NOT NULL DEFAULT 'cash'"],
       ["charges", "kind", "TEXT NOT NULL DEFAULT 'other'"],
       ["charges", "booking_id", "TEXT"],
+      ["theory_enrollments", "group_id", "TEXT"],
     ] as const) {
       const have = sqlite.prepare(`PRAGMA table_info(${table})`).all() as {
         name: string;

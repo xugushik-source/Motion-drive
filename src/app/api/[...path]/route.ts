@@ -153,6 +153,41 @@ const publicKinds = [
   "materials",
   "translations",
 ];
+/** Students enrolled before named groups existed get a group per lecturer and branch, so nobody is left out. */
+async function ensureLegacyGroups() {
+  const orphans = await all(
+    "SELECT id,lecturer_id,scope FROM theory_enrollments WHERE voided=0 AND group_id IS NULL AND scope<>'individual'",
+  );
+  for (const e of orphans) {
+    const lecturer = e.lecturer_id
+      ? await one("SELECT name FROM users WHERE id=?", e.lecturer_id)
+      : null;
+    const place =
+      e.scope === "ninotsminda"
+        ? "Ниноцминда"
+        : e.scope === "visiting"
+          ? "Выездная"
+          : "Ахалкалаки";
+    const name = `Группа, ${place}${lecturer ? " · " + String(lecturer.name).split(" ")[0] : ""}`;
+    let g = await one(
+      "SELECT id FROM theory_groups WHERE name=? AND scope=?",
+      name,
+      e.scope,
+    );
+    if (!g) {
+      const id = randomUUID();
+      await db
+        .prepare(
+          "INSERT INTO theory_groups(id,name,lecturer_id,scope,price,created_by) VALUES(?,?,?,?,?,?)",
+        )
+        .run(id, name, e.lecturer_id || null, e.scope, 15000, "system");
+      g = { id };
+    }
+    await db
+      .prepare("UPDATE theory_enrollments SET group_id=? WHERE id=?")
+      .run(g.id, e.id);
+  }
+}
 async function approved(kind: string) {
   return (await records(kind)).filter(
     (r) =>
@@ -365,10 +400,20 @@ export async function GET(
           : 0,
         enrollments: staff
           ? (
-              await all(
-                "SELECT id,user_id,lecturer_id,scope,price,created FROM theory_enrollments WHERE voided=0 ORDER BY created DESC",
-              )
+              await (async () => {
+                await ensureLegacyGroups();
+                return all(
+                  "SELECT id,user_id,lecturer_id,scope,price,group_id,created FROM theory_enrollments WHERE voided=0 ORDER BY created DESC",
+                );
+              })()
             ).map((e) => ({ ...e, price: Number(e.price) }))
+          : [],
+        theoryGroups: staff
+          ? (
+              await all(
+                "SELECT id,name,lecturer_id,scope,price,starts,note,active FROM theory_groups ORDER BY active DESC,name",
+              )
+            ).map((g) => ({ ...g, price: Number(g.price) }))
           : [],
         records: staff
           ? Object.fromEntries(
@@ -1510,6 +1555,8 @@ export async function POST(
               "individual",
             ]),
             lecturer_id: z.string().max(80).nullable().optional(),
+            // a named group: the branch, the lecturer and the default price come from it
+            group_id: z.string().max(80).nullable().optional(),
             price: z.coerce
               .number()
               .min(0)
@@ -1525,6 +1572,24 @@ export async function POST(
           ))
         )
           return fail("invalid");
+        if (
+          await one(
+            "SELECT id FROM theory_enrollments WHERE user_id=? AND voided=0",
+            v.user_id,
+          )
+        )
+          return fail("alreadyEnrolled", 409);
+        const group = v.group_id
+          ? await one(
+              "SELECT * FROM theory_groups WHERE id=? AND active=1",
+              v.group_id,
+            )
+          : null;
+        if (v.group_id && !group) return fail("invalid");
+        if (group) {
+          v.scope = group.scope;
+          v.lecturer_id = group.lecturer_id || v.lecturer_id;
+        }
         const lecturer = v.lecturer_id
           ? await one(
               "SELECT id FROM users WHERE id=? AND role='lecturer' AND active=1",
@@ -1536,7 +1601,7 @@ export async function POST(
         const id = randomUUID();
         await db
           .prepare(
-            "INSERT INTO theory_enrollments(id,user_id,lecturer_id,scope,price,created,created_by) VALUES(?,?,?,?,?,?,?)",
+            "INSERT INTO theory_enrollments(id,user_id,lecturer_id,scope,price,created,created_by,group_id) VALUES(?,?,?,?,?,?,?,?)",
           )
           .run(
             id,
@@ -1546,6 +1611,7 @@ export async function POST(
             tetri(v.price),
             new Date().toISOString(),
             user.id,
+            group?.id || null,
           );
         // the course price becomes the student's debt at once (paid through «Оплаты и долг»)
         if (v.price > 0)
@@ -1557,9 +1623,11 @@ export async function POST(
               randomUUID(),
               v.user_id,
               id,
-              v.scope === "individual"
-                ? "Теория: индивидуальный курс"
-                : "Теория: групповой курс",
+              group
+                ? ("Теория: " + group.name).slice(0, 200)
+                : v.scope === "individual"
+                  ? "Теория: индивидуальный курс"
+                  : "Теория: групповой курс",
               "theory",
               tetri(v.price),
               user.id,
@@ -1571,6 +1639,65 @@ export async function POST(
             "theory:enroll",
             JSON.stringify({ id, user: v.user_id, scope: v.scope }),
           );
+        return json({ id });
+      }
+      if (p[1] === "group-set") {
+        const v = z
+          .object({
+            id: z.string().max(80).optional(),
+            name: z.string().trim().min(2).max(80),
+            lecturer_id: z.string().max(80).nullable().optional(),
+            scope: z.enum(["akhalkalaki", "ninotsminda", "visiting"]),
+            price: z.coerce.number().min(0).max(100000).multipleOf(0.01),
+            starts: z.string().trim().max(60).default(""),
+            note: z.string().trim().max(200).default(""),
+            active: z.boolean().default(true),
+          })
+          .parse(body);
+        if (
+          v.lecturer_id &&
+          !(await one(
+            "SELECT id FROM users WHERE id=? AND role='lecturer'",
+            v.lecturer_id,
+          ))
+        )
+          return fail("invalid");
+        const id = v.id || randomUUID();
+        if (v.id) {
+          await db
+            .prepare(
+              "UPDATE theory_groups SET name=?,lecturer_id=?,scope=?,price=?,starts=?,note=?,active=? WHERE id=?",
+            )
+            .run(
+              v.name,
+              v.lecturer_id || null,
+              v.scope,
+              tetri(v.price),
+              v.starts,
+              v.note,
+              v.active ? 1 : 0,
+              id,
+            );
+        } else {
+          await db
+            .prepare(
+              "INSERT INTO theory_groups(id,name,lecturer_id,scope,price,starts,note,active,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
+            )
+            .run(
+              id,
+              v.name,
+              v.lecturer_id || null,
+              v.scope,
+              tetri(v.price),
+              v.starts,
+              v.note,
+              v.active ? 1 : 0,
+              user.id,
+            );
+        }
+        await db
+          .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
+          .run(user.id, "theory:group", JSON.stringify({ id, name: v.name }));
         return json({ id });
       }
       if (p[1] === "unenroll") {
