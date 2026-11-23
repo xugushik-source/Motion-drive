@@ -2324,6 +2324,13 @@ const GROUP_SCOPE: Record<string, string> = {
   visiting: "Выездная группа",
   individual: "Индивидуально / мини-группа до 3",
 };
+/** Course prices of the theory: group 150 ₾, individual 300 ₾ (the price can be changed per student). */
+const THEORY_PRICE: Record<string, number> = {
+  akhalkalaki: 150,
+  ninotsminda: 150,
+  visiting: 150,
+  individual: 300,
+};
 /** Writes a student into a theory group (or individual theory); the lecturer's pay follows from it. */
 function EnrollGroup({
   student,
@@ -2342,6 +2349,7 @@ function EnrollGroup({
     return (
       <p className="muted">
         Теория: <b>{GROUP_SCOPE[mine.scope]}</b>
+        {Number(mine.price) > 0 ? ` · ${Number(mine.price) / 100} ₾` : ""}
         {lecturers.find((l) => l.id === mine.lecturer_id)
           ? ` · лектор ${lecturers.find((l) => l.id === mine.lecturer_id)!.name}`
           : ""}{" "}
@@ -2362,6 +2370,11 @@ function EnrollGroup({
       <summary>
         Теория: записать в группу (только если ученик проходит теорию)
       </summary>
+      <p className="muted">
+        <b>Групповая теория: 150 ₾.</b> <b>Индивидуальная: 300 ₾.</b> Теорию
+        можно брать отдельно, без вождения. Стоимость сразу записывается ученику
+        в долг, оплату отмечайте в «Оплаты и долг».
+      </p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -2369,7 +2382,7 @@ function EnrollGroup({
           await act("theory/enroll", {
             user_id: student.id,
             scope: x.scope,
-            price: x.price || 0,
+            price: x.price === "" ? THEORY_PRICE[String(x.scope)] : x.price,
             lecturer_id: x.lecturer_id || null,
           });
         }}
@@ -2391,11 +2404,8 @@ function EnrollGroup({
           step="0.01"
           min="0"
           inputMode="decimal"
-          placeholder={
-            scope === "individual"
-              ? "Стоимость курса, ₾ (например, 300)"
-              : "Стоимость курса, ₾ (например, 150)"
-          }
+          aria-label="Стоимость курса, ₾"
+          defaultValue={THEORY_PRICE[scope]}
           key={scope}
         />
         {lecturers.length > 0 && (

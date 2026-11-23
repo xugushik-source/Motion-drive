@@ -1515,6 +1515,23 @@ export async function POST(
             new Date().toISOString(),
             user.id,
           );
+        // the course price becomes the student's debt at once (paid through «Оплаты и долг»)
+        if (v.price > 0)
+          await db
+            .prepare(
+              "INSERT INTO charges(id,user_id,series_id,title,kind,amount,created_by) VALUES(?,?,?,?,?,?,?)",
+            )
+            .run(
+              randomUUID(),
+              v.user_id,
+              id,
+              v.scope === "individual"
+                ? "Теория: индивидуальный курс"
+                : "Теория: групповой курс",
+              "theory",
+              tetri(v.price),
+              user.id,
+            );
         await db
           .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
           .run(
@@ -1528,6 +1545,11 @@ export async function POST(
         const v = z.object({ id: z.string().max(80) }).parse(body);
         await db
           .prepare("UPDATE theory_enrollments SET voided=1 WHERE id=?")
+          .run(v.id);
+        await db
+          .prepare(
+            "UPDATE charges SET voided=1,void_reason='Убран из теории' WHERE series_id=? AND kind='theory' AND voided=0",
+          )
           .run(v.id);
         await db
           .prepare("INSERT INTO audit(actor,action,after_value) VALUES(?,?,?)")
