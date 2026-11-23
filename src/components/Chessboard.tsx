@@ -29,7 +29,10 @@ const pretty = (day: string) =>
 type Cell = {
   slot: Row;
   booking?: Row;
+  /** students of a group lesson (a lecturer's slot with several seats) */
+  seats?: Row[];
   state:
+    | "group"
     | "free"
     | "closed"
     | "pending"
@@ -41,6 +44,7 @@ type Cell = {
 };
 const STATE_TEXT: Record<Cell["state"], string> = {
   free: "Свободно",
+  group: "Группа",
   closed: "Закрыто",
   pending: "Ждёт подтверждения",
   confirmed: "Записан",
@@ -90,7 +94,10 @@ export default function Chessboard({
     return () => clearInterval(timer);
   }, []);
 
-  const instructors = users.filter((u) => u.role === "instructor");
+  // lecturers have their own columns next to the instructors (their group lessons take up to 35 students)
+  const instructors = users.filter(
+    (u) => u.role === "instructor" || u.role === "lecturer",
+  );
   const bySlot = useMemo(() => {
     const m = new Map<string, Row>();
     for (const b of bookings)
@@ -98,8 +105,23 @@ export default function Chessboard({
         m.set(String(b.slot_id), b);
     return m;
   }, [bookings]);
+  const seatsOf = useMemo(() => {
+    const m = new Map<string, Row[]>();
+    for (const b of bookings)
+      if (b.slot_id && ["pending", "confirmed", "completed"].includes(b.status))
+        m.set(String(b.slot_id), [...(m.get(String(b.slot_id)) || []), b]);
+    return m;
+  }, [bookings]);
   const now = Date.now();
   const cellOf = (slot: Row): Cell => {
+    if (Number(slot.capacity) > 1) {
+      const seats = seatsOf.get(String(slot.id)) || [];
+      if (!Number(slot.available) && !seats.length)
+        return { slot, state: "closed" };
+      if (Date.parse(slot.start) <= now && !seats.length)
+        return { slot, state: "past" };
+      return { slot, seats, state: "group" };
+    }
     const booking = bySlot.get(String(slot.id));
     if (booking) {
       if (booking.accepted_at) return { slot, booking, state: "done" };
@@ -139,7 +161,10 @@ export default function Chessboard({
   const columns: { id: string | null; name: string }[] = [
     ...instructors
       .filter((i) => daySlots.some((s) => s.instructor_id === i.id))
-      .map((i) => ({ id: String(i.id), name: String(i.name) })),
+      .map((i) => ({
+        id: String(i.id),
+        name: String(i.name) + (i.role === "lecturer" ? " (лектор)" : ""),
+      })),
     ...(daySlots.some((s) => !s.instructor_id)
       ? [{ id: null, name: "Без инструктора" }]
       : []),
@@ -158,7 +183,10 @@ export default function Chessboard({
       closed = 0;
     for (const s of list) {
       const c = cellOf(s);
-      if (c.state === "free") free++;
+      if (c.state === "group") {
+        if ((c.seats?.length || 0) < Number(s.capacity)) free++;
+        else busy++;
+      } else if (c.state === "free") free++;
       else if (c.state === "closed") closed++;
       else if (c.state !== "past") busy++;
       else if (c.booking) busy++;
@@ -247,6 +275,7 @@ export default function Chessboard({
         {(
           [
             "free",
+            "group",
             "pending",
             "confirmed",
             "wait",
@@ -310,7 +339,15 @@ export default function Chessboard({
                               onClick={() => setPicked(s.id)}
                               title={`${timeOf(s.start)}–${timeOf(s.end)} · ${STATE_TEXT[cell.state]}`}
                             >
-                              {cell.booking ? (
+                              {cell.state === "group" ? (
+                                <>
+                                  <b>
+                                    группа {cell.seats?.length || 0}/
+                                    {Number(s.capacity)}
+                                  </b>
+                                  <small>теория</small>
+                                </>
+                              ) : cell.booking ? (
                                 <>
                                   <b>
                                     {String(cell.booking.name).split(" ")[0]}
@@ -474,7 +511,10 @@ function Detail({
   onPay?: (id: string, name: string) => void;
 }) {
   const { slot, booking, state } = cell;
-  const who = users.find((u) => u.id === slot.instructor_id)?.name;
+  const whoUser = users.find((u) => u.id === slot.instructor_id);
+  const who = whoUser?.name;
+  const seatsNow = cell.seats || [];
+  const cap = Number(slot.capacity || 1);
   const [q, setQ] = useState("");
   const [student, setStudent] = useState("");
   const [kind, setKind] = useState(
@@ -500,8 +540,15 @@ function Detail({
           {timeOf(slot.end)}
         </strong>
         <span>
-          {who ? "Инструктор: " + who : "Инструктор не назначен"} ·{" "}
-          {slot.kind === "city" ? "вечер, только город" : "площадка или город"}
+          {who
+            ? (whoUser?.role === "lecturer" ? "Лектор: " : "Инструктор: ") + who
+            : "Инструктор не назначен"}{" "}
+          ·{" "}
+          {state === "group"
+            ? "групповая теория"
+            : slot.kind === "city"
+              ? "вечер, только город"
+              : "площадка или город"}
         </span>
         <button
           type="button"
@@ -515,6 +562,95 @@ function Detail({
       <p>
         <i className={"cb cb-" + state} /> <b>{STATE_TEXT[state]}</b>
       </p>
+
+      {state === "group" && (
+        <div className="chess-booking">
+          <p>
+            <strong>
+              Записано {seatsNow.length} из {cap}
+            </strong>
+          </p>
+          <ul className="plain-list">
+            {seatsNow.map((b) => (
+              <li key={String(b.id)}>
+                {b.name}
+                {b.contact && (
+                  <>
+                    {" · "}
+                    <a href={"tel:" + b.contact}>{b.contact}</a>
+                  </>
+                )}{" "}
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={async () => {
+                    if (
+                      confirm("Убрать " + b.name + " из этого занятия?") &&
+                      (await act("booking/status", {
+                        id: b.id,
+                        status: "cancelled",
+                      }))
+                    )
+                      close();
+                  }}
+                >
+                  убрать
+                </button>
+              </li>
+            ))}
+          </ul>
+          {seatsNow.length < cap ? (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const st = users.find((u) => u.id === student);
+                if (!st) return;
+                const r = await act("booking/create", {
+                  user_id: st.id,
+                  city: "akhalkalaki",
+                  program: "theory",
+                  gearbox: "none",
+                  slot_ids: [slot.id],
+                  lesson_kind: "theory",
+                  name: st.name,
+                  contact: st.phone || st.email || "-",
+                  note: "",
+                  consent: true,
+                  website: "",
+                });
+                if (r) close();
+              }}
+            >
+              <input
+                type="search"
+                placeholder="Найти ученика по имени или телефону"
+                aria-label="Поиск ученика"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+              <select
+                value={student}
+                onChange={(e) => setStudent(e.target.value)}
+                required
+                aria-label="Ученик"
+              >
+                <option value="">— выберите ученика —</option>
+                {students
+                  .filter((u) => !seatsNow.some((b) => b.user_id === u.id))
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                      {u.phone ? " · " + u.phone : ""}
+                    </option>
+                  ))}
+              </select>
+              <button className="button small">Добавить в группу</button>
+            </form>
+          ) : (
+            <p className="muted">Группа заполнена.</p>
+          )}
+        </div>
+      )}
 
       {state === "free" && (
         <form
