@@ -112,9 +112,15 @@ export default function Chessboard({
         m.set(String(b.slot_id), [...(m.get(String(b.slot_id)) || []), b]);
     return m;
   }, [bookings]);
+  // a lecturer's lesson is a group: the office adds any number of students, also after it has begun
+  const lecturerIds = new Set(
+    users.filter((u) => u.role === "lecturer").map((u) => String(u.id)),
+  );
+  const isGroupSlot = (slot: Row) =>
+    Number(slot.capacity) > 1 || lecturerIds.has(String(slot.instructor_id));
   const now = Date.now();
   const cellOf = (slot: Row): Cell => {
-    if (Number(slot.capacity) > 1) {
+    if (isGroupSlot(slot)) {
       const seats = seatsOf.get(String(slot.id)) || [];
       if (!Number(slot.available) && !seats.length)
         return { slot, state: "closed" };
@@ -184,7 +190,7 @@ export default function Chessboard({
     for (const s of list) {
       const c = cellOf(s);
       if (c.state === "group") {
-        if ((c.seats?.length || 0) < Number(s.capacity)) free++;
+        if ((c.seats?.length || 0) < Number(s.capacity || 1)) free++;
         else busy++;
       } else if (c.state === "free") free++;
       else if (c.state === "closed") closed++;
@@ -342,8 +348,10 @@ export default function Chessboard({
                               {cell.state === "group" ? (
                                 <>
                                   <b>
-                                    группа {cell.seats?.length || 0}/
-                                    {Number(s.capacity)}
+                                    группа {cell.seats?.length || 0}
+                                    {Number(s.capacity) > 1
+                                      ? "/" + Number(s.capacity)
+                                      : ""}
                                   </b>
                                   <small>теория</small>
                                 </>
@@ -567,7 +575,8 @@ function Detail({
         <div className="chess-booking">
           <p>
             <strong>
-              Записано {seatsNow.length} из {cap}
+              Записано {seatsNow.length}
+              {cap > 1 ? " из " + cap : ""}
             </strong>
           </p>
           <ul className="plain-list">
@@ -599,7 +608,7 @@ function Detail({
               </li>
             ))}
           </ul>
-          {seatsNow.length < cap ? (
+          {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -646,9 +655,7 @@ function Detail({
               </select>
               <button className="button small">Добавить в группу</button>
             </form>
-          ) : (
-            <p className="muted">Группа заполнена.</p>
-          )}
+          }
         </div>
       )}
 

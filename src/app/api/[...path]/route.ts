@@ -800,10 +800,19 @@ export async function POST(
               "SELECT * FROM slots WHERE id=? AND available=1 FOR UPDATE",
               slotId,
             );
+            // The office may add any number of students to a lecturer's lesson, also after it has begun
+            // (people join a running group, and the office records it later).
+            const staffGroup =
+              onBehalf &&
+              !!slot?.instructor_id &&
+              !!(await one(
+                "SELECT id FROM users WHERE id=? AND role='lecturer'",
+                slot.instructor_id,
+              ));
             if (
               !slot ||
               slot.city !== v.city ||
-              Date.parse(slot.start) <= Date.now() ||
+              (!staffGroup && Date.parse(slot.start) <= Date.now()) ||
               (v.instructor_id && v.instructor_id !== slot.instructor_id)
             )
               return fail("slotUnavailable", 409);
@@ -836,7 +845,10 @@ export async function POST(
                 lessonKindOf(pack?.id, pack?.program || v.program)) === "yard"
             )
               return fail("cityOnlySlot", 409);
-            if ((await seatsTaken(slotId)) >= Number(slot.capacity || 1))
+            if (
+              !staffGroup &&
+              (await seatsTaken(slotId)) >= Number(slot.capacity || 1)
+            )
               return fail("slotUnavailable", 409);
             if (
               await one(
