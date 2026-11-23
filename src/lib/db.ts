@@ -112,6 +112,12 @@ function localDb() {
       sqlite.exec(
         "ALTER TABLE slots ADD COLUMN kind TEXT NOT NULL DEFAULT 'any'",
       );
+    // a group lesson (theory) takes up to 35 students on one slot: the old one-booking-per-slot index goes
+    if (!slotNow.some((c) => c.name === "capacity"))
+      sqlite.exec(
+        "ALTER TABLE slots ADD COLUMN capacity INTEGER NOT NULL DEFAULT 1",
+      );
+    sqlite.exec("DROP INDEX IF EXISTS occupied_slot");
     sqlite.exec(
       "CREATE UNIQUE INDEX IF NOT EXISTS users_phone ON users(phone) WHERE phone IS NOT NULL; CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(lower(username)) WHERE username IS NOT NULL; CREATE INDEX IF NOT EXISTS bookings_series ON bookings(series_id);",
     );

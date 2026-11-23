@@ -256,7 +256,7 @@ export async function GET(
       return json(
         await markYardBusy(
           await all(
-            "SELECT s.id,s.city,s.start,s.end,s.instructor_id,s.kind FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') WHERE s.available=1 AND s.start>? AND b.id IS NULL ORDER BY s.start",
+            "SELECT s.id,s.city,s.start,s.end,s.instructor_id,s.kind,s.capacity,(SELECT count(*) FROM bookings b WHERE b.slot_id=s.id AND b.status IN ('pending','confirmed','completed')) AS taken FROM slots s WHERE s.available=1 AND s.start>? AND (SELECT count(*) FROM bookings b WHERE b.slot_id=s.id AND b.status IN ('pending','confirmed','completed'))<s.capacity ORDER BY s.start",
             new Date().toISOString(),
           ),
         ),
@@ -331,7 +331,7 @@ export async function GET(
         slots: staff
           ? await markYardBusy(
               await all(
-                "SELECT s.*,b.id AS booking_id,b.status AS booking_status FROM slots s LEFT JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') ORDER BY s.start",
+                "SELECT s.*,(SELECT b.id FROM bookings b WHERE b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') ORDER BY b.created LIMIT 1) AS booking_id,(SELECT b.status FROM bookings b WHERE b.slot_id=s.id AND b.status IN ('pending','confirmed','completed') ORDER BY b.created LIMIT 1) AS booking_status,(SELECT count(*) FROM bookings b WHERE b.slot_id=s.id AND b.status IN ('pending','confirmed','completed')) AS taken FROM slots s ORDER BY s.start",
               ),
             )
           : instructor
@@ -836,13 +836,16 @@ export async function POST(
                 lessonKindOf(pack?.id, pack?.program || v.program)) === "yard"
             )
               return fail("cityOnlySlot", 409);
+            if ((await seatsTaken(slotId)) >= Number(slot.capacity || 1))
+              return fail("slotUnavailable", 409);
             if (
               await one(
-                "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
+                "SELECT id FROM bookings WHERE slot_id=? AND user_id=? AND status IN ('pending','confirmed','completed')",
                 slotId,
+                client.id,
               )
             )
-              return fail("slotUnavailable", 409);
+              return fail("alreadyOnSlot", 409);
             const id = randomUUID();
             try {
               await db
@@ -997,11 +1000,8 @@ export async function POST(
             v.slot_id,
           );
           if (
-            await one(
-              "SELECT id FROM bookings WHERE slot_id=? AND id<>? AND status IN ('pending','confirmed','completed')",
-              v.slot_id,
-              b.id,
-            )
+            slot &&
+            (await seatsTaken(v.slot_id, b.id)) >= Number(slot.capacity || 1)
           )
             return fail("slotUnavailable", 409);
           if (
@@ -1142,11 +1142,21 @@ export async function POST(
             intervalMinutes: z.number().int().min(5).max(240).optional(),
             // yard lessons are 25 minutes each (book two in a row for fifty), city lessons are longer
             kind: z.enum(["any", "yard", "city"]).default("any"),
+            // a group lesson of a lecturer takes up to 35 students
+            capacity: z.number().int().min(1).max(35).default(1),
           })
           .parse(body);
         const instructorId = v.instructor_id || null;
         if (isTeacher(user.role) && instructorId !== user.id)
           return fail("forbidden", 403);
+        if (
+          v.capacity > 1 &&
+          !(await one(
+            "SELECT id FROM users WHERE id=? AND role='lecturer'",
+            instructorId,
+          ))
+        )
+          return fail("invalid");
         // the yard is assigned by the office only; instructors cannot open yard time themselves
         if (isTeacher(user.role) && v.kind === "yard")
           return fail("yardOfficeOnly", 403);
@@ -1181,6 +1191,15 @@ export async function POST(
           v.end,
           v.start,
         ];
+        // the same group lesson (same lecturer, same time) is not opened twice: students join the existing one
+        if (v.capacity > 1) {
+          const same = await one(
+            "SELECT id FROM slots WHERE instructor_id=? AND start=? AND capacity>1 AND available=1",
+            instructorId,
+            new Date(start).toISOString(),
+          );
+          if (same) return json({ ok: true, ids: [same.id], leftover: 0 });
+        }
         const taken = await one(
           `SELECT s.id FROM slots s JOIN bookings b ON b.slot_id=s.id AND b.status IN ('pending','confirmed','completed')
            WHERE (s.instructor_id=? OR (s.instructor_id IS NULL AND ? IS NULL AND s.city=?)) AND s.start<? AND s.end>?`,
@@ -1225,7 +1244,7 @@ export async function POST(
           ids.push(id);
           await db
             .prepare(
-              'INSERT INTO slots(id,instructor_id,city,start,"end",kind) VALUES(?,?,?,?,?,?)',
+              'INSERT INTO slots(id,instructor_id,city,start,"end",kind,capacity) VALUES(?,?,?,?,?,?,?)',
             )
             .run(
               id,
@@ -1234,6 +1253,7 @@ export async function POST(
               new Date(at).toISOString(),
               new Date(at + interval).toISOString(),
               v.kind,
+              v.capacity,
             );
         }
         await db
@@ -2556,6 +2576,15 @@ async function yardBusy(slot: Row, exceptBooking = "") {
   ));
 }
 /** Marks free lessons that cannot be used for the yard because somebody else is on it at that time. */
+/** Booked seats of a slot (a group lesson takes up to `capacity` students, any other slot one). */
+async function seatsTaken(slotId: string, exceptBooking = "") {
+  const r = await one(
+    "SELECT count(*) AS n FROM bookings WHERE slot_id=? AND id<>? AND status IN ('pending','confirmed','completed')",
+    slotId,
+    exceptBooking,
+  );
+  return Number(r?.n || 0);
+}
 async function markYardBusy(rows: Row[]) {
   const busy = await all(
     `SELECT s.id,s.start,s.end FROM bookings b JOIN slots s ON s.id=b.slot_id

@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS motion_drive.bookings(id TEXT PRIMARY KEY,user_id TEX
 CREATE INDEX IF NOT EXISTS bookings_user ON motion_drive.bookings(user_id,created);
 CREATE INDEX IF NOT EXISTS bookings_instructor ON motion_drive.bookings(instructor_id,created);
 CREATE TABLE IF NOT EXISTS motion_drive.slots(id TEXT PRIMARY KEY,instructor_id TEXT REFERENCES motion_drive.users(id),city TEXT NOT NULL,start TEXT NOT NULL,"end" TEXT NOT NULL,available INTEGER NOT NULL DEFAULT 1 CHECK(available IN (0,1)),UNIQUE(instructor_id,start));
-CREATE UNIQUE INDEX IF NOT EXISTS occupied_slot ON motion_drive.bookings(slot_id) WHERE slot_id IS NOT NULL AND status IN ('pending','confirmed','completed');
+DROP INDEX IF EXISTS motion_drive.occupied_slot;
+CREATE INDEX IF NOT EXISTS bookings_slot ON motion_drive.bookings(slot_id);
 CREATE INDEX IF NOT EXISTS slot_calendar ON motion_drive.slots(city,start);
 DO $$ BEGIN
  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bookings_slot_fk' AND connamespace='motion_drive'::regnamespace) THEN
@@ -69,6 +70,7 @@ CREATE INDEX IF NOT EXISTS expenses_day ON motion_drive.expenses(spent_on);
 CREATE TABLE IF NOT EXISTS motion_drive.collections(id TEXT PRIMARY KEY,from_user TEXT NOT NULL REFERENCES motion_drive.users(id),to_user TEXT NOT NULL REFERENCES motion_drive.users(id),amount INTEGER NOT NULL CHECK(amount>0),note TEXT NOT NULL DEFAULT '',created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,confirmed_at TEXT,voided INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS collections_to ON motion_drive.collections(to_user);
 ALTER TABLE motion_drive.slots ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'any';
+ALTER TABLE motion_drive.slots ADD COLUMN IF NOT EXISTS capacity INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE motion_drive.expenses ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'cash';
 ALTER TABLE motion_drive.expenses ADD COLUMN IF NOT EXISTS person TEXT;
 ALTER TABLE motion_drive.payouts ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'cash';

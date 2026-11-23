@@ -2461,6 +2461,7 @@ function BookFor({
     time: "",
     minutes: "",
     who: "",
+    group: false,
     ...draft,
   });
   const patch = (x: Record<string, any>) =>
@@ -2470,6 +2471,7 @@ function BookFor({
       return next;
     });
   const { slot, kind, gear, everyone } = state;
+  const group = !!state.group;
   const setSlot = (v: string) => patch({ slot: v });
   const setKind = (v: string) =>
     patch({ kind: v, minutes: "", who: "", slot: "" });
@@ -2519,6 +2521,7 @@ function BookFor({
               start: start.toISOString(),
               end: new Date(start.getTime() + minutes * 60000).toISOString(),
               kind: theory ? "any" : kind,
+              capacity: theory && group ? 35 : 1,
               intervalMinutes: minutes,
             });
             if (!w?.ids?.[0]) return;
@@ -2549,6 +2552,7 @@ function BookFor({
               time: "",
               minutes: "",
               who: "",
+              group: false,
             });
             onDone("Занятие записано и подтверждено: " + student.name);
           }
@@ -2565,6 +2569,16 @@ function BookFor({
             <option value="theory">Теория (лектор)</option>
           )}
         </select>
+        {theory && (
+          <select
+            value={group ? "group" : "single"}
+            onChange={(e) => patch({ group: e.target.value === "group" })}
+            aria-label="Формат теории"
+          >
+            <option value="single">Индивидуальное занятие (1 человек)</option>
+            <option value="group">Групповое занятие (до 35 человек)</option>
+          </select>
+        )}
         <select
           value={gear}
           hidden={theory}
@@ -2585,6 +2599,9 @@ function BookFor({
           {free.map((s) => (
             <option key={s.id} value={s.id}>
               {slotText(s.start)}
+              {Number(s.capacity) > 1
+                ? ` · группа ${s.taken}/${s.capacity}`
+                : ""}
               {s.instructor_id
                 ? " · " +
                   ([...instructors, ...lecturers].find(

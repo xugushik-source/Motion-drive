@@ -187,6 +187,7 @@
   "yardBusy": "There is one yard: another instructor's student is on it at that time.",
   "yardWindowTaken": "The yard is already open for another instructor at that time.",
   "yardOfficeOnly": "Only the office assigns the yard: instructors cannot open yard time.",
+  "alreadyOnSlot": "This student is already booked for this time.",
   "yardOnlySlot": "This is a yard slot: it can only be used for yard lessons.",
   "cityOnlySlot": "After dark only city driving is offered; the yard needs daylight.",
   "kitTitle": "Your package",

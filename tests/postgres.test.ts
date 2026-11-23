@@ -36,29 +36,8 @@ test("PostgreSQL migration and booking/rate-limit constraints", async () => {
     "A",
     "A@test.invalid",
   );
-  await assert.rejects(
-    run(
-      "INSERT INTO bookings(id,user_id,city,program,gearbox,slot_id,name,contact) VALUES(?,?,?,?,?,?,?,?)",
-      "booking2",
-      "b",
-      "akhalkalaki",
-      "practice",
-      "none",
-      "slot",
-      "B",
-      "B@test.invalid",
-    ),
-  );
-  assert.equal(
-    (
-      await run(
-        "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
-        "slot",
-      )
-    ).rows.length,
-    1,
-  );
-  await run("UPDATE bookings SET status='cancelled' WHERE id=?", "booking");
+  // several students may share one slot at the database level: a group lesson takes up to `capacity`
+  // of them, and the application checks the seats under the slot lock
   await run(
     "INSERT INTO bookings(id,user_id,city,program,gearbox,slot_id,name,contact) VALUES(?,?,?,?,?,?,?,?)",
     "booking2",
@@ -69,6 +48,25 @@ test("PostgreSQL migration and booking/rate-limit constraints", async () => {
     "slot",
     "B",
     "B@test.invalid",
+  );
+  assert.equal(
+    (
+      await run(
+        "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
+        "slot",
+      )
+    ).rows.length,
+    2,
+  );
+  await run("UPDATE bookings SET status='cancelled' WHERE id=?", "booking");
+  assert.equal(
+    (
+      await run(
+        "SELECT id FROM bookings WHERE slot_id=? AND status IN ('pending','confirmed','completed')",
+        "slot",
+      )
+    ).rows.length,
+    1,
   );
   const sql =
     "INSERT INTO limits(key,count,reset) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN limits.reset<? THEN 1 ELSE limits.count+1 END,reset=CASE WHEN limits.reset<? THEN excluded.reset ELSE limits.reset END RETURNING count";
