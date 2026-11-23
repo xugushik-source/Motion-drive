@@ -1039,6 +1039,9 @@ export default function Workspace({ user, locale, t, page, onLogout }: Props) {
                     instructors={data.users.filter(
                       (x: Item) => x.role === "instructor",
                     )}
+                    lecturers={data.users.filter(
+                      (x: Item) => x.role === "lecturer",
+                    )}
                     act={act}
                     onDone={(m) => setNotice(m)}
                   />
@@ -2426,12 +2429,14 @@ function BookFor({
   student,
   slots,
   instructors,
+  lecturers,
   act,
   onDone,
 }: {
   student: Item;
   slots: Item[];
   instructors: Item[];
+  lecturers: Item[];
   act: (path: string, body: any) => Promise<any>;
   onDone: (message: string) => void;
 }) {
@@ -2456,17 +2461,25 @@ function BookFor({
     });
   const { slot, kind, gear, everyone } = state;
   const setSlot = (v: string) => patch({ slot: v });
-  const setKind = (v: string) => patch({ kind: v, minutes: "" });
+  const setKind = (v: string) =>
+    patch({ kind: v, minutes: "", who: "", slot: "" });
   const setGear = (v: string) => patch({ gear: v });
   const setEveryone = (v: boolean) => patch({ everyone: v });
   const mine = student.instructor_id as string | undefined;
-  const drivers = instructors.filter((i) => i.role === "instructor");
+  const theory = kind === "theory";
+  const drivers = theory ? lecturers : instructors;
+  const lecturerIds = new Set(lecturers.map((l) => l.id));
   const free = slots
     .filter((s) => s.city === "akhalkalaki")
+    .filter((s) =>
+      theory
+        ? lecturerIds.has(s.instructor_id)
+        : !lecturerIds.has(s.instructor_id),
+    )
     .filter((s) => kind !== "yard" || s.kind !== "city")
     .filter((s) => kind !== "city" || s.kind !== "yard")
     .filter((s) => kind !== "yard" || !Number(s.yard_busy))
-    .filter((s) => everyone || !mine || s.instructor_id === mine)
+    .filter((s) => theory || everyone || !mine || s.instructor_id === mine)
     .slice(0, 80);
   return (
     <details
@@ -2485,7 +2498,7 @@ function BookFor({
             const f = {
               date: state.date,
               time: state.time,
-              who: state.who || mine || "",
+              who: state.who || (theory ? "" : mine) || "",
               minutes: state.minutes,
             };
             const minutes = Number(f.minutes || (kind === "yard" ? 25 : 60));
@@ -2495,7 +2508,7 @@ function BookFor({
               instructor_id: String(f.who || mine || ""),
               start: start.toISOString(),
               end: new Date(start.getTime() + minutes * 60000).toISOString(),
-              kind,
+              kind: theory ? "any" : kind,
               intervalMinutes: minutes,
             });
             if (!w?.ids?.[0]) return;
@@ -2504,8 +2517,8 @@ function BookFor({
           const r = await act("booking/create", {
             user_id: student.id,
             city: "akhalkalaki",
-            program: "practice",
-            gearbox: gear,
+            program: theory ? "theory" : "practice",
+            gearbox: theory ? "none" : gear,
             slot_ids: [slotId],
             lesson_kind: kind,
             name: student.name,
@@ -2538,9 +2551,13 @@ function BookFor({
         >
           <option value="city">Город</option>
           <option value="yard">Площадка</option>
+          {lecturers.length > 0 && (
+            <option value="theory">Теория (лектор)</option>
+          )}
         </select>
         <select
           value={gear}
+          hidden={theory}
           onChange={(e) => setGear(e.target.value)}
           aria-label="Коробка"
         >
@@ -2560,8 +2577,9 @@ function BookFor({
               {slotText(s.start)}
               {s.instructor_id
                 ? " · " +
-                  (instructors.find((i) => i.id === s.instructor_id)?.name ||
-                    "инструктор")
+                  ([...instructors, ...lecturers].find(
+                    (i) => i.id === s.instructor_id,
+                  )?.name || "преподаватель")
                 : ""}
             </option>
           ))}
@@ -2610,12 +2628,14 @@ function BookFor({
               aria-label="Длительность, минут"
             />
             <select
-              value={state.who || mine || ""}
+              value={state.who || (theory ? "" : mine) || ""}
               onChange={(e) => patch({ who: e.target.value })}
               required
-              aria-label="Инструктор"
+              aria-label={theory ? "Лектор" : "Инструктор"}
             >
-              <option value="">— инструктор —</option>
+              <option value="">
+                {theory ? "— лектор —" : "— инструктор —"}
+              </option>
               {drivers.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.name}
@@ -2624,7 +2644,7 @@ function BookFor({
             </select>
           </div>
         )}
-        {mine && (
+        {mine && !theory && (
           <label className="checkbox">
             <input
               type="checkbox"
